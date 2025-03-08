@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
 
 function Signup() {
   const [username, setUsername] = useState("");
@@ -24,29 +25,50 @@ function Signup() {
   };
 
   return (
-    <div>
-      <h2>Signup</h2>
-      <input
-        type="text"
-        placeholder="Username"
-        onChange={(e) => setUsername(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      
-      {/* Role selection dropdown */}
-      <select onChange={(e) => setRole(e.target.value)}>
-        <option value="">Select Role</option>
-        <option value="Owner">Owner</option>
-        <option value="Inventory Manager">Inventory Manager</option>
-        <option value="Sales Team">Sales Team</option>
-        <option value="Order Coordinator">Order Coordinator</option>
-      </select>
-
-      <button onClick={handleSignup}>Signup</button>
+    <div className="container mt-5">
+      <div className="row justify-content-center">
+        <div className="col-md-6">
+          <div className="card">
+            <div className="card-body">
+              <h2 className="card-title text-center mb-4">Signup</h2>
+              <div className="form-group">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Username"
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <input
+                  type="password"
+                  className="form-control"
+                  placeholder="Password"
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <select
+                  className="form-control"
+                  onChange={(e) => setRole(e.target.value)}
+                >
+                  <option value="">Select Role</option>
+                  <option value="Owner">Owner</option>
+                  <option value="Inventory Manager">Inventory Manager</option>
+                  <option value="Sales Team">Sales Team</option>
+                  <option value="Order Coordinator">Order Coordinator</option>
+                </select>
+              </div>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={handleSignup}
+              >
+                Signup
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
