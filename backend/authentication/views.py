@@ -4,7 +4,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User
+from .models import Role
 from django.contrib.auth import authenticate
+from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
@@ -12,7 +14,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer
 
 from rest_framework.permissions import IsAuthenticated
-from .permissions import IsOwner, IsInventoryManager, IsOrderCoordinator, IsSalesTeam
+from .permissions import IsOwner, IsInventoryManager,IsOrderCoordinator, IsSalesTeam
+
+User = get_user_model()
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -42,26 +46,37 @@ class RegisterView(APIView):
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
+        role_name = request.data.get('role')  # Expecting a role from frontend
 
-        # Check if username or password is missing
-        if not username or not password:
+        if not username or not password or not role_name:
             return Response({
                 'data': None,
-                'error': 'Username and password are required'
+                'error': 'Username, password, and role are required'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if the user already exists
         if User.objects.filter(username=username).exists():
             return Response({
                 'data': None,
                 'error': 'User already exists'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create the user if they don't exist
+        # Fetch the role from the database
+        try:
+           role = Role.objects.get(name=role_name)  # Use "name" instead of "role_name"
+# Assuming Role model has role_name field
+        except Role.DoesNotExist:
+            return Response({
+                'data': None,
+                'error': 'Invalid role specified'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create user with assigned role
         user = User.objects.create_user(username=username, password=password)
-        
+        user.role = role  # Assuming your User model has a foreign key to Role
+        user.save()
+
         return Response({
-            'data': {'message': 'User created successfully'}
+            'data': {'message': 'User created successfully', 'role': role_name}
         }, status=status.HTTP_201_CREATED)
         
 class LoginView(APIView):

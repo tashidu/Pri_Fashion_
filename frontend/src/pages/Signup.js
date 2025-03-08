@@ -4,23 +4,22 @@ import axios from "axios";
 function Signup() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState(""); // Add role state
 
   const handleSignup = async () => {
-    const userData = { username, password };  // Create the userData object
+    const userData = { username, password, role }; // Include role in userData
 
     try {
       const response = await axios.post('http://localhost:8000/api/auth/signup/', userData);
 
-      // Ensure the response has the 'data' field
       if (response && response.data) {
         console.log(response.data);  // Successful signup
-        // Proceed with user data or success message
+        alert("Signup successful!");
       } else {
-        console.error('Unexpected response:', response);
+        console.error("Unexpected response:", response);
       }
     } catch (error) {
-      // Handle error if there is an issue with the API request
-      console.error('Error during signup:', error);
+      console.error("Error during signup:", error);
     }
   };
 
@@ -37,6 +36,16 @@ function Signup() {
         placeholder="Password"
         onChange={(e) => setPassword(e.target.value)}
       />
+      
+      {/* Role selection dropdown */}
+      <select onChange={(e) => setRole(e.target.value)}>
+        <option value="">Select Role</option>
+        <option value="Owner">Owner</option>
+        <option value="Inventory Manager">Inventory Manager</option>
+        <option value="Sales Team">Sales Team</option>
+        <option value="Order Coordinator">Order Coordinator</option>
+      </select>
+
       <button onClick={handleSignup}>Signup</button>
     </div>
   );
