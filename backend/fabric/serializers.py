@@ -7,8 +7,9 @@ class SupplierSerializer(serializers.ModelSerializer):
         fields = '__all__'  # Include all fields
 
 class FabricSerializer(serializers.ModelSerializer):
-    supplier = SupplierSerializer()  # Nest supplier details inside fabric data
-
+    class Meta:
+        model = Fabric
+        fields = ['id', 'name', 'color', 'total_yard', 'supplier', 'price_per_yard']  # Add price_per_yard here
     class Meta:
         model = Fabric
         fields = '__all__'

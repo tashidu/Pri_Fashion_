@@ -15,6 +15,7 @@ class Fabric(models.Model):
     date_added = models.DateTimeField(auto_now_add=True)
     color = models.CharField(max_length=50)
     total_yard = models.FloatField()
+    price_per_yard = models.FloatField()  # New field for price per yard
 
     def __str__(self):
         return self.name

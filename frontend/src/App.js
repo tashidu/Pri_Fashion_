@@ -4,7 +4,11 @@ import Login from "./pages/Login";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import InventoryDashboard from "./pages/InventoryDashboard";
 import OrdersDashboard from "./pages/OrdersDashboard";
-import SalesDashboard from "./pages/SalesDashboard";
+import SalesDashboard from "./pages/SalesDashboard"
+import AddSupplier from './pages/AddSupplier';
+import AddFabric from './pages/AddFabric';
+import FabricList from './pages/FabricList';
+import EditFabric from './pages/EditFabric';
 
 
 function App() {
@@ -17,6 +21,13 @@ function App() {
         <Route path="/inventory-dashboard" element={<InventoryDashboard />} />
         <Route path="/orders-dashboard" element={<OrdersDashboard />} />
         <Route path="/sales-dashboard" element={<SalesDashboard />} />
+        <Route path="/addsupplier" element ={<AddSupplier/>}/>
+        <Route path="/addfabric" element ={<AddFabric/>}/>
+        <Route exact path="/" component={FabricList} />
+        <Route path="/edit-fabric/:id" component={EditFabric} />
+
+
+
             </Routes>
         </Router>
     );
