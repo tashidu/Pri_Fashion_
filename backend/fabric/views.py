@@ -11,6 +11,7 @@ class SupplierDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = SupplierSerializer
 
 class FabricListCreateView(generics.ListCreateAPIView):
+    
     queryset = Fabric.objects.all()
     serializer_class = FabricSerializer
 

@@ -7,8 +7,9 @@ import OrdersDashboard from "./pages/OrdersDashboard";
 import SalesDashboard from "./pages/SalesDashboard"
 import AddSupplier from './pages/AddSupplier';
 import AddFabric from './pages/AddFabric';
-import FabricList from './pages/FabricList';
+
 import EditFabric from './pages/EditFabric';
+import ViewFabrics from './pages/ViewFabrics';
 
 
 function App() {
@@ -23,8 +24,9 @@ function App() {
         <Route path="/sales-dashboard" element={<SalesDashboard />} />
         <Route path="/addsupplier" element ={<AddSupplier/>}/>
         <Route path="/addfabric" element ={<AddFabric/>}/>
-        <Route exact path="/" component={FabricList} />
+ 
         <Route path="/edit-fabric/:id" component={EditFabric} />
+        <Route path="/viewfabric" element ={<ViewFabrics/>}/>
 
 
 
