@@ -100,7 +100,7 @@ function Login() {
     return (
         <div style={styles.container}>
             <div style={styles.card}>
-                <img src="/logo.jp" alt="Logo" style={styles.logo} /> 
+                <img src="/logo.jpg" alt="Logo" style={styles.logo} /> 
                 <h2 style={styles.heading}>Login</h2>
 
                 {error && <p style={styles.errorText}>{error}</p>}
