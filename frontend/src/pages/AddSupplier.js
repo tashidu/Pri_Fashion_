@@ -23,7 +23,7 @@ const AddSupplier = () => {
 
         try {
             // API call to backend to create a new supplier
-            const response = await axios.post('http://localhost:8000/api//', supplierData);
+            const response = await axios.post('http://localhost:8000/api/addsuppliers/', supplierData);
 
             // On success, display a success message
             if (response.status === 201) {
