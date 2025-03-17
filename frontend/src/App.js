@@ -10,7 +10,7 @@ import AddFabric from './pages/AddFabric';
 
 import EditFabric from './pages/EditFabric';
 import ViewFabrics from './pages/ViewFabrics';
-import SupplierDetails from "./pages/SupplierDetails";
+
 
 
 function App() {
@@ -28,7 +28,7 @@ function App() {
  
         <Route path="/edit-fabric/:id" component={EditFabric} />
         <Route path="/viewfabric" element ={<ViewFabrics/>}/>
-        <Route path="/supplier/:id" element={<SupplierDetails />} />
+ 
 
 
 
