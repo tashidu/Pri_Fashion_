@@ -4,10 +4,18 @@ from .models import Fabric, Supplier
 class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Supplier
-        fields = '__all__'  # Include all fields
+        fields = ['supplier_id', 'name', 'address', 'tel_no']
 class FabricSerializer(serializers.ModelSerializer):
-    supplier_name = serializers.CharField(source='supplier.name')  # Show supplier name # Fetch supplier name
-
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    
     class Meta:
         model = Fabric
-        fields = ['id', 'name', 'color', 'total_yard', 'supplier_name']
+        fields = [
+            'id', 
+            'name', 
+            'color', 
+            'total_yard', 
+            'price_per_yard',  # Ensure this field is included
+            'supplier',        # Accept supplier ID on POST
+            'supplier_name'    # For display purposes, read-only
+        ]
