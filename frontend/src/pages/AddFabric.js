@@ -78,7 +78,7 @@ const AddFabric = () => {
                 <div>
                     <label>Color:</label>
                     <input 
-                        type="text" 
+                        type="color" 
                         value={color} 
                         onChange={(e) => setColor(e.target.value)} 
                         required 
