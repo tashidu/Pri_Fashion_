@@ -3,7 +3,8 @@ from .models import Supplier, FabricDefinition, FabricVariant
 from .serializers import (
     SupplierSerializer, 
     FabricDefinitionSerializer, 
-    FabricVariantSerializer
+    FabricVariantSerializer,
+    FabricDefinitionDetailSerializer
 )
 
 # ----- Supplier Endpoints -----
@@ -55,3 +56,8 @@ class FabricVariantDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     queryset = FabricVariant.objects.all()
     serializer_class = FabricVariantSerializer
+
+
+class FabricDefinitionListCreateView(generics.ListCreateAPIView):
+    queryset = FabricDefinition.objects.all()
+    serializer_class = FabricDefinitionDetailSerializer

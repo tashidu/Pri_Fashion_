@@ -31,3 +31,15 @@ class FabricDefinitionSerializer(serializers.ModelSerializer):
             'date_added',
             'variants'
         ]
+        
+        
+class FabricDefinitionDetailSerializer(serializers.ModelSerializer):
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    variant_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FabricDefinition
+        fields = ['id', 'fabric_name', 'supplier', 'supplier_name', 'date_added', 'variant_count']
+
+    def get_variant_count(self, obj):
+        return obj.variants.count()

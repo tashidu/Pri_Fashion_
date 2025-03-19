@@ -42,3 +42,5 @@ class FabricVariant(models.Model):
 
     def __str__(self):
         return f"{self.color} - {self.fabric_definition.fabric_name}"
+
+
