@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'fabric',
     'rest_framework',
+    'cutting',
     
     
     

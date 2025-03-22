@@ -36,3 +36,21 @@
     transform: rotate(360deg);
   }
 }
+.main-content {
+  padding: 1.5rem;
+  transition: margin-left 0.3s ease;
+}
+
+/* For larger screens (sidebar fully expanded) */
+@media (min-width: 768px) {
+  .main-content {
+    margin-left: 200px; /* same as your expanded sidebar width */
+  }
+}
+
+/* For smaller screens (sidebar minimized) */
+@media (max-width: 767px) {
+  .main-content {
+    margin-left: 60px; /* same as your minimized sidebar width */
+  }
+}
