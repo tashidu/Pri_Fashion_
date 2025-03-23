@@ -37,6 +37,7 @@ class FabricVariant(models.Model):
         related_name="variants"
     )
     color = models.CharField(max_length=50)
+    
     total_yard = models.FloatField()
     price_per_yard = models.FloatField()
 

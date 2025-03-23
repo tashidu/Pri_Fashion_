@@ -10,7 +10,9 @@ import AddFabric from "./pages/AddFabric";
 
 import EditFabric from "./pages/EditFabric";
 import ViewFabrics from "./pages/ViewFabrics";
+import ViewCutting from "./pages/ViewCutting.js";
 import ViewFabricVariants from "./pages/ViewFabricVariants";
+import AddCutting  from "./pages/AddCutting.js"
 
 function App() {
   return (
@@ -31,6 +33,11 @@ function App() {
           path="/fabric-definitions/:id"
           element={<ViewFabricVariants />}
         />
+        <Route path="/viewcutting" element={<ViewCutting />} />
+        <Route path="/addcutting" element={<AddCutting />} />
+
+
+
       </Routes>
     </Router>
   );

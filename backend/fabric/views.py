@@ -61,3 +61,10 @@ class FabricVariantDetailView(generics.RetrieveUpdateDestroyAPIView):
 class FabricDefinitionListCreateView(generics.ListCreateAPIView):
     queryset = FabricDefinition.objects.all()
     serializer_class = FabricDefinitionDetailSerializer
+    
+class FabricVariantByDefinitionListView(generics.ListAPIView):
+    serializer_class = FabricVariantSerializer
+
+    def get_queryset(self):
+        definition_id = self.kwargs.get('definition_id')
+        return FabricVariant.objects.filter(fabric_definition_id=definition_id)    
