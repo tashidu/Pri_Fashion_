@@ -1,6 +1,13 @@
 from rest_framework import serializers
 from .models import Supplier, FabricDefinition, FabricVariant
 
+
+COLOR_MAP = {
+    "#000000": "Black",
+    "#FFFFFF": "White",
+    "#6f2f2f": "Dark Red",
+    # add other mappings as needed
+}
 class SupplierSerializer(serializers.ModelSerializer):
   
     class Meta:
@@ -17,6 +24,11 @@ class FabricVariantSerializer(serializers.ModelSerializer):
             'price_per_yard',
             'fabric_definition'
         ]
+        
+def create(self, validated_data):
+        color_code = validated_data.get('color')
+        validated_data['color_name'] = COLOR_MAP.get(color_code, color_code)
+        return super().create(validated_data)
 
 class FabricDefinitionSerializer(serializers.ModelSerializer):
     # Optionally include variants in the same response

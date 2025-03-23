@@ -1,47 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Select from 'react-select';
 
 const AddCuttingRecord = () => {
-  // State for overall cutting record fields
+  // Overall cutting record fields
   const [fabricDefinitions, setFabricDefinitions] = useState([]);
   const [selectedFabricDefinition, setSelectedFabricDefinition] = useState('');
   const [cuttingDate, setCuttingDate] = useState('');
   const [description, setDescription] = useState('');
-  
+
   // For storing variants of the currently selected FabricDefinition
   const [fabricVariants, setFabricVariants] = useState([]);
 
-  // State for fabric detail rows
+  // Cutting detail rows
   const [details, setDetails] = useState([
     { fabric_variant: '', yard_usage: '', xs: 0, s: 0, m: 0, l: 0, xl: 0 }
   ]);
-  
-  // Loading, error, and success states
+
+  // Loading, error, success states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   // 1. Fetch fabric definitions on mount
-  useEffect(() => { 
+  useEffect(() => {
     axios.get("http://localhost:8000/api/fabric-definitions/")
       .then((res) => {
-        console.log("Fetched fabric definitions:", res.data);
         setFabricDefinitions(res.data);
       })
       .catch((err) => console.error('Error fetching fabric definitions:', err));
   }, []);
-  
-  // 2. Whenever the user selects a FabricDefinition, fetch the associated variants
+
+  // 2. Fetch variants when a FabricDefinition is selected
   useEffect(() => {
     if (selectedFabricDefinition) {
       axios.get(`http://localhost:8000/api/fabric-definitions/${selectedFabricDefinition}/variants/`)
         .then((res) => {
-          console.log("Fetched variants for definition:", res.data);
           setFabricVariants(res.data);
         })
         .catch((err) => console.error('Error fetching fabric variants:', err));
     } else {
-      // Reset if no definition is selected
       setFabricVariants([]);
     }
   }, [selectedFabricDefinition]);
@@ -73,11 +71,7 @@ const AddCuttingRecord = () => {
     };
 
     try {
-        axios.post("http://localhost:8000/api/cutting/cutting-records/", payload);
-
-
-
-
+      await axios.post("http://localhost:8000/api/cutting/cutting-records/", payload);
       setSuccess('Cutting record created successfully!');
       // Reset form fields
       setSelectedFabricDefinition('');
@@ -92,11 +86,43 @@ const AddCuttingRecord = () => {
     }
   };
 
+  // Convert fabricVariants to react-select options
+  // We'll do this for each detail row, but if each row uses the same set of variants,
+  // we can reuse the same array for all.
+  const getVariantOptions = () => {
+    return fabricVariants.map((variant) => ({
+      value: variant.id,
+      label: variant.color, // e.g. "#000000"
+      color: variant.color  // store hex code for the color swatch
+    }));
+  };
+
+  // Custom option component that shows a color swatch + label
+  const ColourOption = ({ data, innerRef, innerProps }) => (
+    <div 
+      ref={innerRef} 
+      {...innerProps} 
+      style={{ display: 'flex', alignItems: 'center', padding: '4px' }}
+    >
+      <div
+        style={{
+          width: 16,
+          height: 16,
+          backgroundColor: data.color,
+          marginRight: 8,
+          border: '1px solid #ccc'
+        }}
+      />
+      <span>{data.label}</span>
+    </div>
+  );
+
   return (
     <div>
       <h2>Add Cutting Record</h2>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {success && <p style={{ color: 'green' }}>{success}</p>}
+
       <form onSubmit={handleSubmit}>
         {/* Fabric Definition Dropdown */}
         <div>
@@ -136,83 +162,93 @@ const AddCuttingRecord = () => {
         </div>
 
         <h3>Fabric Details</h3>
-        {details.map((detail, index) => (
-          <div key={index} style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '10px' }}>
-            
-            {/* Fabric Variant Dropdown (color, etc.) */}
-            <div>
-              <label>Fabric Variant (Color):</label>
-              <select
-                value={detail.fabric_variant}
-                onChange={(e) => handleDetailChange(index, 'fabric_variant', e.target.value)}
-                required
-              >
-                <option value="">Select Variant</option>
-                {fabricVariants.map((variant) => (
-                  <option key={variant.id} value={variant.id}>
-                    {variant.color} 
-                    {/* Could also display additional info like price, etc. */}
-                  </option>
-                ))}
-              </select>
-            </div>
+        {details.map((detail, index) => {
+          // Prepare the react-select value from the detail.fabric_variant
+          const currentVariant = fabricVariants.find(v => v.id === detail.fabric_variant);
+          const currentValue = currentVariant
+            ? { value: currentVariant.id, label: currentVariant.color, color: currentVariant.color }
+            : null;
 
-            {/* Yard Usage */}
-            <div>
-              <label>Yard Usage:</label>
-              <input 
-                type="number"
-                step="0.01"
-                value={detail.yard_usage}
-                onChange={(e) => handleDetailChange(index, 'yard_usage', e.target.value)}
-                required
-              />
-            </div>
+          return (
+            <div 
+              key={index} 
+              style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '10px' }}
+            >
+              {/* Fabric Variant (Color) via React-Select */}
+              <div style={{ marginBottom: '8px' }}>
+                <label style={{ display: 'block' }}>Fabric Variant (Color):</label>
+                <Select
+                  options={getVariantOptions()}
+                  components={{ Option: ColourOption }}
+                  value={currentValue}
+                  onChange={(selectedOption) => {
+                    // Update the detail row with the selected variant ID
+                    handleDetailChange(index, 'fabric_variant', selectedOption.value);
+                  }}
+                  placeholder="Select Variant"
+                />
+              </div>
 
-            {/* XS, S, M, L, XL fields */}
-            <div>
-              <label>XS:</label>
-              <input 
-                type="number"
-                value={detail.xs}
-                onChange={(e) => handleDetailChange(index, 'xs', e.target.value)}
-              />
+              {/* Yard Usage */}
+              <div>
+                <label>Yard Usage:</label>
+                <input 
+                  type="number"
+                  step="0.01"
+                  value={detail.yard_usage}
+                  onChange={(e) => handleDetailChange(index, 'yard_usage', e.target.value)}
+                  required
+                />
+              </div>
+
+              {/* XS, S, M, L, XL fields */}
+              <div>
+                <label>XS:</label>
+                <input 
+                  type="number"
+                  value={detail.xs}
+                  onChange={(e) => handleDetailChange(index, 'xs', e.target.value)}
+                />
+              </div>
+              <div>
+                <label>S:</label>
+                <input 
+                  type="number"
+                  value={detail.s}
+                  onChange={(e) => handleDetailChange(index, 's', e.target.value)}
+                />
+              </div>
+              <div>
+                <label>M:</label>
+                <input 
+                  type="number"
+                  value={detail.m}
+                  onChange={(e) => handleDetailChange(index, 'm', e.target.value)}
+                />
+              </div>
+              <div>
+                <label>L:</label>
+                <input 
+                  type="number"
+                  value={detail.l}
+                  onChange={(e) => handleDetailChange(index, 'l', e.target.value)}
+                />
+              </div>
+              <div>
+                <label>XL:</label>
+                <input 
+                  type="number"
+                  value={detail.xl}
+                  onChange={(e) => handleDetailChange(index, 'xl', e.target.value)}
+                />
+              </div>
             </div>
-            <div>
-              <label>S:</label>
-              <input 
-                type="number"
-                value={detail.s}
-                onChange={(e) => handleDetailChange(index, 's', e.target.value)}
-              />
-            </div>
-            <div>
-              <label>M:</label>
-              <input 
-                type="number"
-                value={detail.m}
-                onChange={(e) => handleDetailChange(index, 'm', e.target.value)}
-              />
-            </div>
-            <div>
-              <label>L:</label>
-              <input 
-                type="number"
-                value={detail.l}
-                onChange={(e) => handleDetailChange(index, 'l', e.target.value)}
-              />
-            </div>
-            <div>
-              <label>XL:</label>
-              <input 
-                type="number"
-                value={detail.xl}
-                onChange={(e) => handleDetailChange(index, 'xl', e.target.value)}
-              />
-            </div>
-          </div>
-        ))}
-        <button type="button" onClick={addDetailRow}>Add Another Detail</button>
+          );
+        })}
+
+        <button type="button" onClick={addDetailRow}>
+          Add Another Detail
+        </button>
         <br />
         <button type="submit" disabled={loading}>
           {loading ? 'Submitting...' : 'Submit Cutting Record'}
