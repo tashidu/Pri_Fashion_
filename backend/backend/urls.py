@@ -7,5 +7,6 @@ urlpatterns = [
     path('api/auth/', include('authentication.urls')),
      path('api/', include('fabric.urls')),
      path('api/cutting/', include('cutting.urls')),
+       path('api/sewing/', include('sewing.urls')),
      
 ]

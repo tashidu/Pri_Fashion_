@@ -13,6 +13,7 @@ import ViewFabrics from "./pages/ViewFabrics";
 import ViewCutting from "./pages/ViewCutting.js";
 import ViewFabricVariants from "./pages/ViewFabricVariants";
 import AddCutting  from "./pages/AddCutting.js"
+import AddDailySewingRecord from "./pages/AddDailySewingRecord";
 
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
         />
         <Route path="/viewcutting" element={<ViewCutting />} />
         <Route path="/addcutting" element={<AddCutting />} />
+        <Route path="/adddailysewing" element={<AddDailySewingRecord />} />
        
 
 

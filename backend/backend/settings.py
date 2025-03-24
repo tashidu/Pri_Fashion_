@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'fabric',
     'rest_framework',
     'cutting',
+    'sewing',
     
     
     
