@@ -14,6 +14,7 @@ import ViewCutting from "./pages/ViewCutting.js";
 import ViewFabricVariants from "./pages/ViewFabricVariants";
 import AddCutting  from "./pages/AddCutting.js"
 
+
 function App() {
   return (
     <Router>
@@ -35,6 +36,7 @@ function App() {
         />
         <Route path="/viewcutting" element={<ViewCutting />} />
         <Route path="/addcutting" element={<AddCutting />} />
+       
 
 
 

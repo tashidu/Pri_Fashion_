@@ -49,6 +49,12 @@ const AddCuttingRecord = () => {
     setDetails([...details, { fabric_variant: '', yard_usage: '', xs: 0, s: 0, m: 0, l: 0, xl: 0 }]);
   };
 
+  // Delete a detail row
+  const removeDetailRow = (index) => {
+    const newDetails = details.filter((_, i) => i !== index);
+    setDetails(newDetails);
+  };
+
   // Handle change for each detail row field
   const handleDetailChange = (index, field, value) => {
     const newDetails = [...details];
@@ -86,17 +92,6 @@ const AddCuttingRecord = () => {
     }
   };
 
-  // Convert fabricVariants to react-select options
-  // We'll do this for each detail row, but if each row uses the same set of variants,
-  // we can reuse the same array for all.
-  const getVariantOptions = () => {
-    return fabricVariants.map((variant) => ({
-      value: variant.id,
-      label: variant.color, // e.g. "#000000"
-      color: variant.color  // store hex code for the color swatch
-    }));
-  };
-
   // Custom option component that shows a color swatch + label
   const ColourOption = ({ data, innerRef, innerProps }) => (
     <div 
@@ -117,17 +112,141 @@ const AddCuttingRecord = () => {
     </div>
   );
 
+  // Some simple inline styles for a nicer layout
+  const formStyles = {
+    container: {
+      maxWidth: '900px',
+      margin: '0 auto',
+      padding: '30px',
+      backgroundColor: '#ffffff',
+      borderRadius: '8px',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+    },
+    header: {
+      borderBottom: '2px solid #f0f0f0',
+      paddingBottom: '15px',
+      marginBottom: '25px',
+      color: '#2c3e50',
+    },
+    formGroup: {
+      marginBottom: '20px',
+    },
+    label: {
+      display: 'block',
+      marginBottom: '8px',
+      fontWeight: '500',
+      color: '#555',
+    },
+    input: {
+      width: '100%',
+      padding: '10px 12px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      fontSize: '16px',
+    },
+    select: {
+      width: '100%',
+      padding: '10px 12px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      fontSize: '16px',
+      backgroundColor: '#fff',
+    },
+    textarea: {
+      width: '100%',
+      padding: '10px 12px',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+      fontSize: '16px',
+      minHeight: '100px',
+    },
+    detailCard: {
+      border: '1px solid #e0e0e0',
+      borderRadius: '6px',
+      padding: '20px',
+      marginBottom: '20px',
+      backgroundColor: '#f9f9f9',
+    },
+    detailHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '15px',
+    },
+    sizesGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(5, 1fr)',
+      gap: '10px',
+      marginTop: '15px',
+    },
+    sizeBox: {
+      textAlign: 'center',
+    },
+    sizeLabel: {
+      display: 'block',
+      marginBottom: '5px',
+      fontWeight: '500',
+    },
+    sizeInput: {
+      width: '100%',
+      padding: '8px',
+      textAlign: 'center',
+      border: '1px solid #ddd',
+      borderRadius: '4px',
+    },
+    buttonPrimary: {
+      backgroundColor: '#3498db',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      padding: '12px 24px',
+      fontSize: '16px',
+      cursor: 'pointer',
+      transition: 'background-color 0.3s',
+    },
+    buttonSecondary: {
+      backgroundColor: '#95a5a6',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      padding: '10px 20px',
+      fontSize: '14px',
+      cursor: 'pointer',
+      transition: 'background-color 0.3s',
+      marginBottom: '20px',
+      marginRight: '10px'
+    },
+    alert: {
+      padding: '12px 16px',
+      borderRadius: '4px',
+      marginBottom: '20px',
+      fontWeight: '500',
+    },
+    alertSuccess: {
+      backgroundColor: '#d4edda',
+      color: '#155724',
+      border: '1px solid #c3e6cb',
+    },
+    alertError: {
+      backgroundColor: '#f8d7da',
+      color: '#721c24',
+      border: '1px solid #f5c6cb',
+    }
+  };
+
   return (
-    <div>
-      <h2>Add Cutting Record</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {success && <p style={{ color: 'green' }}>{success}</p>}
+    <div style={formStyles.container}>
+      <h2 style={formStyles.header}>Add Cutting Record</h2>
+      
+      {error && <div style={{...formStyles.alert, ...formStyles.alertError}}>{error}</div>}
+      {success && <div style={{...formStyles.alert, ...formStyles.alertSuccess}}>{success}</div>}
 
       <form onSubmit={handleSubmit}>
         {/* Fabric Definition Dropdown */}
-        <div>
-          <label>Fabric Definition:</label>
+        <div style={formStyles.formGroup}>
+          <label style={formStyles.label}>Fabric Definition:</label>
           <select 
+            style={formStyles.select}
             value={selectedFabricDefinition}
             onChange={(e) => setSelectedFabricDefinition(e.target.value)}
             required
@@ -141,118 +260,172 @@ const AddCuttingRecord = () => {
           </select>
         </div>
 
-        {/* Cutting Date */}
-        <div>
-          <label>Cutting Date:</label>
-          <input 
-            type="date" 
-            value={cuttingDate} 
-            onChange={(e) => setCuttingDate(e.target.value)}
-            required
-          />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          {/* Cutting Date */}
+          <div style={formStyles.formGroup}>
+            <label style={formStyles.label}>Cutting Date:</label>
+            <input 
+              style={formStyles.input}
+              type="date" 
+              value={cuttingDate} 
+              onChange={(e) => setCuttingDate(e.target.value)}
+              required
+            />
+          </div>
+          <div></div> {/* empty space if you want more fields side by side */}
         </div>
 
         {/* Description */}
-        <div>
-          <label>Description:</label>
+        <div style={formStyles.formGroup}>
+          <label style={formStyles.label}>Description:</label>
           <textarea 
+            style={formStyles.textarea}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            placeholder="Enter details about this cutting record..."
           />
         </div>
 
-        <h3>Fabric Details</h3>
+        <h3 style={{...formStyles.header, marginTop: '30px'}}>Fabric Details</h3>
+        
         {details.map((detail, index) => {
-          // Prepare the react-select value from the detail.fabric_variant
+          // Find the selected variant object to set the value in React-Select
           const currentVariant = fabricVariants.find(v => v.id === detail.fabric_variant);
           const currentValue = currentVariant
             ? { value: currentVariant.id, label: currentVariant.color, color: currentVariant.color }
             : null;
 
+          // Prepare the variant options for React-Select
+          const variantOptions = fabricVariants.map((variant) => ({
+            value: variant.id,
+            label: variant.color,
+            color: variant.color,
+          }));
+
           return (
-            <div 
-              key={index} 
-              style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '10px' }}
-            >
+            <div key={index} style={formStyles.detailCard}>
+              <div style={formStyles.detailHeader}>
+                <h4 style={{margin: 0}}>Detail #{index + 1}</h4>
+                <button
+                  type="button"
+                  onClick={() => removeDetailRow(index)}
+                  style={formStyles.buttonSecondary}
+                >
+                  Delete Detail
+                </button>
+              </div>
+              
               {/* Fabric Variant (Color) via React-Select */}
-              <div style={{ marginBottom: '8px' }}>
-                <label style={{ display: 'block' }}>Fabric Variant (Color):</label>
-                <Select
-                  options={getVariantOptions()}
-                  components={{ Option: ColourOption }}
-                  value={currentValue}
-                  onChange={(selectedOption) => {
-                    // Update the detail row with the selected variant ID
-                    handleDetailChange(index, 'fabric_variant', selectedOption.value);
-                  }}
-                  placeholder="Select Variant"
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '15px' }}>
+                <div>
+                  <label style={formStyles.label}>Fabric Variant (Color):</label>
+                  <Select
+                    options={variantOptions}
+                    components={{ Option: ColourOption }}
+                    value={currentValue}
+                    onChange={(selectedOption) => {
+                      // Update the detail row with the selected variant ID
+                      handleDetailChange(index, 'fabric_variant', selectedOption.value);
+                    }}
+                    placeholder="Select Variant"
+                    styles={{
+                      control: (provided) => ({
+                        ...provided,
+                        borderColor: '#ddd',
+                        boxShadow: 'none',
+                        '&:hover': {
+                          borderColor: '#aaa'
+                        }
+                      })
+                    }}
+                  />
+                </div>
+
+                {/* Yard Usage */}
+                <div>
+                  <label style={formStyles.label}>Yard Usage:</label>
+                  <input 
+                    style={formStyles.input}
+                    type="number"
+                    step="0.01"
+                    value={detail.yard_usage}
+                    onChange={(e) => handleDetailChange(index, 'yard_usage', e.target.value)}
+                    required
+                    placeholder="Enter yards used"
+                  />
+                </div>
               </div>
 
-              {/* Yard Usage */}
-              <div>
-                <label>Yard Usage:</label>
-                <input 
-                  type="number"
-                  step="0.01"
-                  value={detail.yard_usage}
-                  onChange={(e) => handleDetailChange(index, 'yard_usage', e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* XS, S, M, L, XL fields */}
-              <div>
-                <label>XS:</label>
-                <input 
-                  type="number"
-                  value={detail.xs}
-                  onChange={(e) => handleDetailChange(index, 'xs', e.target.value)}
-                />
-              </div>
-              <div>
-                <label>S:</label>
-                <input 
-                  type="number"
-                  value={detail.s}
-                  onChange={(e) => handleDetailChange(index, 's', e.target.value)}
-                />
-              </div>
-              <div>
-                <label>M:</label>
-                <input 
-                  type="number"
-                  value={detail.m}
-                  onChange={(e) => handleDetailChange(index, 'm', e.target.value)}
-                />
-              </div>
-              <div>
-                <label>L:</label>
-                <input 
-                  type="number"
-                  value={detail.l}
-                  onChange={(e) => handleDetailChange(index, 'l', e.target.value)}
-                />
-              </div>
-              <div>
-                <label>XL:</label>
-                <input 
-                  type="number"
-                  value={detail.xl}
-                  onChange={(e) => handleDetailChange(index, 'xl', e.target.value)}
-                />
+              {/* Size quantities in a grid */}
+              <label style={{...formStyles.label, marginTop: '10px'}}>Size Quantities:</label>
+              <div style={formStyles.sizesGrid}>
+                <div style={formStyles.sizeBox}>
+                  <label style={formStyles.sizeLabel}>XS</label>
+                  <input 
+                    style={formStyles.sizeInput}
+                    type="number"
+                    value={detail.xs}
+                    onChange={(e) => handleDetailChange(index, 'xs', e.target.value)}
+                  />
+                </div>
+                <div style={formStyles.sizeBox}>
+                  <label style={formStyles.sizeLabel}>S</label>
+                  <input 
+                    style={formStyles.sizeInput}
+                    type="number"
+                    value={detail.s}
+                    onChange={(e) => handleDetailChange(index, 's', e.target.value)}
+                  />
+                </div>
+                <div style={formStyles.sizeBox}>
+                  <label style={formStyles.sizeLabel}>M</label>
+                  <input 
+                    style={formStyles.sizeInput}
+                    type="number"
+                    value={detail.m}
+                    onChange={(e) => handleDetailChange(index, 'm', e.target.value)}
+                  />
+                </div>
+                <div style={formStyles.sizeBox}>
+                  <label style={formStyles.sizeLabel}>L</label>
+                  <input 
+                    style={formStyles.sizeInput}
+                    type="number"
+                    value={detail.l}
+                    onChange={(e) => handleDetailChange(index, 'l', e.target.value)}
+                  />
+                </div>
+                <div style={formStyles.sizeBox}>
+                  <label style={formStyles.sizeLabel}>XL</label>
+                  <input 
+                    style={formStyles.sizeInput}
+                    type="number"
+                    value={detail.xl}
+                    onChange={(e) => handleDetailChange(index, 'xl', e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           );
         })}
 
-        <button type="button" onClick={addDetailRow}>
-          Add Another Detail
+        <button 
+          type="button" 
+          onClick={addDetailRow}
+          style={formStyles.buttonSecondary}
+        >
+          + Add Another Detail
         </button>
-        <br />
-        <button type="submit" disabled={loading}>
-          {loading ? 'Submitting...' : 'Submit Cutting Record'}
-        </button>
+        
+        <div style={{textAlign: 'center', marginTop: '30px'}}>
+          <button 
+            type="submit" 
+            disabled={loading}
+            style={formStyles.buttonPrimary}
+          >
+            {loading ? 'Submitting...' : 'Submit Cutting Record'}
+          </button>
+        </div>
       </form>
     </div>
   );
