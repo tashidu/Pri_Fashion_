@@ -4,8 +4,8 @@ from django.db.models import Sum
 from django.utils import timezone
 
 class DailySewingRecord(models.Model):
-    fabric_variant = models.ForeignKey(FabricVariant, on_delete=models.CASCADE)
-    date = models.DateField(auto_now_add=True)  # automatically set to today on creation
+    fabric_variant = models.ForeignKey(FabricVariant, on_delete=models.CASCADE, related_name='daily_sewing_records')
+    date = models.DateField(auto_now_add=True)
     xs = models.IntegerField(default=0)
     s = models.IntegerField(default=0)
     m = models.IntegerField(default=0)
@@ -18,7 +18,7 @@ class DailySewingRecord(models.Model):
 
 
 class FinishedProduct(models.Model):
-    fabric_variant = models.OneToOneField(FabricVariant, on_delete=models.CASCADE)
+    fabric_variant = models.OneToOneField(FabricVariant, on_delete=models.CASCADE, related_name='finished_product')
     total_sewn_xs = models.IntegerField(default=0)
     total_sewn_s = models.IntegerField(default=0)
     total_sewn_m = models.IntegerField(default=0)
@@ -37,7 +37,7 @@ class FinishedProduct(models.Model):
         Aggregates all DailySewingRecord entries for this fabric_variant.
         Updates the total sewn counts, damage count, last update date, and status.
         """
-        aggregates = self.fabric_variant.dailysewingrecord_set.aggregate(
+        aggregates = self.fabric_variant.daily_sewing_records.aggregate(
             xs_sum=Sum('xs'),
             s_sum=Sum('s'),
             m_sum=Sum('m'),
@@ -53,7 +53,7 @@ class FinishedProduct(models.Model):
         self.damage_count = aggregates['damage_sum'] or 0
         self.last_update_date = timezone.now()
 
-        # Example business logic: if total sewn items are greater than zero, mark as "Finished"
+        # Example business rule: mark as Finished if total sewn is greater than zero
         total_sewn = (
             self.total_sewn_xs +
             self.total_sewn_s +
