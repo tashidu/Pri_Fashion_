@@ -1,88 +1,82 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
-import { FaPlus, FaTrash } from "react-icons/fa"; // optional icons for plus/trash
+import { FaPlus, FaTrash } from "react-icons/fa";
+import { Container, Row, Col, Form, Button, Card, Alert } from 'react-bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
 
 const AddFabric = () => {
-  // Shared fields (FabricDefinition)
+  // State variables
   const [fabricName, setFabricName] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [dateAdded, setDateAdded] = useState("");
-
-  // Variants (FabricVariant) array
-  const [variants, setVariants] = useState([
-    { color: "#000000", totalYard: "", pricePerYard: "" },
-  ]);
-
-  // Suppliers list for dropdown
+  const [variants, setVariants] = useState([{ color: "#000000", totalYard: "", pricePerYard: "" }]);
   const [suppliers, setSuppliers] = useState([]);
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch suppliers on component mount
+  // Fetch suppliers
   useEffect(() => {
-    axios
-      .get("http://localhost:8000/api/suppliers/")
+    axios.get("http://localhost:8000/api/suppliers/")
       .then((response) => {
-        console.log("API suppliers response:", response.data); // Debug log
         const supplierOptions = response.data.map((sup) => ({
-          value: sup.supplier_id, // Make sure this matches your API response field
-          label: sup.name,        // Ensure this is the correct field for the supplier name
+          value: sup.supplier_id,
+          label: sup.name,
         }));
         setSuppliers(supplierOptions);
       })
       .catch((error) => {
         console.error("Error fetching suppliers:", error);
+        setMessage("Failed to load suppliers");
       });
   }, []);
-  
 
-  // Add a new variant row
+  // Handle adding a variant
   const handleAddVariant = () => {
-    setVariants([
-      ...variants,
-      { color: "#000000", totalYard: "", pricePerYard: "" },
-    ]);
+    setVariants([...variants, { color: "#000000", totalYard: "", pricePerYard: "" }]);
   };
 
-  // Remove a variant row by index
+  // Handle removing a variant
   const handleRemoveVariant = (index) => {
     const updated = variants.filter((_, i) => i !== index);
     setVariants(updated);
   };
 
-  // Update a field within a variant
+  // Handle variant input changes
   const handleVariantChange = (index, field, value) => {
     const updated = [...variants];
     updated[index][field] = value;
     setVariants(updated);
   };
 
-  // Submit the form
+  // Submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
+    setIsSubmitting(true);
 
     if (!selectedSupplier) {
       setMessage("Please select a supplier.");
+      setIsSubmitting(false);
       return;
     }
     if (!fabricName || !dateAdded) {
       setMessage("Please fill out Fabric Name and Date.");
+      setIsSubmitting(false);
       return;
     }
 
     try {
-      // 1) Create the FabricDefinition
       const defResponse = await axios.post("http://localhost:8000/api/fabric-definitions/", {
         fabric_name: fabricName,
-        supplier: selectedSupplier.value, // send supplier ID
+        supplier: selectedSupplier.value,
         date_added: dateAdded,
       });
 
       if (defResponse.status === 201) {
         const definitionId = defResponse.data.id;
 
-        // 2) Create each FabricVariant
         for (let variant of variants) {
           await axios.post("http://localhost:8000/api/fabric-variants/", {
             fabric_definition: definitionId,
@@ -93,7 +87,6 @@ const AddFabric = () => {
         }
 
         setMessage("Fabric and variants created successfully!");
-        // Reset the form
         setFabricName("");
         setSelectedSupplier(null);
         setDateAdded("");
@@ -102,156 +95,139 @@ const AddFabric = () => {
     } catch (error) {
       console.error("Error creating fabric or variants:", error);
       setMessage("Error creating fabric or variants.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-      <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>Add Fabric</h2>
-      {message && <p style={{ color: "red" }}>{message}</p>}
-
-      <form onSubmit={handleSubmit}>
-        {/* Fabric Name */}
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Fabric Name</label>
-          <input
-            type="text"
-            value={fabricName}
-            onChange={(e) => setFabricName(e.target.value)}
-            required
-            style={{ width: "100%" }}
-          />
-        </div>
-
-        {/* Supplier Dropdown */}
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Supplier</label>
-          <Select
-            options={suppliers}
-            value={selectedSupplier}
-            onChange={setSelectedSupplier}
-            placeholder="Select a supplier..."
-            isSearchable
-          />
-        </div>
-
-        {/* Date Added */}
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Date Added</label>
-          <input
-            type="date"
-            value={dateAdded}
-            onChange={(e) => setDateAdded(e.target.value)}
-            required
-            style={{ width: "100%" }}
-          />
-        </div>
-
-        {/* Variants Section */}
-        <div>
-          <h4>Variants</h4>
-          {variants.map((variant, index) => (
-            <div
-              key={index}
-              style={{
-                border: "1px solid #ccc",
-                padding: "1rem",
-                marginBottom: "1rem",
-                position: "relative",
-              }}
-            >
-              {/* Color */}
-              <div style={{ marginBottom: "0.5rem" }}>
-                <label>Color</label>
-                <input
-                  type="color"
-                  value={variant.color}
-                  onChange={(e) => handleVariantChange(index, "color", e.target.value)}
-                  style={{ marginLeft: "1rem" }}
-                />
-              </div>
-
-              {/* Total Yard */}
-              <div style={{ marginBottom: "0.5rem" }}>
-                <label>Total Yard</label>
-                <input
-                  type="number"
-                  value={variant.totalYard}
-                  onChange={(e) => handleVariantChange(index, "totalYard", e.target.value)}
-                  style={{ marginLeft: "1rem" }}
-                />
-              </div>
-
-              {/* Price per Yard */}
-              <div style={{ marginBottom: "0.5rem" }}>
-                <label>Price per Yard</label>
-                <input
-                  type="number"
-                  value={variant.pricePerYard}
-                  onChange={(e) => handleVariantChange(index, "pricePerYard", e.target.value)}
-                  style={{ marginLeft: "1rem" }}
-                />
-              </div>
-
-              {/* Remove Button */}
-              {variants.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveVariant(index)}
-                  style={{
-                    position: "absolute",
-                    top: "1rem",
-                    right: "1rem",
-                    backgroundColor: "#dc3545",
-                    color: "#fff",
-                    border: "none",
-                    padding: "0.3rem 0.6rem",
-                    cursor: "pointer",
-                  }}
-                >
-                  <FaTrash />
-                </button>
+    <>
+    <InventoryManagerNavBar/>
+    <div className="main-content">
+    <Container className="add-fabric-container" style={{ padding: '2rem 0', backgroundColor: '#f4f6f9' }}>
+      <Row className="justify-content-center">
+        <Col md={8} lg={6}>
+          <Card className="shadow-sm" style={{ animation: 'fadeIn 1s' }}>
+            <Card.Header as="h2" className="text-center bg-primary text-white">
+              Add Fabric
+            </Card.Header>
+            <Card.Body>
+              {message && (
+                <Alert variant={message.includes("successfully") ? "success" : "danger"} style={{ animation: 'bounceIn 1s' }}>
+                  {message}
+                </Alert>
               )}
-            </div>
-          ))}
 
-          {/* Add Variant Button */}
-          <button
-            type="button"
-            onClick={handleAddVariant}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.3rem",
-              backgroundColor: "#0d6efd",
-              color: "#fff",
-              border: "none",
-              padding: "0.5rem 1rem",
-              cursor: "pointer",
-            }}
-          >
-            <FaPlus />
-            Add Variant
-          </button>
-        </div>
+              <Form onSubmit={handleSubmit}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Fabric Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={fabricName}
+                    onChange={(e) => setFabricName(e.target.value)}
+                    required
+                    placeholder="Enter fabric name"
+                  />
+                </Form.Group>
 
-        {/* Submit Button */}
-        <div style={{ marginTop: "1rem" }}>
-          <button
-            type="submit"
-            style={{
-              backgroundColor: "#198754",
-              color: "#fff",
-              border: "none",
-              padding: "0.6rem 1.2rem",
-              cursor: "pointer",
-            }}
-          >
-            Submit
-          </button>
-        </div>
-      </form>
+                <Form.Group className="mb-3">
+                  <Form.Label>Supplier</Form.Label>
+                  <Select
+                    options={suppliers}
+                    value={selectedSupplier}
+                    onChange={setSelectedSupplier}
+                    placeholder="Select a supplier..."
+                    isSearchable
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Date Added</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={dateAdded}
+                    onChange={(e) => setDateAdded(e.target.value)}
+                    required
+                  />
+                </Form.Group>
+
+                <Card className="mb-3 variant-container" style={{ backgroundColor: '#f8f9fa', border: '1px solid #dee2e6' }}>
+                  <Card.Header>Variants</Card.Header>
+                  <Card.Body>
+                    {variants.map((variant, index) => (
+                      <Card key={index} className="mb-3 variant-card" style={{ transition: 'all 0.3s ease' }}>
+                        <Card.Body>
+                          <Row>
+                            <Col md={4}>
+                              <Form.Group>
+                                <Form.Label>Color</Form.Label>
+                                <Form.Control
+                                  type="color"
+                                  value={variant.color}
+                                  onChange={(e) => handleVariantChange(index, "color", e.target.value)}
+                                />
+                              </Form.Group>
+                            </Col>
+
+                            <Col md={4}>
+                              <Form.Group>
+                                <Form.Label>Total Yard</Form.Label>
+                                <Form.Control
+                                  type="number"
+                                  value={variant.totalYard}
+                                  onChange={(e) => handleVariantChange(index, "totalYard", e.target.value)}
+                                  placeholder="Yards"
+                                />
+                              </Form.Group>
+                            </Col>
+
+                            <Col md={4}>
+                              <Form.Group>
+                                <Form.Label>Price per Yard</Form.Label>
+                                <Form.Control
+                                  type="number"
+                                  value={variant.pricePerYard}
+                                  onChange={(e) => handleVariantChange(index, "pricePerYard", e.target.value)}
+                                  placeholder="Price"
+                                />
+                              </Form.Group>
+                            </Col>
+                          </Row>
+
+                          {variants.length > 1 && (
+                            <Button
+                              variant="danger"
+                              onClick={() => handleRemoveVariant(index)}
+                              className="position-absolute top-0 end-0 m-2"
+                            >
+                              <FaTrash />
+                            </Button>
+                          )}
+                        </Card.Body>
+                      </Card>
+                    ))}
+
+                    <Button
+                      variant="primary"
+                      onClick={handleAddVariant}
+                      className="d-flex align-items-center gap-2"
+                    >
+                      <FaPlus /> Add Variant
+                    </Button>
+                  </Card.Body>
+                </Card>
+
+                <Button type="submit" variant="success" disabled={isSubmitting} className="w-100">
+                  {isSubmitting ? 'Submitting...' : 'Submit'}
+                </Button>
+              </Form>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
     </div>
+    </>
   );
 };
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
+
 
 const AddDailySewingRecord = () => {
   // Dropdown states
@@ -92,6 +94,9 @@ const AddDailySewingRecord = () => {
   };
 
   return (
+    <>
+     <InventoryManagerNavBar/>
+
     <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
       <h2>Add Daily Sewing Record</h2>
       {message && <p>{message}</p>}
@@ -202,6 +207,7 @@ const AddDailySewingRecord = () => {
         </button>
       </form>
     </div>
+    </>
   );
 };
 

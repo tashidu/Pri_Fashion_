@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
+import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
 
 const AddCuttingRecord = () => {
   // Overall cutting record fields
@@ -235,6 +236,9 @@ const AddCuttingRecord = () => {
   };
 
   return (
+    <>
+     <InventoryManagerNavBar/>
+
     <div style={formStyles.container}>
       <h2 style={formStyles.header}>Add Cutting Record</h2>
       
@@ -428,6 +432,7 @@ const AddCuttingRecord = () => {
         </div>
       </form>
     </div>
+    </>
   );
 };
 
