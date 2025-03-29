@@ -7,9 +7,17 @@ class CuttingRecord(models.Model):
     fabric_definition = models.ForeignKey(FabricDefinition, on_delete=models.CASCADE)
     cutting_date = models.DateField(default=timezone.now)
     description = models.TextField(null=True, blank=True)
-
+    product_name = models.CharField(max_length=100, null=True, blank=True)  # Optional field
+    
+    
+    
     def __str__(self):
+        if self.product_name:
+            return self.product_name
         return f"{self.fabric_definition.fabric_name} cut on {self.cutting_date}"
+    
+    
+
 
 class CuttingRecordFabric(models.Model):
     cutting_record = models.ForeignKey(

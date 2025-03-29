@@ -55,167 +55,173 @@ const ViewCutting = () => {
 
   return (
     <>
+      <OwnerNavBar />
+      <div className="container main-content mt-4">
+        <h2>Cutting Records</h2>
+        {error && <p style={{ color: "red" }}>{error}</p>}
 
-    <OwnerNavBar />
-    <div className="container main-content mt-4">
-      <h2>Cutting Records</h2>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            marginTop: "20px",
+          }}
+        >
+          <thead>
+            <tr style={{ background: "#f4f4f4" }}>
+              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
+                Product Name
+              </th>
+              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
+                Fabric Name
+              </th>
+              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
+                Cutting Date
+              </th>
+              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
+                Total Quantity
+              </th>
+              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
+                Yard Usage
+              </th>
+              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
+                Variants Used
+              </th>
+              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {cuttingRecords.map((record) => {
+              const { totalYard, totalQuantity, totalVariants } = getAggregates(record);
+              // Get product name; fallback to fabric name if product_name is empty
+              const productName = record.product_name || "N/A";
+              const fabricName = record.fabric_definition_data?.fabric_name || "N/A";
 
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          marginTop: "20px",
-        }}
-      >
-        <thead>
-          <tr style={{ background: "#f4f4f4" }}>
-            <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-              Fabric Name
-            </th>
-            <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-              Cutting Date
-            </th>
-            <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-              Total Quantity
-            </th>
-            <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-              Yard Usage
-            </th>
-            <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-              Variants Used
-            </th>
-            <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {cuttingRecords.map((record) => {
-            const { totalYard, totalQuantity, totalVariants } = getAggregates(record);
-            // Use nested fabric definition data to get the fabric name
-            const fabricName = record.fabric_definition_data?.fabric_name || "N/A";
-
-            return (
-              <React.Fragment key={record.id}>
-                <tr>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {fabricName}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {record.cutting_date}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {totalQuantity}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {totalYard}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {totalVariants}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    <button onClick={() => toggleRow(record.id)}>
-                      {expandedRows[record.id] ? "Hide" : "View"}
-                    </button>
-                  </td>
-                </tr>
-                {expandedRows[record.id] && (
+              return (
+                <React.Fragment key={record.id}>
                   <tr>
-                    <td
-                      colSpan={6}
-                      style={{
-                        background: "#fafafa",
-                        border: "1px solid #ccc",
-                        padding: "10px",
-                      }}
-                    >
-                      <h4>Color Usage Details</h4>
-                      <table
-                        style={{
-                          width: "100%",
-                          borderCollapse: "collapse",
-                        }}
-                      >
-                        <thead>
-                          <tr>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>
-                              Variant
-                            </th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>
-                              Yard Usage
-                            </th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>
-                              XS
-                            </th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>
-                              S
-                            </th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>
-                              M
-                            </th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>
-                              L
-                            </th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>
-                              XL
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {record.details?.map((detail, idx) => (
-                            <tr key={idx}>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
-                                <div style={{ display: "flex", alignItems: "center" }}>
-                                  <div
-                                    style={{
-                                      width: "16px",
-                                      height: "16px",
-                                      backgroundColor:
-                                        detail.fabric_variant_data?.color || "#fff",
-                                      border: "1px solid #ccc",
-                                      marginRight: "5px",
-                                    }}
-                                  />
-                                  <span>
-                                    {detail.fabric_variant_data?.color_name ||
-                                      detail.fabric_variant_data?.color ||
-                                      detail.fabric_variant ||
-                                      "N/A"}
-                                  </span>
-                                </div>
-                              </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
-                                {detail.yard_usage}
-                              </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
-                                {detail.xs}
-                              </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
-                                {detail.s}
-                              </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
-                                {detail.m}
-                              </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
-                                {detail.l}
-                              </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
-                                {detail.xl}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                      {productName}
+                    </td>
+                    <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                      {fabricName}
+                    </td>
+                    <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                      {record.cutting_date}
+                    </td>
+                    <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                      {totalQuantity}
+                    </td>
+                    <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                      {totalYard}
+                    </td>
+                    <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                      {totalVariants}
+                    </td>
+                    <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                      <button onClick={() => toggleRow(record.id)}>
+                        {expandedRows[record.id] ? "Hide" : "View"}
+                      </button>
                     </td>
                   </tr>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                  {expandedRows[record.id] && (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        style={{
+                          background: "#fafafa",
+                          border: "1px solid #ccc",
+                          padding: "10px",
+                        }}
+                      >
+                        <h4>Color Usage Details</h4>
+                        <table
+                          style={{
+                            width: "100%",
+                            borderCollapse: "collapse",
+                          }}
+                        >
+                          <thead>
+                            <tr>
+                              <th style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                Variant
+                              </th>
+                              <th style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                Yard Usage
+                              </th>
+                              <th style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                XS
+                              </th>
+                              <th style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                S
+                              </th>
+                              <th style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                M
+                              </th>
+                              <th style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                L
+                              </th>
+                              <th style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                XL
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {record.details?.map((detail, idx) => (
+                              <tr key={idx}>
+                                <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                  <div style={{ display: "flex", alignItems: "center" }}>
+                                    <div
+                                      style={{
+                                        width: "16px",
+                                        height: "16px",
+                                        backgroundColor:
+                                          detail.fabric_variant_data?.color || "#fff",
+                                        border: "1px solid #ccc",
+                                        marginRight: "5px",
+                                      }}
+                                    />
+                                    <span>
+                                      {detail.fabric_variant_data?.color_name ||
+                                        detail.fabric_variant_data?.color ||
+                                        detail.fabric_variant ||
+                                        "N/A"}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                  {detail.yard_usage}
+                                </td>
+                                <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                  {detail.xs}
+                                </td>
+                                <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                  {detail.s}
+                                </td>
+                                <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                  {detail.m}
+                                </td>
+                                <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                  {detail.l}
+                                </td>
+                                <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                                  {detail.xl}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 };

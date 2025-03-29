@@ -16,7 +16,7 @@ class CuttingRecordSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CuttingRecord
-        fields = ['id', 'fabric_definition', 'fabric_definition_data', 'cutting_date', 'description', 'details']
+        fields = ['id', 'fabric_definition', 'fabric_definition_data', 'cutting_date', 'description', 'product_name','details']
 
     def create(self, validated_data):
         details_data = validated_data.pop('details')
