@@ -107,6 +107,14 @@ function PriFashionNavBar() {
               </div>
               {isSidebarOpen && <span>Sign Up</span>}
             </Link>
+            <li className="nav-item mb-2">
+            <Link className="nav-link d-flex align-items-center text-dark" to="/">
+              <div className="me-2 text-center" style={{ width: "24px" }}>
+                <i className="bi bi-person-plus"></i>
+              </div>
+              {isSidebarOpen && <span>Log Out</span>}
+            </Link>
+          </li>
           </li>
         </ul>
       </div>
