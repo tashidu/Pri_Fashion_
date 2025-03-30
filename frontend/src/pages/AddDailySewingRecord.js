@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
-
+import Select from 'react-select';
 
 const AddDailySewingRecord = () => {
-  // Dropdown states
-  const [fabricDefinitions, setFabricDefinitions] = useState([]);
-  const [selectedDefinition, setSelectedDefinition] = useState('');
-  const [fabricVariants, setFabricVariants] = useState([]);
-  const [selectedVariant, setSelectedVariant] = useState('');
+  // Dropdown states for product (Cutting Record)
+  const [products, setProducts] = useState([]); // fetched from cutting app endpoint
+  const [selectedProduct, setSelectedProduct] = useState('');
+  const [productColors, setProductColors] = useState([]); // options from selected product's details
+  const [selectedColor, setSelectedColor] = useState('');
 
   // Sewing data
   const [xs, setXs] = useState(0);
@@ -21,65 +21,71 @@ const AddDailySewingRecord = () => {
   // UI feedback
   const [message, setMessage] = useState('');
 
-  // 1. Fetch all FabricDefinitions on mount
+  // 1. Fetch all Cutting Records (Products) on mount
   useEffect(() => {
-    axios.get("http://localhost:8000/api/fabric-definitions/")
+    axios.get("http://localhost:8000/api/cutting/cutting-records/")
       .then((res) => {
-        setFabricDefinitions(res.data);
+        setProducts(res.data);
       })
       .catch((err) => {
-        console.error("Error fetching fabric definitions:", err);
+        console.error("Error fetching products:", err);
       });
   }, []);
 
-  // 2. Whenever selectedDefinition changes, fetch variants for that definition
+  // 2. When a product is selected, extract its details (colors) from the CuttingRecord
   useEffect(() => {
-    if (selectedDefinition) {
-      axios.get(`http://localhost:8000/api/fabric-definitions/${selectedDefinition}/variants/`)
-        .then((res) => {
-          setFabricVariants(res.data);
-        })
-        .catch((err) => {
-          console.error("Error fetching variants:", err);
-        });
-    } else {
-      // If no definition is selected, clear out the variants list
-      setFabricVariants([]);
-      setSelectedVariant('');
+    if (selectedProduct) {
+      const product = products.find(p => p.id === parseInt(selectedProduct));
+      if (product && product.details) {
+        // Map product.details to options (each detail should include color info)
+        const options = product.details.map(detail => ({
+          value: detail.fabric_variant, // ID of the variant
+          label: detail.fabric_variant_data 
+                   ? (detail.fabric_variant_data.color_name || detail.fabric_variant_data.color)
+                   : "N/A",
+          color: detail.fabric_variant_data ? detail.fabric_variant_data.color : "#fff"
+        }));
+        setProductColors(options);
+      } else {
+        setProductColors([]);
+      }
+      setSelectedColor('');
     }
-  }, [selectedDefinition]);
+  }, [selectedProduct, products]);
 
   // 3. Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     setMessage('');
 
-    if (!selectedDefinition) {
-      setMessage("Please select a Fabric Definition.");
+    if (!selectedProduct) {
+      setMessage("Please select a Product.");
       return;
     }
-    if (!selectedVariant) {
-      setMessage("Please select a Fabric Variant.");
+    if (!selectedColor) {
+      setMessage("Please select a Color from the Product details.");
       return;
     }
 
-    // Prepare payload
+    // Prepare payload; we send the selectedColor (fabric_variant ID) and sewing counts.
     const payload = {
-      fabric_variant: selectedVariant,
+      cutting_detail: selectedColor,
       xs: parseInt(xs),
       s: parseInt(s),
       m: parseInt(m),
       l: parseInt(l),
       xl: parseInt(xl),
       damage_count: parseInt(damageCount)
-      // date auto-set on backend
+      // The backend auto-sets the date.
     };
 
     axios.post("http://localhost:8000/api/sewing/daily-records/", payload)
       .then(() => {
         setMessage("Daily sewing record added successfully!");
         // Reset fields
-        setSelectedVariant('');
+        setSelectedProduct('');
+        setProductColors([]);
+        setSelectedColor('');
         setXs(0);
         setS(0);
         setM(0);
@@ -93,120 +99,142 @@ const AddDailySewingRecord = () => {
       });
   };
 
+  // Custom option component for React Select to display a color swatch
+  const ColourOption = ({ data, innerRef, innerProps }) => (
+    <div 
+      ref={innerRef} 
+      {...innerProps} 
+      style={{ display: 'flex', alignItems: 'center', padding: '4px' }}
+    >
+      <div
+        style={{
+          width: 16,
+          height: 16,
+          backgroundColor: data.color,
+          marginRight: 8,
+          border: '1px solid #ccc'
+        }}
+      />
+      <span>{data.label}</span>
+    </div>
+  );
+
   return (
     <>
-     <InventoryManagerNavBar/>
+      <InventoryManagerNavBar/>
+      <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
+        <h2>Add Daily Sewing Record</h2>
+        {message && <p>{message}</p>}
+        <form onSubmit={handleSubmit}>
+          {/* Product Dropdown (Cutting Record) */}
+          <div style={{ marginBottom: "15px" }}>
+            <label>Product (Cutting Record):</label>
+            <select
+              value={selectedProduct}
+              onChange={(e) => setSelectedProduct(e.target.value)}
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            >
+              <option value="">Select Product</option>
+              {products.map((prod) => (
+                <option key={prod.id} value={prod.id}>
+                  {prod.product_name ? prod.product_name 
+                    : `${prod.fabric_definition_data?.fabric_name} cut on ${prod.cutting_date}`}
+                </option>
+              ))}
+            </select>
+          </div>
 
-    <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
-      <h2>Add Daily Sewing Record</h2>
-      {message && <p>{message}</p>}
+          {/* Color Dropdown from Selected Product Details */}
+          <div style={{ marginBottom: "15px" }}>
+            <label>Color:</label>
+            <Select
+              options={productColors}
+              components={{ Option: ColourOption }}
+              value={productColors.find(opt => opt.value === selectedColor) || null}
+              onChange={(selectedOption) => setSelectedColor(selectedOption.value)}
+              placeholder="Select Color"
+              styles={{
+                control: (provided) => ({
+                  ...provided,
+                  borderColor: '#ddd',
+                  boxShadow: 'none',
+                  '&:hover': { borderColor: '#aaa' }
+                })
+              }}
+            />
+          </div>
 
-      <form onSubmit={handleSubmit}>
-        {/* Fabric Definition Dropdown */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>Fabric Definition:</label>
-          <select
-            value={selectedDefinition}
-            onChange={(e) => setSelectedDefinition(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          >
-            <option value="">Select Fabric Definition</option>
-            {fabricDefinitions.map((defn) => (
-              <option key={defn.id} value={defn.id}>
-                {defn.fabric_name}
-              </option>
-            ))}
-          </select>
-        </div>
+          {/* XS */}
+          <div style={{ marginBottom: "15px" }}>
+            <label>XS:</label>
+            <input
+              type="number"
+              value={xs}
+              onChange={(e) => setXs(e.target.value)}
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            />
+          </div>
 
-        {/* Fabric Variant Dropdown */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>Fabric Variant:</label>
-          <select
-            value={selectedVariant}
-            onChange={(e) => setSelectedVariant(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          >
-            <option value="">Select Variant</option>
-            {fabricVariants.map((variant) => (
-              <option key={variant.id} value={variant.id}>
-                {variant.color_name || variant.color}
-              </option>
-            ))}
-          </select>
-        </div>
+          {/* S */}
+          <div style={{ marginBottom: "15px" }}>
+            <label>S:</label>
+            <input
+              type="number"
+              value={s}
+              onChange={(e) => setS(e.target.value)}
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            />
+          </div>
 
-        {/* XS */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>XS:</label>
-          <input
-            type="number"
-            value={xs}
-            onChange={(e) => setXs(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-        </div>
+          {/* M */}
+          <div style={{ marginBottom: "15px" }}>
+            <label>M:</label>
+            <input
+              type="number"
+              value={m}
+              onChange={(e) => setM(e.target.value)}
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            />
+          </div>
 
-        {/* S */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>S:</label>
-          <input
-            type="number"
-            value={s}
-            onChange={(e) => setS(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-        </div>
+          {/* L */}
+          <div style={{ marginBottom: "15px" }}>
+            <label>L:</label>
+            <input
+              type="number"
+              value={l}
+              onChange={(e) => setL(e.target.value)}
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            />
+          </div>
 
-        {/* M */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>M:</label>
-          <input
-            type="number"
-            value={m}
-            onChange={(e) => setM(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-        </div>
+          {/* XL */}
+          <div style={{ marginBottom: "15px" }}>
+            <label>XL:</label>
+            <input
+              type="number"
+              value={xl}
+              onChange={(e) => setXl(e.target.value)}
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            />
+          </div>
 
-        {/* L */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>L:</label>
-          <input
-            type="number"
-            value={l}
-            onChange={(e) => setL(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-        </div>
+          {/* Damage Count */}
+          <div style={{ marginBottom: "15px" }}>
+            <label>Damage Count:</label>
+            <input
+              type="number"
+              value={damageCount}
+              onChange={(e) => setDamageCount(e.target.value)}
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            />
+          </div>
 
-        {/* XL */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>XL:</label>
-          <input
-            type="number"
-            value={xl}
-            onChange={(e) => setXl(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-        </div>
-
-        {/* Damage Count */}
-        <div style={{ marginBottom: "15px" }}>
-          <label>Damage Count:</label>
-          <input
-            type="number"
-            value={damageCount}
-            onChange={(e) => setDamageCount(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-        </div>
-
-        <button type="submit" style={{ padding: "10px 20px" }}>
-          Submit Daily Sewing Record
-        </button>
-      </form>
-    </div>
+          <button type="submit" style={{ padding: "10px 20px" }}>
+            Submit Daily Sewing Record
+          </button>
+        </form>
+      </div>
     </>
   );
 };

@@ -1,8 +1,7 @@
 # sewing/urls.py
 from django.urls import path
-from .views import DailySewingRecordListCreateView, DailySewingRecordListView
+from .views import AddDailySewingRecordView
 
 urlpatterns = [
-    path('daily-records/', DailySewingRecordListCreateView.as_view(), name='daily-sewing-records'),
-    path('daily-records/history/', DailySewingRecordListView.as_view(), name='daily-sewing-history'),
+    path('daily-records/', AddDailySewingRecordView.as_view(), name='add-daily-sewing-record'),
 ]

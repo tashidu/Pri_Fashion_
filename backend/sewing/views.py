@@ -1,14 +1,15 @@
-from rest_framework import generics
-from .models import DailySewingRecord
+# sewing/views.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 from .serializers import DailySewingRecordSerializer
 
-class DailySewingRecordListCreateView(generics.ListCreateAPIView):
-    queryset = DailySewingRecord.objects.all()  # Removed trailing comma here
-    serializer_class = DailySewingRecordSerializer
-
-class DailySewingRecordListView(generics.ListAPIView):
-    """
-    GET: List all daily sewing records (daily sewing history).
-    """
-    queryset = DailySewingRecord.objects.all().order_by('-date')
-    serializer_class = DailySewingRecordSerializer
+class AddDailySewingRecordView(APIView):
+    def post(self, request, format=None):
+        serializer = DailySewingRecordSerializer(data=request.data)
+        if serializer.is_valid():
+            record = serializer.save()
+            return Response(DailySewingRecordSerializer(record).data, status=status.HTTP_201_CREATED)
+        else:
+            print(serializer.errors)  # Log errors to the console
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
