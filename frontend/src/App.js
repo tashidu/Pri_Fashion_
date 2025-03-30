@@ -16,6 +16,7 @@ import AddCutting  from "./pages/AddCutting.js"
 import AddDailySewingRecord from "./pages/AddDailySewingRecord";
 import ViewDailySewingHistory from './pages/ViewDailySewingHistory';
 import ViewProductList from './pages/ViewProductList.js';
+import ApproveFinishedProduct from "./pages/ApproveFinishedProduct";
 
 
 
@@ -44,6 +45,7 @@ function App() {
         <Route path="/adddailysewing" element={<AddDailySewingRecord />} />
         <Route path="/daily-sewing-history" element={<ViewDailySewingHistory />} />
         <Route path="/viewproductlist" element={<ViewProductList />} />
+        <Route path="/approve-finished-product/:id" element={<ApproveFinishedProduct />} /> 
        
        
 

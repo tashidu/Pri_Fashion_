@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'cutting',
     'sewing',
+    'finished_product',
     
     
     
