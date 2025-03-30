@@ -3,6 +3,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import DailySewingRecordSerializer
+from cutting.models import CuttingRecord
+from django.db.models import Sum, Max
+from sewing.models import DailySewingRecord
+
+
+
 
 class AddDailySewingRecordView(APIView):
     def post(self, request, format=None):
@@ -13,3 +19,91 @@ class AddDailySewingRecordView(APIView):
         else:
             print(serializer.errors)  # Log errors to the console
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProductListAPIView(APIView):
+    """
+    Returns a list of products (cutting batches) with aggregated sewing data.
+    """
+    def get(self, request, format=None):
+        data = []
+        # Get all cutting records (each is a product)
+        products = CuttingRecord.objects.all()
+        for product in products:
+            # Aggregate cutting data from CuttingRecordFabric details for this product
+            cutting_agg = product.details.aggregate(
+                xs_sum=Sum('xs'),
+                s_sum=Sum('s'),
+                m_sum=Sum('m'),
+                l_sum=Sum('l'),
+                xl_sum=Sum('xl')
+            )
+            total_cut = sum([
+                cutting_agg.get('xs_sum') or 0,
+                cutting_agg.get('s_sum') or 0,
+                cutting_agg.get('m_sum') or 0,
+                cutting_agg.get('l_sum') or 0,
+                cutting_agg.get('xl_sum') or 0,
+            ])
+            
+            # Aggregate sewing records for all details belonging to this product
+            sewing_qs = DailySewingRecord.objects.filter(cutting_detail__cutting_record=product)
+            sewing_agg = sewing_qs.aggregate(
+                xs_sum=Sum('xs'),
+                s_sum=Sum('s'),
+                m_sum=Sum('m'),
+                l_sum=Sum('l'),
+                xl_sum=Sum('xl'),
+                last_update=Max('date')
+            )
+            total_sewn = sum([
+                sewing_agg.get('xs_sum') or 0,
+                sewing_agg.get('s_sum') or 0,
+                sewing_agg.get('m_sum') or 0,
+                sewing_agg.get('l_sum') or 0,
+                sewing_agg.get('xl_sum') or 0,
+            ])
+            
+            remaining = total_cut - total_sewn
+
+            # For each color (CuttingRecordFabric detail), get sewing aggregates
+            color_details = []
+            for detail in product.details.all():
+                sewing_for_detail = DailySewingRecord.objects.filter(cutting_detail=detail)
+                agg_detail = sewing_for_detail.aggregate(
+                    xs=Sum('xs'),
+                    s=Sum('s'),
+                    m=Sum('m'),
+                    l=Sum('l'),
+                    xl=Sum('xl')
+                )
+                total_for_detail = sum([
+                    agg_detail.get('xs') or 0,
+                    agg_detail.get('s') or 0,
+                    agg_detail.get('m') or 0,
+                    agg_detail.get('l') or 0,
+                    agg_detail.get('xl') or 0,
+                ])
+                # Assume your CuttingRecordFabric's __str__ returns a readable variant name,
+                # or you can fetch the color from its fabric_variant attribute.
+                color_details.append({
+                    'cutting_detail_id': detail.id,
+                    'color': str(detail.fabric_variant),  # or detail.fabric_variant.color_name
+                    'xs': agg_detail.get('xs') or 0,
+                    's': agg_detail.get('s') or 0,
+                    'm': agg_detail.get('m') or 0,
+                    'l': agg_detail.get('l') or 0,
+                    'xl': agg_detail.get('xl') or 0,
+                    'total_sewn': total_for_detail,
+                })
+
+            data.append({
+                'id': product.id,
+                'product_name': product.product_name or f"{product.fabric_definition.fabric_name} cut on {product.cutting_date}",
+                'last_update_date': sewing_agg.get('last_update'),
+                'total_cut': total_cut,
+                'total_sewn': total_sewn,
+                'remaining': remaining,
+                'color_details': color_details
+            })
+        return Response(data, status=status.HTTP_200_OK)
