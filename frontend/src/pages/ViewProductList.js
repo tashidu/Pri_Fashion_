@@ -1,4 +1,3 @@
-// src/pages/ViewProductList.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import OwnerNavBar from "../components/OwnerNavBar";
@@ -31,20 +30,9 @@ const ViewProductList = () => {
     <>
       <OwnerNavBar />
       <div className="main-content">
-      <div style={{ marginBottom: "20px" }}>
-          <Link to="/daily-sewing-history">
-            <button className="btn btn-primary">View Daily Sewing History</button>
-          </Link>
-        </div>
         <h2>Product List</h2>
         {error && <p style={{ color: "red" }}>{error}</p>}
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginTop: "20px",
-          }}
-        >
+        <table className="table table-striped table-bordered">
           <thead>
             <tr style={{ background: "#f4f4f4" }}>
               <th style={{ padding: "8px", border: "1px solid #ccc" }}>
@@ -64,6 +52,9 @@ const ViewProductList = () => {
               </th>
               <th style={{ padding: "8px", border: "1px solid #ccc" }}>
                 Actions
+              </th>
+              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
+                Approve
               </th>
             </tr>
           </thead>
@@ -91,10 +82,15 @@ const ViewProductList = () => {
                       {expandedRows[prod.id] ? "Hide" : "View"}
                     </button>
                   </td>
+                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                    <Link to={`/approve-finished-product/${prod.id}`}>
+                      <button className="btn btn-success">Approve</button>
+                    </Link>
+                  </td>
                 </tr>
                 {expandedRows[prod.id] && (
                   <tr>
-                    <td colSpan={6} style={{ background: "#fafafa", padding: "10px", border: "1px solid #ccc" }}>
+                    <td colSpan={7} style={{ background: "#fafafa", padding: "10px", border: "1px solid #ccc" }}>
                       <h4>Color Details</h4>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
