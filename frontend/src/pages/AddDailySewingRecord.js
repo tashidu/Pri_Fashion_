@@ -4,8 +4,8 @@ import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
 import Select from 'react-select';
 
 const AddDailySewingRecord = () => {
-  // Dropdown states for product (Cutting Record)
-  const [products, setProducts] = useState([]); // fetched from cutting app endpoint
+  // Dropdown states for product (Cutting Record) and its color options
+  const [products, setProducts] = useState([]); // fetched from cutting records endpoint
   const [selectedProduct, setSelectedProduct] = useState('');
   const [productColors, setProductColors] = useState([]); // options from selected product's details
   const [selectedColor, setSelectedColor] = useState('');
@@ -59,17 +59,17 @@ const AddDailySewingRecord = () => {
     setMessage('');
 
     if (!selectedProduct) {
-      setMessage("Please select a Product.");
+      window.alert("Please select a Product.");
       return;
     }
     if (!selectedColor) {
-      setMessage("Please select a Color from the Product details.");
+      window.alert("Please select a Color from the Product details.");
       return;
     }
 
-    // Prepare payload; we send the selectedColor (fabric_variant ID) and sewing counts.
+    // Prepare payload; we send the selectedColor (as cutting_detail) and sewing counts.
     const payload = {
-      cutting_detail: selectedColor,
+      cutting_detail: selectedColor, // assuming selectedColor holds a valid CuttingRecordFabric ID
       xs: parseInt(xs),
       s: parseInt(s),
       m: parseInt(m),
@@ -95,7 +95,17 @@ const AddDailySewingRecord = () => {
       })
       .catch((err) => {
         console.error("Error adding daily sewing record:", err);
-        setMessage("Error adding daily sewing record.");
+        let errorMessage = "Error adding daily sewing record.";
+        if (err.response && err.response.data) {
+          // If error response is an object, flatten error messages
+          if (typeof err.response.data === "object") {
+            errorMessage = Object.values(err.response.data).flat().join("\n");
+          } else {
+            errorMessage = err.response.data;
+          }
+        }
+        window.alert(errorMessage);
+        setMessage(errorMessage);
       });
   };
 

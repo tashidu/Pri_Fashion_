@@ -1,11 +1,12 @@
 # sewing/views.py
 from rest_framework.views import APIView
+from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import DailySewingRecordSerializer
+from .serializers import DailySewingRecordSerializer , DailySewingRecordHistorySerializer
 from cutting.models import CuttingRecord
 from django.db.models import Sum, Max
-from sewing.models import DailySewingRecord
+from sewing.models import DailySewingRecord 
 
 
 
@@ -107,3 +108,7 @@ class ProductListAPIView(APIView):
                 'color_details': color_details
             })
         return Response(data, status=status.HTTP_200_OK)
+    
+class DailySewingHistoryListAPIView(generics.ListAPIView):
+    queryset = DailySewingRecord.objects.all().order_by('-date')
+    serializer_class = DailySewingRecordHistorySerializer

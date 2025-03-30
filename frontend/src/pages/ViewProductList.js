@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import OwnerNavBar from "../components/OwnerNavBar";
+import { Link } from "react-router-dom";
 
 const ViewProductList = () => {
   const [products, setProducts] = useState([]);
@@ -29,7 +30,12 @@ const ViewProductList = () => {
   return (
     <>
       <OwnerNavBar />
-      <div className="container main-content mt-4">
+      <div className="main-content">
+      <div style={{ marginBottom: "20px" }}>
+          <Link to="/daily-sewing-history">
+            <button className="btn btn-primary">View Daily Sewing History</button>
+          </Link>
+        </div>
         <h2>Product List</h2>
         {error && <p style={{ color: "red" }}>{error}</p>}
         <table
