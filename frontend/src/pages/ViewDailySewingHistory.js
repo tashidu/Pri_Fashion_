@@ -37,7 +37,6 @@ const ViewDailySewingHistory = () => {
       aVal = new Date(aVal);
       bVal = new Date(bVal);
     } else {
-      // Otherwise, ensure string comparison
       aVal = aVal.toString().toLowerCase();
       bVal = bVal.toString().toLowerCase();
     }
@@ -46,6 +45,20 @@ const ViewDailySewingHistory = () => {
     if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
     return 0;
   });
+
+  // Delete a record by ID
+  const deleteRecord = async (id) => {
+    if (window.confirm("Are you sure you want to delete this record?")) {
+      try {
+        await axios.delete(`http://localhost:8000/api/sewing/daily-records/${id}/`);
+        // Remove the record from state
+        setRecords(records.filter((record) => record.id !== id));
+      } catch (err) {
+        console.error("Error deleting record:", err);
+        window.alert("Error deleting record.");
+      }
+    }
+  };
 
   return (
     <>
@@ -112,11 +125,13 @@ const ViewDailySewingHistory = () => {
               <th>L</th>
               <th>XL</th>
               <th>Damage Count</th>
+              <th>Edit</th>
+              <th>Delete</th>
             </tr>
           </thead>
           <tbody>
             {sortedRecords.map((record, idx) => (
-              <tr key={idx}>
+              <tr key={record.id}>
                 <td>{record.date}</td>
                 <td>{record.product_name}</td>
                 <td>
@@ -139,6 +154,19 @@ const ViewDailySewingHistory = () => {
                 <td>{record.l}</td>
                 <td>{record.xl}</td>
                 <td>{record.damage_count}</td>
+                <td>
+                  <Link to={`/edit-daily-sewing-record/${record.id}`}>
+                    <button className="btn btn-warning">Edit</button>
+                  </Link>
+                </td>
+                <td>
+                  <button
+                    className="btn btn-danger"
+                    onClick={() => deleteRecord(record.id)}
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

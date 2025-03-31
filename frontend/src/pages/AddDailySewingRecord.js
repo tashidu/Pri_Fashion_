@@ -32,19 +32,23 @@ const AddDailySewingRecord = () => {
       });
   }, []);
 
-  // 2. When a product is selected, extract its details (colors) from the CuttingRecord
+  // 2. When a product is selected, extract its details (colors) from the CuttingRecord.
+  // Here we map each detail to an option that includes the total cut available.
   useEffect(() => {
     if (selectedProduct) {
       const product = products.find(p => p.id === parseInt(selectedProduct));
       if (product && product.details) {
-        // Map product.details to options (each detail should include color info)
-        const options = product.details.map(detail => ({
-          value: detail.fabric_variant, // ID of the variant
-          label: detail.fabric_variant_data 
-                   ? (detail.fabric_variant_data.color_name || detail.fabric_variant_data.color)
-                   : "N/A",
-          color: detail.fabric_variant_data ? detail.fabric_variant_data.color : "#fff"
-        }));
+        const options = product.details.map(detail => {
+          const totalCut = (detail.xs || 0) + (detail.s || 0) + (detail.m || 0) + (detail.l || 0) + (detail.xl || 0);
+          return {
+            value: detail.fabric_variant, // ID of the variant
+            label: detail.fabric_variant_data 
+                     ? (detail.fabric_variant_data.color_name || detail.fabric_variant_data.color)
+                     : "N/A",
+            color: detail.fabric_variant_data ? detail.fabric_variant_data.color : "#fff",
+            totalCut: totalCut  // total available cut for this color detail
+          };
+        });
         setProductColors(options);
       } else {
         setProductColors([]);
@@ -53,7 +57,7 @@ const AddDailySewingRecord = () => {
     }
   }, [selectedProduct, products]);
 
-  // 3. Handle form submission
+  // 3. Handle form submission with front-end validation
   const handleSubmit = (e) => {
     e.preventDefault();
     setMessage('');
@@ -64,6 +68,21 @@ const AddDailySewingRecord = () => {
     }
     if (!selectedColor) {
       window.alert("Please select a Color from the Product details.");
+      return;
+    }
+
+    // Calculate total sewing input
+    const newDailyTotal = parseInt(xs) + parseInt(s) + parseInt(m) + parseInt(l) + parseInt(xl);
+
+    // Find the selected color option, which should contain the total available cutting quantity.
+    const selectedOption = productColors.find(opt => opt.value === selectedColor);
+    if (selectedOption) {
+      if (newDailyTotal > selectedOption.totalCut) {
+        window.alert("The total sewing count exceeds the available cutting quantity for the selected color.");
+        return;
+      }
+    } else {
+      window.alert("Selected color details not found.");
       return;
     }
 

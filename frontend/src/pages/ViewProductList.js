@@ -51,6 +51,9 @@ const ViewProductList = () => {
                 Remaining
               </th>
               <th style={{ padding: "8px", border: "1px solid #ccc" }}>
+                Status
+              </th>
+              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
                 Actions
               </th>
               <th style={{ padding: "8px", border: "1px solid #ccc" }}>
@@ -78,6 +81,9 @@ const ViewProductList = () => {
                     {prod.remaining}
                   </td>
                   <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                    {prod.status || "in progress"}
+                  </td>
+                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
                     <button onClick={() => toggleRow(prod.id)}>
                       {expandedRows[prod.id] ? "Hide" : "View"}
                     </button>
@@ -90,42 +96,138 @@ const ViewProductList = () => {
                 </tr>
                 {expandedRows[prod.id] && (
                   <tr>
-                    <td colSpan={7} style={{ background: "#fafafa", padding: "10px", border: "1px solid #ccc" }}>
+                    <td
+                      colSpan={8}
+                      style={{
+                        background: "#fafafa",
+                        padding: "10px",
+                        border: "1px solid #ccc",
+                      }}
+                    >
                       <h4>Color Details</h4>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <table
+                        style={{
+                          width: "100%",
+                          borderCollapse: "collapse",
+                        }}
+                      >
                         <thead>
                           <tr>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>Color</th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>XS</th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>S</th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>M</th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>L</th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>XL</th>
-                            <th style={{ padding: "6px", border: "1px solid #ccc" }}>Total Sewing</th>
+                            <th
+                              style={{
+                                padding: "6px",
+                                border: "1px solid #ccc",
+                              }}
+                            >
+                              Color
+                            </th>
+                            <th
+                              style={{
+                                padding: "6px",
+                                border: "1px solid #ccc",
+                              }}
+                            >
+                              XS
+                            </th>
+                            <th
+                              style={{
+                                padding: "6px",
+                                border: "1px solid #ccc",
+                              }}
+                            >
+                              S
+                            </th>
+                            <th
+                              style={{
+                                padding: "6px",
+                                border: "1px solid #ccc",
+                              }}
+                            >
+                              M
+                            </th>
+                            <th
+                              style={{
+                                padding: "6px",
+                                border: "1px solid #ccc",
+                              }}
+                            >
+                              L
+                            </th>
+                            <th
+                              style={{
+                                padding: "6px",
+                                border: "1px solid #ccc",
+                              }}
+                            >
+                              XL
+                            </th>
+                            <th
+                              style={{
+                                padding: "6px",
+                                border: "1px solid #ccc",
+                              }}
+                            >
+                              Total Sewing
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {prod.color_details.map((color, idx) => (
                             <tr key={idx}>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                              <td
+                                style={{
+                                  padding: "6px",
+                                  border: "1px solid #ccc",
+                                }}
+                              >
                                 {color.color}
                               </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                              <td
+                                style={{
+                                  padding: "6px",
+                                  border: "1px solid #ccc",
+                                }}
+                              >
                                 {color.xs}
                               </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                              <td
+                                style={{
+                                  padding: "6px",
+                                  border: "1px solid #ccc",
+                                }}
+                              >
                                 {color.s}
                               </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                              <td
+                                style={{
+                                  padding: "6px",
+                                  border: "1px solid #ccc",
+                                }}
+                              >
                                 {color.m}
                               </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                              <td
+                                style={{
+                                  padding: "6px",
+                                  border: "1px solid #ccc",
+                                }}
+                              >
                                 {color.l}
                               </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                              <td
+                                style={{
+                                  padding: "6px",
+                                  border: "1px solid #ccc",
+                                }}
+                              >
                                 {color.xl}
                               </td>
-                              <td style={{ padding: "6px", border: "1px solid #ccc" }}>
+                              <td
+                                style={{
+                                  padding: "6px",
+                                  border: "1px solid #ccc",
+                                }}
+                              >
                                 {color.total_sewn}
                               </td>
                             </tr>

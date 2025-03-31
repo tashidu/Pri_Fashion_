@@ -29,3 +29,40 @@ class FinishedProductApprovalSerializer(serializers.ModelSerializer):
         )
         finished_product.update_totals()  # Aggregate the sewing totals.
         return finished_product
+
+
+class FinishedProductReportSerializer(serializers.ModelSerializer):
+    total_clothing = serializers.SerializerMethodField()
+    product_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FinishedProduct
+        fields = [
+            'id',
+            'product_name', 
+            'manufacture_price',
+            'selling_price',
+            'total_sewn_xs',
+            'total_sewn_s',
+            'total_sewn_m',
+            'total_sewn_l',
+            'total_sewn_xl',
+            'approval_date',
+            'total_clothing'
+        ]
+
+    def get_total_clothing(self, obj):
+        return (
+            (obj.total_sewn_xs or 0) +
+            (obj.total_sewn_s or 0) +
+            (obj.total_sewn_m or 0) +
+            (obj.total_sewn_l or 0) +
+            (obj.total_sewn_xl or 0)
+        )
+    
+    def get_product_name(self, obj):
+        # Derive the product name from the linked cutting record.
+        if obj.cutting_record.product_name:
+            return obj.cutting_record.product_name
+        else:
+            return f"{obj.cutting_record.fabric_definition.fabric_name} cut on {obj.cutting_record.cutting_date}"

@@ -32,7 +32,7 @@ const ApproveFinishedProduct = () => {
       setSuccessMsg(response.data.message || 'Product approved successfully!');
       // After successful approval, navigate to product list after a short delay
       setTimeout(() => {
-        navigate('/product-list');
+        navigate('/approveproduct-list');
       }, 2000);
     } catch (err) {
       console.error("Error approving finished product:", err);
@@ -46,7 +46,7 @@ const ApproveFinishedProduct = () => {
   return (
     <>
       <OwnerNavBar />
-      <div className="container mt-4">
+      <div className="main-content">
         <h2>Approve Finished Product - Batch ID: {id}</h2>
         {error && <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>}
         {successMsg && <div style={{ color: "green", marginBottom: "10px" }}>{successMsg}</div>}
