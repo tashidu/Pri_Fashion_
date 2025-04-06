@@ -18,6 +18,7 @@ import ViewDailySewingHistory from './pages/ViewDailySewingHistory';
 import ViewProductList from './pages/ViewProductList.js';
 import ApproveFinishedProduct from "./pages/ApproveFinishedProduct";
 import ViewApproveProduct from "./pages/ViewApproveProduct.js";
+import AddPackingSession from "./pages/AddPackingSession.js";
 
 
 
@@ -48,6 +49,8 @@ function App() {
         <Route path="/viewproductlist" element={<ViewProductList />} />
         <Route path="/approve-finished-product/:id" element={<ApproveFinishedProduct />} /> 
         <Route path="/approveproduct-list" element={<ViewApproveProduct />} /> 
+        <Route path="/add-packing-session" element={<AddPackingSession />} />
+
 
         
        

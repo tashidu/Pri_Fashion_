@@ -21,6 +21,13 @@ class FinishedProduct(models.Model):
     approval_date = models.DateField(default=timezone.now)
     # Flag to indicate if the product is still provisional.
     is_provisional = models.BooleanField(default=True)
+    available_quantity = models.IntegerField(default=0)
+    
+    
+    def __str__(self):
+        return f"Finished Product for {self.cutting_record}"
+
+
 
     def __str__(self):
         return f"Finished Product for {self.cutting_record}"
