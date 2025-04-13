@@ -1,10 +1,9 @@
 from django.db import models
-from django.utils import timezone
 from cutting.models import CuttingRecordFabric  # Import from your cutting app
 
 class DailySewingRecord(models.Model):
-    # Reference the CuttingRecordFabric detail rather than a FabricVariant directly.
-    cutting_detail = models.ForeignKey(
+    # Renamed ForeignKey field to _cuttingrecordfabric
+    _cuttingrecordfabric = models.ForeignKey(
         CuttingRecordFabric, 
         on_delete=models.CASCADE, 
         related_name='daily_sewing_records'
@@ -18,4 +17,4 @@ class DailySewingRecord(models.Model):
     damage_count = models.IntegerField(default=0)
 
     def __str__(self):
-        return f"Sewing record for {self.cutting_detail} on {self.date}"
+        return f"Sewing record for {self._cuttingrecordfabric} on {self.date}"

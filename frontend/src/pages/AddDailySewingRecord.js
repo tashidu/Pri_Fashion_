@@ -33,7 +33,6 @@ const AddDailySewingRecord = () => {
   }, []);
 
   // 2. When a product is selected, extract its details (colors) from the CuttingRecord.
-  // Here we map each detail to an option that includes the total cut available.
   useEffect(() => {
     if (selectedProduct) {
       const product = products.find(p => p.id === parseInt(selectedProduct));
@@ -62,6 +61,17 @@ const AddDailySewingRecord = () => {
     e.preventDefault();
     setMessage('');
 
+    // Log the entered xs value
+    console.log('Entered XS:', xs);
+
+    // Find the selected color option that contains the available quantity for this color
+    const selectedOption = productColors.find(opt => opt.value === selectedColor);
+    if (selectedOption) {
+      console.log('Available XS in cutting record:', selectedOption.totalCut);
+    } else {
+      console.log('Selected color details not found.');
+    }
+
     if (!selectedProduct) {
       window.alert("Please select a Product.");
       return;
@@ -74,8 +84,7 @@ const AddDailySewingRecord = () => {
     // Calculate total sewing input
     const newDailyTotal = parseInt(xs) + parseInt(s) + parseInt(m) + parseInt(l) + parseInt(xl);
 
-    // Find the selected color option, which should contain the total available cutting quantity.
-    const selectedOption = productColors.find(opt => opt.value === selectedColor);
+    // Check if the newDailyTotal exceeds the available cutting quantity for the selected color
     if (selectedOption) {
       if (newDailyTotal > selectedOption.totalCut) {
         window.alert("The total sewing count exceeds the available cutting quantity for the selected color.");
