@@ -7,7 +7,8 @@ from finished_product.models import FinishedProduct  # Ensure this is the correc
 @receiver(post_save, sender=DailySewingRecord)
 def update_approved_finished_product(sender, instance, **kwargs):
     # Get the cutting record (batch) from the DailySewingRecord's cutting_detail
-    batch = instance.cutting_detail.cutting_record
+    batch = instance.cutting_record_fabric.cutting_record
+
     
     try:
         # Try to get the related FinishedProduct (this might need to be ApprovedFinishedProduct if that's correct)
@@ -17,7 +18,8 @@ def update_approved_finished_product(sender, instance, **kwargs):
         return
 
     # Aggregate the sewing records for this batch
-    sewing_qs = DailySewingRecord.objects.filter(cutting_detail__cutting_record=batch)
+    sewing_qs = DailySewingRecord.objects.filter(cutting_record_fabric__cutting_record=batch)
+
     sewing_agg = sewing_qs.aggregate(
         xs_sum=Sum('xs'),
         s_sum=Sum('s'),

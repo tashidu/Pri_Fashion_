@@ -1,16 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
-import Select from 'react-select';
+import Select from "react-select";
 
 const AddDailySewingRecord = () => {
-  // Dropdown states for product (Cutting Record) and its color options
-  const [products, setProducts] = useState([]); // fetched from cutting records endpoint
-  const [selectedProduct, setSelectedProduct] = useState('');
-  const [productColors, setProductColors] = useState([]); // options from selected product's details
-  const [selectedColor, setSelectedColor] = useState('');
+  const [products, setProducts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [productColors, setProductColors] = useState([]);
+  const [selectedColor, setSelectedColor] = useState("");
 
-  // Sewing data
   const [xs, setXs] = useState(0);
   const [s, setS] = useState(0);
   const [m, setM] = useState(0);
@@ -18,102 +16,87 @@ const AddDailySewingRecord = () => {
   const [xl, setXl] = useState(0);
   const [damageCount, setDamageCount] = useState(0);
 
-  // UI feedback
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
-  // 1. Fetch all Cutting Records (Products) on mount
   useEffect(() => {
-    axios.get("http://localhost:8000/api/cutting/cutting-records/")
-      .then((res) => {
-        setProducts(res.data);
-      })
-      .catch((err) => {
-        console.error("Error fetching products:", err);
-      });
+    axios
+      .get("http://localhost:8000/api/cutting/cutting-records/")
+      .then((res) => setProducts(res.data))
+      .catch((err) => console.error("Error fetching products:", err));
   }, []);
 
-  // 2. When a product is selected, extract its details (colors) from the CuttingRecord.
   useEffect(() => {
     if (selectedProduct) {
-      const product = products.find(p => p.id === parseInt(selectedProduct));
-      if (product && product.details) {
-        const options = product.details.map(detail => {
-          const totalCut = (detail.xs || 0) + (detail.s || 0) + (detail.m || 0) + (detail.l || 0) + (detail.xl || 0);
+      const product = products.find((p) => p.id === parseInt(selectedProduct));
+      if (product?.details) {
+        const options = product.details.map((detail) => {
+          const totalCut =
+            (detail.xs || 0) +
+            (detail.s || 0) +
+            (detail.m || 0) +
+            (detail.l || 0) +
+            (detail.xl || 0);
           return {
-            value: detail.fabric_variant, // ID of the variant
-            label: detail.fabric_variant_data 
-                     ? (detail.fabric_variant_data.color_name || detail.fabric_variant_data.color)
-                     : "N/A",
-            color: detail.fabric_variant_data ? detail.fabric_variant_data.color : "#fff",
-            totalCut: totalCut  // total available cut for this color detail
+            value: detail.id,
+            label:
+              detail.fabric_variant_data?.color_name ||
+              detail.fabric_variant_data?.color ||
+              "N/A",
+            color: detail.fabric_variant_data?.color || "#ffffff",
+            totalCut,
           };
         });
         setProductColors(options);
       } else {
         setProductColors([]);
       }
-      setSelectedColor('');
+      setSelectedColor("");
     }
   }, [selectedProduct, products]);
 
-  // 3. Handle form submission with front-end validation
   const handleSubmit = (e) => {
     e.preventDefault();
-    setMessage('');
+    setMessage("");
 
-    // Log the entered xs value
-    console.log('Entered XS:', xs);
+    if (!selectedProduct) return window.alert("Please select a Product.");
+    if (!selectedColor) return window.alert("Please select a Color.");
 
-    // Find the selected color option that contains the available quantity for this color
-    const selectedOption = productColors.find(opt => opt.value === selectedColor);
-    if (selectedOption) {
-      console.log('Available XS in cutting record:', selectedOption.totalCut);
-    } else {
-      console.log('Selected color details not found.');
+    const selectedOption = productColors.find(
+      (opt) => opt.value === selectedColor
+    );
+    if (!selectedOption)
+      return window.alert("Selected color details not found.");
+
+    const newDailyTotal =
+      parseInt(xs || 0) +
+      parseInt(s || 0) +
+      parseInt(m || 0) +
+      parseInt(l || 0) +
+      parseInt(xl || 0);
+
+    if (newDailyTotal > selectedOption.totalCut) {
+      return window.alert(
+        "The total sewing count exceeds the available cutting quantity for the selected color."
+      );
     }
 
-    if (!selectedProduct) {
-      window.alert("Please select a Product.");
-      return;
-    }
-    if (!selectedColor) {
-      window.alert("Please select a Color from the Product details.");
-      return;
-    }
-
-    // Calculate total sewing input
-    const newDailyTotal = parseInt(xs) + parseInt(s) + parseInt(m) + parseInt(l) + parseInt(xl);
-
-    // Check if the newDailyTotal exceeds the available cutting quantity for the selected color
-    if (selectedOption) {
-      if (newDailyTotal > selectedOption.totalCut) {
-        window.alert("The total sewing count exceeds the available cutting quantity for the selected color.");
-        return;
-      }
-    } else {
-      window.alert("Selected color details not found.");
-      return;
-    }
-
-    // Prepare payload; we send the selectedColor (as cutting_detail) and sewing counts.
     const payload = {
-      cutting_detail: selectedColor, // assuming selectedColor holds a valid CuttingRecordFabric ID
-      xs: parseInt(xs),
-      s: parseInt(s),
-      m: parseInt(m),
-      l: parseInt(l),
-      xl: parseInt(xl),
-      damage_count: parseInt(damageCount)
-      // The backend auto-sets the date.
+      cutting_record_fabric: selectedColor,
+      xs: parseInt(xs || 0),
+      s: parseInt(s || 0),
+      m: parseInt(m || 0),
+      l: parseInt(l || 0),
+      xl: parseInt(xl || 0),
+      damage_count: parseInt(damageCount || 0),
     };
 
-    axios.post("http://localhost:8000/api/sewing/daily-records/", payload)
+    axios
+      .post("http://localhost:8000/api/sewing/daily-records/", payload)
       .then(() => {
-        setMessage("Daily sewing record added successfully!");
-        // Reset fields
-        setSelectedProduct('');
+        setMessage("✅ Daily sewing record added successfully!");
+        setSelectedProduct("");
         setProductColors([]);
-        setSelectedColor('');
+        setSelectedColor("");
         setXs(0);
         setS(0);
         setM(0);
@@ -124,25 +107,22 @@ const AddDailySewingRecord = () => {
       .catch((err) => {
         console.error("Error adding daily sewing record:", err);
         let errorMessage = "Error adding daily sewing record.";
-        if (err.response && err.response.data) {
-          // If error response is an object, flatten error messages
-          if (typeof err.response.data === "object") {
-            errorMessage = Object.values(err.response.data).flat().join("\n");
-          } else {
-            errorMessage = err.response.data;
-          }
+        if (err.response?.data) {
+          errorMessage =
+            typeof err.response.data === "object"
+              ? Object.values(err.response.data).flat().join("\n")
+              : err.response.data;
         }
         window.alert(errorMessage);
         setMessage(errorMessage);
       });
   };
 
-  // Custom option component for React Select to display a color swatch
   const ColourOption = ({ data, innerRef, innerProps }) => (
-    <div 
-      ref={innerRef} 
-      {...innerProps} 
-      style={{ display: 'flex', alignItems: 'center', padding: '4px' }}
+    <div
+      ref={innerRef}
+      {...innerProps}
+      style={{ display: "flex", alignItems: "center", padding: "4px" }}
     >
       <div
         style={{
@@ -150,7 +130,7 @@ const AddDailySewingRecord = () => {
           height: 16,
           backgroundColor: data.color,
           marginRight: 8,
-          border: '1px solid #ccc'
+          border: "1px solid #ccc",
         }}
       />
       <span>{data.label}</span>
@@ -159,12 +139,15 @@ const AddDailySewingRecord = () => {
 
   return (
     <>
-      <InventoryManagerNavBar/>
-      <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
+      <InventoryManagerNavBar />
+      <div className="main-content">
         <h2>Add Daily Sewing Record</h2>
-        {message && <p>{message}</p>}
+        {message && (
+          <p style={{ color: message.startsWith("✅") ? "green" : "red" }}>
+            {message}
+          </p>
+        )}
         <form onSubmit={handleSubmit}>
-          {/* Product Dropdown (Cutting Record) */}
           <div style={{ marginBottom: "15px" }}>
             <label>Product (Cutting Record):</label>
             <select
@@ -175,89 +158,72 @@ const AddDailySewingRecord = () => {
               <option value="">Select Product</option>
               {products.map((prod) => (
                 <option key={prod.id} value={prod.id}>
-                  {prod.product_name ? prod.product_name 
-                    : `${prod.fabric_definition_data?.fabric_name} cut on ${prod.cutting_date}`}
+                  {prod.product_name ||
+                    `${prod.fabric_definition_data?.fabric_name} cut on ${prod.cutting_date}`}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Color Dropdown from Selected Product Details */}
           <div style={{ marginBottom: "15px" }}>
             <label>Color:</label>
             <Select
               options={productColors}
               components={{ Option: ColourOption }}
-              value={productColors.find(opt => opt.value === selectedColor) || null}
-              onChange={(selectedOption) => setSelectedColor(selectedOption.value)}
+              value={
+                productColors.find((opt) => opt.value === selectedColor) || null
+              }
+              onChange={(opt) => setSelectedColor(opt?.value)}
               placeholder="Select Color"
               styles={{
                 control: (provided) => ({
                   ...provided,
-                  borderColor: '#ddd',
-                  boxShadow: 'none',
-                  '&:hover': { borderColor: '#aaa' }
-                })
+                  borderColor: "#ddd",
+                  boxShadow: "none",
+                  "&:hover": { borderColor: "#aaa" },
+                }),
               }}
             />
           </div>
 
-          {/* XS */}
-          <div style={{ marginBottom: "15px" }}>
-            <label>XS:</label>
-            <input
-              type="number"
-              value={xs}
-              onChange={(e) => setXs(e.target.value)}
-              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-            />
-          </div>
+          {/* Sizes */}
+          {["XS", "S", "M", "L", "XL"].map((size) => {
+            const sizeMap = { XS: xs, S: s, M: m, L: l, XL: xl };
+            return (
+              <div key={size} style={{ marginBottom: "15px" }}>
+                <label>{size}:</label>
+                <input
+                  type="number"
+                  value={sizeMap[size]}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value || 0);
+                    switch (size) {
+                      case "XS":
+                        setXs(val);
+                        break;
+                      case "S":
+                        setS(val);
+                        break;
+                      case "M":
+                        setM(val);
+                        break;
+                      case "L":
+                        setL(val);
+                        break;
+                      case "XL":
+                        setXl(val);
+                        break;
+                      default:
+                        break;
+                    }
+                  }}
+                  style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+                />
+              </div>
+            );
+          })}
 
-          {/* S */}
-          <div style={{ marginBottom: "15px" }}>
-            <label>S:</label>
-            <input
-              type="number"
-              value={s}
-              onChange={(e) => setS(e.target.value)}
-              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-            />
-          </div>
-
-          {/* M */}
-          <div style={{ marginBottom: "15px" }}>
-            <label>M:</label>
-            <input
-              type="number"
-              value={m}
-              onChange={(e) => setM(e.target.value)}
-              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-            />
-          </div>
-
-          {/* L */}
-          <div style={{ marginBottom: "15px" }}>
-            <label>L:</label>
-            <input
-              type="number"
-              value={l}
-              onChange={(e) => setL(e.target.value)}
-              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-            />
-          </div>
-
-          {/* XL */}
-          <div style={{ marginBottom: "15px" }}>
-            <label>XL:</label>
-            <input
-              type="number"
-              value={xl}
-              onChange={(e) => setXl(e.target.value)}
-              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-            />
-          </div>
-
-          {/* Damage Count */}
+          {/* Damage */}
           <div style={{ marginBottom: "15px" }}>
             <label>Damage Count:</label>
             <input
