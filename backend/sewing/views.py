@@ -48,7 +48,7 @@ class ProductListAPIView(APIView):
                              cutting_agg.get('xl_sum') or 0])
 
             # Aggregate sewing records for all details belonging to this product
-            sewing_qs = DailySewingRecord.objects.filter(cuttingrecordfabric__cutting_record=product)
+            sewing_qs = DailySewingRecord.objects.filter(cutting_record_fabric__cutting_record=product)
             sewing_agg = sewing_qs.aggregate(
                 xs_sum=Sum('xs'),
                 s_sum=Sum('s'),
@@ -68,7 +68,8 @@ class ProductListAPIView(APIView):
             # For each color (CuttingRecordFabric detail), get sewing aggregates
             color_details = []
             for detail in product.details.all():
-                sewing_for_detail = DailySewingRecord.objects.filter(cuttingrecordfabric=detail)
+                sewing_for_detail = DailySewingRecord.objects.filter(cutting_record_fabric=detail)
+
                 agg_detail = sewing_for_detail.aggregate(
                     xs=Sum('xs'),
                     s=Sum('s'),

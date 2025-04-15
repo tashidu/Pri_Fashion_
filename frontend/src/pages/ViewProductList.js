@@ -8,7 +8,6 @@ const ViewProductList = () => {
   const [expandedRows, setExpandedRows] = useState({});
   const [error, setError] = useState("");
 
-  // Fetch product list on mount
   useEffect(() => {
     axios
       .get("http://localhost:8000/api/sewing/product-list/")
@@ -21,7 +20,6 @@ const ViewProductList = () => {
       });
   }, []);
 
-  // Toggle the expanded view for a product
   const toggleRow = (productId) => {
     setExpandedRows((prev) => ({ ...prev, [productId]: !prev[productId] }));
   };
@@ -35,201 +33,70 @@ const ViewProductList = () => {
         <table className="table table-striped table-bordered">
           <thead>
             <tr style={{ background: "#f4f4f4" }}>
-              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-                Product Name
-              </th>
-              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-                Last Update Date
-              </th>
-              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-                Total Sewing
-              </th>
-              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-                Total Cut
-              </th>
-              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-                Remaining
-              </th>
-              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-                Status
-              </th>
-              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-                Actions
-              </th>
-              <th style={{ padding: "8px", border: "1px solid #ccc" }}>
-                Approve
-              </th>
+              <th>Product Name</th>
+              <th>Last Update Date</th>
+              <th>Total Sewing</th>
+              <th>Total Cut</th>
+              <th>Remaining</th>
+              <th>Status</th>
+              <th>Actions</th>
+              <th>Approve</th>
             </tr>
           </thead>
           <tbody>
             {products.map((prod) => (
               <React.Fragment key={prod.id}>
                 <tr>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {prod.product_name}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {prod.last_update_date || "N/A"}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {prod.total_sewn}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {prod.total_cut}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {prod.remaining}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
-                    {prod.status || "in progress"}
-                  </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                  <td>{prod.product_name}</td>
+                  <td>{prod.last_update_date || "N/A"}</td>
+                  <td>{prod.total_sewn}</td>
+                  <td>{prod.total_cut}</td>
+                  <td>{prod.remaining}</td>
+                  <td>{prod.status || "in progress"}</td>
+                  <td>
                     <button onClick={() => toggleRow(prod.id)}>
                       {expandedRows[prod.id] ? "Hide" : "View"}
                     </button>
                   </td>
-                  <td style={{ padding: "8px", border: "1px solid #ccc" }}>
+                  <td>
                     <Link to={`/approve-finished-product/${prod.id}`}>
                       <button className="btn btn-success">Approve</button>
                     </Link>
                   </td>
                 </tr>
+
                 {expandedRows[prod.id] && (
                   <tr>
-                    <td
-                      colSpan={8}
-                      style={{
-                        background: "#fafafa",
-                        padding: "10px",
-                        border: "1px solid #ccc",
-                      }}
-                    >
+                    <td colSpan={8} style={{ background: "#fafafa" }}>
                       <h4>Color Details</h4>
-                      <table
-                        style={{
-                          width: "100%",
-                          borderCollapse: "collapse",
-                        }}
-                      >
+                      <table className="table table-bordered">
                         <thead>
                           <tr>
-                            <th
-                              style={{
-                                padding: "6px",
-                                border: "1px solid #ccc",
-                              }}
-                            >
-                              Color
-                            </th>
-                            <th
-                              style={{
-                                padding: "6px",
-                                border: "1px solid #ccc",
-                              }}
-                            >
-                              XS
-                            </th>
-                            <th
-                              style={{
-                                padding: "6px",
-                                border: "1px solid #ccc",
-                              }}
-                            >
-                              S
-                            </th>
-                            <th
-                              style={{
-                                padding: "6px",
-                                border: "1px solid #ccc",
-                              }}
-                            >
-                              M
-                            </th>
-                            <th
-                              style={{
-                                padding: "6px",
-                                border: "1px solid #ccc",
-                              }}
-                            >
-                              L
-                            </th>
-                            <th
-                              style={{
-                                padding: "6px",
-                                border: "1px solid #ccc",
-                              }}
-                            >
-                              XL
-                            </th>
-                            <th
-                              style={{
-                                padding: "6px",
-                                border: "1px solid #ccc",
-                              }}
-                            >
-                              Total Sewing
-                            </th>
+                            <th>Color</th>
+                            <th>XS</th>
+                            <th>S</th>
+                            <th>M</th>
+                            <th>L</th>
+                            <th>XL</th>
+                            <th>Total Sewing</th>
+                            {/* Optional: Action button to open sewing form */}
                           </tr>
                         </thead>
                         <tbody>
                           {prod.color_details.map((color, idx) => (
                             <tr key={idx}>
-                              <td
-                                style={{
-                                  padding: "6px",
-                                  border: "1px solid #ccc",
-                                }}
-                              >
-                                {color.color}
-                              </td>
-                              <td
-                                style={{
-                                  padding: "6px",
-                                  border: "1px solid #ccc",
-                                }}
-                              >
-                                {color.xs}
-                              </td>
-                              <td
-                                style={{
-                                  padding: "6px",
-                                  border: "1px solid #ccc",
-                                }}
-                              >
-                                {color.s}
-                              </td>
-                              <td
-                                style={{
-                                  padding: "6px",
-                                  border: "1px solid #ccc",
-                                }}
-                              >
-                                {color.m}
-                              </td>
-                              <td
-                                style={{
-                                  padding: "6px",
-                                  border: "1px solid #ccc",
-                                }}
-                              >
-                                {color.l}
-                              </td>
-                              <td
-                                style={{
-                                  padding: "6px",
-                                  border: "1px solid #ccc",
-                                }}
-                              >
-                                {color.xl}
-                              </td>
-                              <td
-                                style={{
-                                  padding: "6px",
-                                  border: "1px solid #ccc",
-                                }}
-                              >
-                                {color.total_sewn}
-                              </td>
+                              <td>{color.color}</td>
+                              <td>{color.xs}</td>
+                              <td>{color.s}</td>
+                              <td>{color.m}</td>
+                              <td>{color.l}</td>
+                              <td>{color.xl}</td>
+                              <td>{color.total_sewn}</td>
+                              {/* ✅ If you later want to allow sewing actions per color:
+                                Pass color.id here, which is cutting_cuttingrecordfabric.id */}
+                              {/* <td>
+                                <button onClick={() => handleSewing(color.id)}>Sew</button>
+                              </td> */}
                             </tr>
                           ))}
                         </tbody>
