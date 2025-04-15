@@ -3,11 +3,13 @@ from cutting.models import CuttingRecordFabric  # Import from your cutting app
 
 class DailySewingRecord(models.Model):
     # Renamed ForeignKey field to _cuttingrecordfabric
-    _cuttingrecordfabric = models.ForeignKey(
-        CuttingRecordFabric, 
-        on_delete=models.CASCADE, 
-        related_name='daily_sewing_records'
-    )
+    cutting_record_fabric = models.ForeignKey(
+    'cutting.CuttingRecordFabric',
+    db_column='cutting_record_fabric_id',
+    on_delete=models.CASCADE
+)
+
+
     date = models.DateField(auto_now_add=True)
     xs = models.IntegerField(default=0)
     s = models.IntegerField(default=0)
@@ -17,4 +19,4 @@ class DailySewingRecord(models.Model):
     damage_count = models.IntegerField(default=0)
 
     def __str__(self):
-        return f"Sewing record for {self._cuttingrecordfabric} on {self.date}"
+        return f"Sewing record for {self.cuttingrecordfabric} on {self.date}"

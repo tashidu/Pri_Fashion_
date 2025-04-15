@@ -2,28 +2,33 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import OwnerNavBar from "../components/OwnerNavBar";
+import { format } from "date-fns"; // Import date-fns for formatting
 
 const ViewDailySewingHistory = () => {
   const [records, setRecords] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("date"); // default sort by date
-  const [sortOrder, setSortOrder] = useState("desc");   // 'asc' or 'desc'
+  const [sortOrder, setSortOrder] = useState("desc"); // 'asc' or 'desc'
+  const [loading, setLoading] = useState(true); // Loading state
 
   useEffect(() => {
+    // Fetch records on component mount
     axios
       .get("http://localhost:8000/api/sewing/history/daily/")
       .then((res) => {
         setRecords(res.data);
+        setLoading(false);
       })
       .catch((err) => {
         console.error("Error fetching daily sewing history:", err);
         setError("Failed to load daily sewing history.");
+        setLoading(false);
       });
   }, []);
 
   // Filter records based on search term (product_name search)
-  const filteredRecords = records.filter(record =>
+  const filteredRecords = records.filter((record) =>
     record.product_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -31,7 +36,7 @@ const ViewDailySewingHistory = () => {
   const sortedRecords = filteredRecords.sort((a, b) => {
     let aVal = a[sortField];
     let bVal = b[sortField];
-    
+
     // If sorting by date, convert to Date objects
     if (sortField === "date") {
       aVal = new Date(aVal);
@@ -51,7 +56,7 @@ const ViewDailySewingHistory = () => {
     if (window.confirm("Are you sure you want to delete this record?")) {
       try {
         await axios.delete(`http://localhost:8000/api/sewing/daily-records/${id}/`);
-        // Remove the record from state
+        // Remove the record from state after successful deletion
         setRecords(records.filter((record) => record.id !== id));
       } catch (err) {
         console.error("Error deleting record:", err);
@@ -65,9 +70,9 @@ const ViewDailySewingHistory = () => {
       <OwnerNavBar />
       <div className="main-content">
         <h2>Daily Sewing History</h2>
-        
+
         {error && <p style={{ color: "red" }}>{error}</p>}
-        
+
         {/* Navigation Button */}
         <div style={{ marginBottom: "20px" }}>
           <Link to="/viewproductlist">
@@ -113,6 +118,10 @@ const ViewDailySewingHistory = () => {
           </div>
         </div>
 
+        {/* Loading Spinner */}
+        {loading && <div>Loading records...</div>}
+
+        {/* Table of Records */}
         <table className="table table-striped table-bordered">
           <thead>
             <tr style={{ background: "#f4f4f4" }}>
@@ -130,45 +139,51 @@ const ViewDailySewingHistory = () => {
             </tr>
           </thead>
           <tbody>
-            {sortedRecords.map((record, idx) => (
-              <tr key={record.id}>
-                <td>{record.date}</td>
-                <td>{record.product_name}</td>
-                <td>
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    <div
-                      style={{
-                        width: "20px",
-                        height: "20px",
-                        backgroundColor: record.color,
-                        border: "1px solid #ccc",
-                        marginRight: "8px"
-                      }}
-                    />
-                    <span>{record.color}</span>
-                  </div>
-                </td>
-                <td>{record.xs}</td>
-                <td>{record.s}</td>
-                <td>{record.m}</td>
-                <td>{record.l}</td>
-                <td>{record.xl}</td>
-                <td>{record.damage_count}</td>
-                <td>
-                  <Link to={`/edit-daily-sewing-record/${record.id}`}>
-                    <button className="btn btn-warning">Edit</button>
-                  </Link>
-                </td>
-                <td>
-                  <button
-                    className="btn btn-danger"
-                    onClick={() => deleteRecord(record.id)}
-                  >
-                    Delete
-                  </button>
-                </td>
+            {sortedRecords.length === 0 ? (
+              <tr>
+                <td colSpan="11">No records found.</td>
               </tr>
-            ))}
+            ) : (
+              sortedRecords.map((record) => (
+                <tr key={record.id}>
+                  <td>{format(new Date(record.date), "dd/MM/yyyy")}</td>
+                  <td>{record.product_name}</td>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <div
+                        style={{
+                          width: "20px",
+                          height: "20px",
+                          backgroundColor: record.color,
+                          border: "1px solid #ccc",
+                          marginRight: "8px",
+                        }}
+                      />
+                      <span>{record.color}</span>
+                    </div>
+                  </td>
+                  <td>{record.xs}</td>
+                  <td>{record.s}</td>
+                  <td>{record.m}</td>
+                  <td>{record.l}</td>
+                  <td>{record.xl}</td>
+                  <td>{record.damage_count}</td>
+                  <td>
+                    <Link to={`/edit-daily-sewing-record/${record.id}`}>
+                      <button className="btn btn-warning">Edit</button>
+                    </Link>
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => deleteRecord(record.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

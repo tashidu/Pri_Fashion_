@@ -7,7 +7,7 @@ class DailySewingRecordSerializer(serializers.ModelSerializer):
         model = DailySewingRecord
         fields = [
             'id',
-            'cutting_detail',
+            'cutting_record_fabric',
             'date',
             'xs',
             's',
@@ -19,8 +19,8 @@ class DailySewingRecordSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'date']
 
     def validate(self, data):
-        cutting_detail = data.get('cutting_detail')
-        if not cutting_detail:
+        cutting_record_fabric = data.get('cutting_record_fabric')
+        if not cutting_record_fabric:
             return data
 
         new_xs = data.get('xs', 0)
@@ -29,8 +29,8 @@ class DailySewingRecordSerializer(serializers.ModelSerializer):
         new_l  = data.get('l', 0)
         new_xl = data.get('xl', 0)
 
-        # ✅ Exclude current instance in case of update
-        sewing_qs = cutting_detail.daily_sewing_records.all()
+        # ✅ Exclude current instance if updating
+        sewing_qs = cutting_record_fabric.daily_sewing_records.all()
         if self.instance:
             sewing_qs = sewing_qs.exclude(id=self.instance.id)
 
@@ -49,27 +49,22 @@ class DailySewingRecordSerializer(serializers.ModelSerializer):
         sewn_l  = agg.get('sewn_l')  or 0
         sewn_xl = agg.get('sewn_xl') or 0
 
-        # ✅ Print debug info temporarily
-        print("Cutting XS:", cutting_detail.xs, "Sewn:", sewn_xs, "New:", new_xs)
-        print("Cutting S :", cutting_detail.s,  "Sewn:", sewn_s,  "New:", new_s)
-        print("Cutting M :", cutting_detail.m,  "Sewn:", sewn_m,  "New:", new_m)
-        print("Cutting L :", cutting_detail.l,  "Sewn:", sewn_l,  "New:", new_l)
-        print("Cutting XL:", cutting_detail.xl, "Sewn:", sewn_xl, "New:", new_xl)
-
-        if (sewn_xs + new_xs) > cutting_detail.xs:
+        if (sewn_xs + new_xs) > cutting_record_fabric.xs:
             raise serializers.ValidationError("XS exceeds cutting quantity.")
-        if (sewn_s + new_s) > cutting_detail.s:
+        if (sewn_s + new_s) > cutting_record_fabric.s:
             raise serializers.ValidationError("S exceeds cutting quantity.")
-        if (sewn_m + new_m) > cutting_detail.m:
+        if (sewn_m + new_m) > cutting_record_fabric.m:
             raise serializers.ValidationError("M exceeds cutting quantity.")
-        if (sewn_l + new_l) > cutting_detail.l:
+        if (sewn_l + new_l) > cutting_record_fabric.l:
             raise serializers.ValidationError("L exceeds cutting quantity.")
-        if (sewn_xl + new_xl) > cutting_detail.xl:
+        if (sewn_xl + new_xl) > cutting_record_fabric.xl:
             raise serializers.ValidationError("XL exceeds cutting quantity.")
 
         return data
-
-
+    
+    
+    
+    
 class DailySewingRecordHistorySerializer(serializers.ModelSerializer):
     product_name = serializers.SerializerMethodField()
     color = serializers.SerializerMethodField()
@@ -91,14 +86,15 @@ class DailySewingRecordHistorySerializer(serializers.ModelSerializer):
 
     def get_product_name(self, obj):
         try:
-            product = obj.cutting_detail.cutting_record
+            product = obj.cutting_record_fabric.cutting_record
             return product.product_name or f"{product.fabric_definition.fabric_name} cut on {product.cutting_date}"
         except Exception:
             return "N/A"
 
     def get_color(self, obj):
         try:
-            variant = obj.cutting_detail.fabric_variant
+            variant = obj.cutting_record_fabric.fabric_variant
             return getattr(variant, 'color_name', None) or getattr(variant, 'color', "N/A")
         except Exception:
             return "N/A"
+       
