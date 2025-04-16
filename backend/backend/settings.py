@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'sewing',
     'finished_product',
     'packing_app',
+    'reports'
     
     
     
