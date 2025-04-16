@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { BarChart, XAxis, YAxis, Tooltip, Legend, Bar, ResponsiveContainer } from 'recharts';
+import OwnerNavBar from "../components/OwnerNavBar";
 
 const PackingReportChart = () => {
   const [data, setData] = useState([]);
@@ -30,7 +31,9 @@ const PackingReportChart = () => {
   }, []);
 
   return (
-    <div className="p-4">
+    <>
+    <OwnerNavBar/>
+    <div className="main-content">
       <h2 className="text-xl mb-4">Packing Overview</h2>
 
       {/* Displaying Quick Analytics */}
@@ -62,6 +65,7 @@ const PackingReportChart = () => {
         </BarChart>
       </ResponsiveContainer>
     </div>
+    </>
   );
 };
 
