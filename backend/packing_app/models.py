@@ -6,7 +6,8 @@ class PackingSession(models.Model):
     """
     Records individual packing sessions.
     """
-    finished_product = models.ForeignKey(FinishedProduct, on_delete=models.CASCADE)
+    finished_product = models.ForeignKey(FinishedProduct, on_delete=models.CASCADE, related_name='packing_sessions')
+
     date = models.DateField(default=date.today)
     number_of_6_packs = models.PositiveIntegerField(default=0)
     number_of_12_packs = models.PositiveIntegerField(default=0)

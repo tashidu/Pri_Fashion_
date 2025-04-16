@@ -66,3 +66,6 @@ class FinishedProductReportSerializer(serializers.ModelSerializer):
             return obj.cutting_record.product_name
         else:
             return f"{obj.cutting_record.fabric_definition.fabric_name} cut on {obj.cutting_record.cutting_date}"
+        
+        
+        

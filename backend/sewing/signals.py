@@ -35,5 +35,9 @@ def update_approved_finished_product(sender, instance, **kwargs):
     approved_product.total_sewn_l = sewing_agg['l_sum'] or 0
     approved_product.total_sewn_xl = sewing_agg['xl_sum'] or 0
     
+    
+    
+    approved_product.recalculate_available_quantity()
+    
     # Save the updated FinishedProduct record
     approved_product.save()
