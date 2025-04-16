@@ -48,3 +48,22 @@ class UpdateFinishedProductView(APIView):
         
         finished_product.save()
         return Response({"message": "Finished product updated successfully."}, status=status.HTTP_200_OK)
+    
+    
+    
+class FinishedProductStatusView(APIView):
+    """
+    Returns whether a cutting record has already been approved,
+    and if so, the approved price info.
+    """
+    def get(self, request, cutting_record_id, format=None):
+        try:
+            product = FinishedProduct.objects.get(cutting_record__id=cutting_record_id)
+            return Response({
+                "is_approved": True,
+                "manufacture_price": product.manufacture_price,
+                "selling_price": product.selling_price
+            }, status=status.HTTP_200_OK)
+        except FinishedProduct.DoesNotExist:
+            return Response({"is_approved": False}, status=status.HTTP_200_OK)
+    
