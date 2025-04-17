@@ -109,7 +109,7 @@ function InventoryManagerNavBar() {
             </Link>
           </li>
           <li className="nav-item mb-2">
-            <Link className="nav-link d-flex align-items-center text-dark" to="/inventory-reports">
+            <Link className="nav-link d-flex align-items-center text-dark" to="/addshop">
               <div className="me-2 text-center" style={{ width: "24px" }}>
                 <i className="bi bi-graph-up"></i>
               </div>
