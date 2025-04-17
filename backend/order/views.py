@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 from .models import Shop, Order, OrderItem
 from .serializers import ShopSerializer, OrderSerializer, OrderItemSerializer
 from django.shortcuts import get_object_or_404
+from packing_app.models import PackingInventory
+from finished_product.models import FinishedProduct
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 
@@ -43,11 +45,31 @@ class OrderApproveView(APIView):
             return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
 
 class OrderItemCreateView(generics.CreateAPIView):
+    queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
 
     def perform_create(self, serializer):
-       order_id = self.request.data.get('order')
-       if not order_id:
-         raise serializers.ValidationError({'order': 'Order ID is required.'})
-       order = get_object_or_404(Order, id=order_id)
-       serializer.save(order=order)
+        order_id = self.request.data.get('order')
+        finished_product_id = self.request.data.get('finished_product')
+
+        if not order_id or not finished_product_id:
+            raise serializers.ValidationError({'error': 'Order and Finished Product IDs are required.'})
+
+        order = get_object_or_404(Order, id=order_id)
+        finished_product = get_object_or_404(FinishedProduct, id=finished_product_id)
+        inventory = get_object_or_404(PackingInventory, finished_product=finished_product)
+
+        # Get quantities from request
+        six_packs = int(self.request.data.get('quantity_6_packs', 0))
+        twelve_packs = int(self.request.data.get('quantity_12_packs', 0))
+        extras = int(self.request.data.get('quantity_extra_items', 0))
+
+        # Optional: Validate stock before deduction
+        if (inventory.number_of_6_packs < six_packs or
+            inventory.number_of_12_packs < twelve_packs or
+            inventory.extra_items < extras):
+            raise serializers.ValidationError({'error': 'Not enough inventory to fulfill the order.'})
+
+        # Save order item and deduct inventory
+        serializer.save(order=order, finished_product=finished_product)
+        inventory.deduct_for_order(six_packs, twelve_packs, extras)
