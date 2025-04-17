@@ -4,6 +4,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Shop, Order, OrderItem
 from .serializers import ShopSerializer, OrderSerializer, OrderItemSerializer
+from django.shortcuts import get_object_or_404
+from rest_framework import serializers
+from rest_framework.permissions import IsAuthenticated
 
 class ShopListCreateView(generics.ListCreateAPIView):
     queryset = Shop.objects.all()
@@ -12,6 +15,9 @@ class ShopListCreateView(generics.ListCreateAPIView):
 class ShopCreateView(generics.CreateAPIView):
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
+    
+    
+    
 class OrderListCreateView(generics.ListCreateAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
@@ -40,5 +46,8 @@ class OrderItemCreateView(generics.CreateAPIView):
     serializer_class = OrderItemSerializer
 
     def perform_create(self, serializer):
-        order_id = self.kwargs['order_id']  # Get order_id from URL
-        serializer.save(order_id=order_id)  # Save order_id to the order item
+       order_id = self.request.data.get('order')
+       if not order_id:
+         raise serializers.ValidationError({'order': 'Order ID is required.'})
+       order = get_object_or_404(Order, id=order_id)
+       serializer.save(order=order)

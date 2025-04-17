@@ -1,193 +1,204 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 const AddOrderForm = () => {
-    const [orderData, setOrderData] = useState({
-        shop: '',
-        placed_by: '',
-        items: []
-    });
+  const [orderData, setOrderData] = useState({
+    shop: "",
+    placed_by: "", // will be filled with current user ID
+    items: [],
+  });
 
-    const [shops, setShops] = useState([]);
-    const [products, setProducts] = useState([]);
-    const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(null);
+  const [shops, setShops] = useState([]);
+  const [finishedProducts, setFinishedProducts] = useState([]);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
-    // Fetch shops and products on component mount
-    useEffect(() => {
-        // Fetch available shops from the API
-        axios.get('http://localhost:8000/api/orders/shops/')
-            .then(response => setShops(response.data))
-            .catch(error => console.error('Error fetching shops:', error));
+  const currentUserId = 1; // ⚠️ Replace with actual authenticated user ID from context or token
 
-        // Fetch available products from the API
-        axios.get('http://localhost:8000/api/finished_product/report')  // Adjust the URL to fetch products
-            .then(response => setProducts(response.data))
-            .catch(error => console.error('Error fetching products:', error));
-    }, []);
+  useEffect(() => {
+    axios.get("http://localhost:8000/api/orders/shops/")
+      .then((res) => setShops(res.data))
+      .catch((err) => console.error("Error fetching shops", err));
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setOrderData(prevState => ({
-            ...prevState,
-            [name]: value
-        }));
-    };
+    axios.get("http://localhost:8000/api/finished_product/report")
+      .then((res) => setFinishedProducts(res.data))
+      .catch((err) => console.error("Error fetching finished products", err));
+  }, []);
 
-    const handleItemChange = (index, e) => {
-        const { name, value } = e.target;
-        const updatedItems = [...orderData.items];
-        updatedItems[index] = {
-            ...updatedItems[index],
-            [name]: value
-        };
-        setOrderData(prevState => ({
-            ...prevState,
-            items: updatedItems
-        }));
-    };
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setOrderData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
-    const addItem = () => {
-        setOrderData(prevState => ({
-            ...prevState,
-            items: [...prevState.items, { finished_product: '', quantity_6_packs: 0, quantity_12_packs: 0, quantity_extra_items: 0 }]
-        }));
-    };
+  const handleItemChange = (index, e) => {
+    const { name, value } = e.target;
+    const updatedItems = [...orderData.items];
+    updatedItems[index][name] = value;
+    setOrderData({ ...orderData, items: updatedItems });
+  };
 
-    const removeItem = (index) => {
-        const updatedItems = [...orderData.items];
-        updatedItems.splice(index, 1);
-        setOrderData(prevState => ({
-            ...prevState,
-            items: updatedItems
-        }));
-    };
+  const addItem = () => {
+    setOrderData((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        {
+          finished_product: "",
+          quantity_6_packs: 0,
+          quantity_12_packs: 0,
+          quantity_extra_items: 0,
+        },
+      ],
+    }));
+  };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
+  const removeItem = (index) => {
+    const updated = [...orderData.items];
+    updated.splice(index, 1);
+    setOrderData({ ...orderData, items: updated });
+  };
 
-        // Send POST request to the Django backend to create an order
-        axios.post('http://localhost:8000/api/orders/create/', orderData)
-            .then(response => {
-                setSuccess("Order created successfully!");
-                setOrderData({ shop: '', placed_by: '', items: [] });  // Clear form
-            })
-            .catch(error => {
-                setError("An error occurred while creating the order.");
-                console.error("Error:", error);
-            });
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
 
-    return (
-        <div className="p-4 max-w-md mx-auto">
-            <h2 className="text-xl mb-4">Add New Order</h2>
+    if (!orderData.shop || orderData.items.length === 0) {
+      setError("Please select a shop and add at least one item.");
+      return;
+    }
 
-            {error && <p className="text-red-500">{error}</p>}
-            {success && <p className="text-green-500">{success}</p>}
+    try {
+      // Step 1: Create the order
+      const orderRes = await axios.post("http://localhost:8000/api/orders/orders/create/", {
+        shop: orderData.shop,
+        placed_by: currentUserId, // use ID, not name
+      });
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label htmlFor="shop" className="block text-sm font-medium text-gray-700">Shop</label>
-                    <select
-                        id="shop"
-                        name="shop"
-                        value={orderData.shop}
-                        onChange={handleChange}
-                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                        required
-                    >
-                        <option value="">Select a shop</option>
-                        {shops.map(shop => (
-                            <option key={shop.id} value={shop.id}>{shop.name}</option>
-                        ))}
-                    </select>
-                </div>
+      const orderId = orderRes.data.id;
 
-                <div>
-                    <label htmlFor="placed_by" className="block text-sm font-medium text-gray-700">Placed By</label>
-                    <input
-                        type="text"
-                        id="placed_by"
-                        name="placed_by"
-                        value={orderData.placed_by}
-                        onChange={handleChange}
-                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                        required
-                    />
-                </div>
+      // Step 2: Create each order item
+      const itemRequests = orderData.items.map((item) =>
+        axios.post("http://localhost:8000/api/orders/orders/items/", {
+          order: orderId,
+          finished_product: item.finished_product,
+          quantity_6_packs: item.quantity_6_packs,
+          quantity_12_packs: item.quantity_12_packs,
+          quantity_extra_items: item.quantity_extra_items,
+        })
+      );
 
-                {/* Order Items */}
-                <div className="space-y-4">
-                    <h3 className="text-lg">Order Items</h3>
-                    {orderData.items.map((item, index) => (
-                        <div key={index} className="border p-4 rounded-md space-y-2">
-                            <div>
-                                <label htmlFor={`finished_product_${index}`} className="block text-sm font-medium text-gray-700">Product</label>
-                                <select
-                                    id={`finished_product_${index}`}
-                                    name="finished_product"
-                                    value={item.finished_product}
-                                    onChange={(e) => handleItemChange(index, e)}
-                                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                                    required
-                                >
-                                    <option value="">Select a product</option>
-                                    {products.map(product => (
-                                        <option key={product.id} value={product.id}>{product.name}</option>
-                                    ))}
-                                </select>
-                            </div>
+      await Promise.all(itemRequests);
 
-                            <div>
-                                <label htmlFor={`quantity_6_packs_${index}`} className="block text-sm font-medium text-gray-700">Quantity (6-packs)</label>
-                                <input
-                                    type="number"
-                                    id={`quantity_6_packs_${index}`}
-                                    name="quantity_6_packs"
-                                    value={item.quantity_6_packs}
-                                    onChange={(e) => handleItemChange(index, e)}
-                                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                                    required
-                                />
-                            </div>
+      setSuccess("Order created successfully!");
+      setOrderData({ shop: "", placed_by: "", items: [] });
+    } catch (err) {
+      console.error("Error submitting order", err);
+      setError("An error occurred while submitting the order.");
+    }
+  };
 
-                            <div>
-                                <label htmlFor={`quantity_12_packs_${index}`} className="block text-sm font-medium text-gray-700">Quantity (12-packs)</label>
-                                <input
-                                    type="number"
-                                    id={`quantity_12_packs_${index}`}
-                                    name="quantity_12_packs"
-                                    value={item.quantity_12_packs}
-                                    onChange={(e) => handleItemChange(index, e)}
-                                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                                    required
-                                />
-                            </div>
+  return (
+    <div className="p-4 max-w-xl mx-auto">
+      <h2 className="text-xl font-semibold mb-4">Add New Order</h2>
 
-                            <div>
-                                <label htmlFor={`quantity_extra_items_${index}`} className="block text-sm font-medium text-gray-700">Extra Items</label>
-                                <input
-                                    type="number"
-                                    id={`quantity_extra_items_${index}`}
-                                    name="quantity_extra_items"
-                                    value={item.quantity_extra_items}
-                                    onChange={(e) => handleItemChange(index, e)}
-                                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                                    required
-                                />
-                            </div>
+      {error && <p className="text-red-600">{error}</p>}
+      {success && <p className="text-green-600">{success}</p>}
 
-                            <button type="button" onClick={() => removeItem(index)} className="text-red-500">Remove Item</button>
-                        </div>
-                    ))}
-
-                    <button type="button" onClick={addItem} className="w-full py-2 bg-green-600 text-white rounded-md">Add Item</button>
-                </div>
-
-                <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded-md">Create Order</button>
-            </form>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label className="block mb-1">Select Shop</label>
+          <select
+            name="shop"
+            value={orderData.shop}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+            required
+          >
+            <option value="">-- Select --</option>
+            {shops.map((shop) => (
+              <option key={shop.id} value={shop.id}>
+                {shop.name}
+              </option>
+            ))}
+          </select>
         </div>
-    );
+
+        <div className="space-y-4">
+          <h3 className="font-medium">Order Items</h3>
+          {orderData.items.map((item, index) => (
+            <div key={index} className="border p-3 rounded space-y-2">
+              <div>
+                <label>Finished Product</label>
+                <select
+                  name="finished_product"
+                  value={item.finished_product}
+                  onChange={(e) => handleItemChange(index, e)}
+                  className="w-full p-2 border rounded"
+                  required
+                >
+                  <option value="">-- Choose --</option>
+                  {finishedProducts.map((fp) => (
+                    <option key={fp.id} value={fp.id}>
+                      {fp.product_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <input
+                type="number"
+                name="quantity_6_packs"
+                placeholder="Quantity 6-packs"
+                value={item.quantity_6_packs}
+                onChange={(e) => handleItemChange(index, e)}
+                className="w-full p-2 border rounded"
+              />
+              <input
+                type="number"
+                name="quantity_12_packs"
+                placeholder="Quantity 12-packs"
+                value={item.quantity_12_packs}
+                onChange={(e) => handleItemChange(index, e)}
+                className="w-full p-2 border rounded"
+              />
+              <input
+                type="number"
+                name="quantity_extra_items"
+                placeholder="Extra items"
+                value={item.quantity_extra_items}
+                onChange={(e) => handleItemChange(index, e)}
+                className="w-full p-2 border rounded"
+              />
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+                className="text-red-500 underline"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addItem}
+            className="bg-green-600 text-white px-4 py-2 rounded"
+          >
+            Add Item
+          </button>
+        </div>
+
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white py-2 rounded"
+        >
+          Submit Order
+        </button>
+      </form>
+    </div>
+  );
 };
 
 export default AddOrderForm;
