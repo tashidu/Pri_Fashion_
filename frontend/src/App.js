@@ -15,6 +15,14 @@ import ViewFabricVariants from "./pages/ViewFabricVariants";
 import AddCutting  from "./pages/AddCutting.js"
 import AddDailySewingRecord from "./pages/AddDailySewingRecord";
 import ViewDailySewingHistory from './pages/ViewDailySewingHistory';
+import ViewProductList from './pages/ViewProductList.js';
+import ApproveFinishedProduct from "./pages/ApproveFinishedProduct";
+import ViewApproveProduct from "./pages/ViewApproveProduct.js";
+import AddPackingSession from "./pages/AddPackingSession.js";
+import PackingReportChart from "./pages/PackingReportChart.js";
+import AddShop from "./pages/AddShop.js";
+import CreateOrder from "./pages/CreateOrder.js";
+
 
 
 function App() {
@@ -40,6 +48,17 @@ function App() {
         <Route path="/addcutting" element={<AddCutting />} />
         <Route path="/adddailysewing" element={<AddDailySewingRecord />} />
         <Route path="/daily-sewing-history" element={<ViewDailySewingHistory />} />
+        <Route path="/viewproductlist" element={<ViewProductList />} />
+        <Route path="/approve-finished-product/:id" element={<ApproveFinishedProduct />} /> 
+        <Route path="/approveproduct-list" element={<ViewApproveProduct />} /> 
+        <Route path="/add-packing-session" element={<AddPackingSession />} />
+        <Route path="/packing-report" element={<PackingReportChart />} />
+        <Route path ="/addshop" element={<AddShop/>} />
+        <Route path="/addorder" element={<CreateOrder />} />
+
+
+        
+       
        
 
 

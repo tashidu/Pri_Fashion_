@@ -181,6 +181,7 @@ class FabricVariant(models.Model):
     color = models.CharField(max_length=50)
     color_name = models.CharField(max_length=50, blank=True)
     total_yard = models.FloatField()
+    available_yard = models.FloatField(blank=True, null=True)
     price_per_yard = models.FloatField()
     
     def save(self, *args, **kwargs):
@@ -189,6 +190,12 @@ class FabricVariant(models.Model):
             self.color_name = COLOR_MAP[self.color]
         else:
             self.color_name = self.color  # fallback, or set to something else
+        
+        
+        
+        if not self.pk and self.available_yard is None:
+            self.available_yard = self.total_yard
+
         super().save(*args, **kwargs)
 
     def __str__(self):

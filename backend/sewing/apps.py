@@ -1,3 +1,4 @@
+# sewing/apps.py
 from django.apps import AppConfig
 
 class SewingConfig(AppConfig):
@@ -5,5 +6,4 @@ class SewingConfig(AppConfig):
     name = 'sewing'
 
     def ready(self):
-        # Import signals so they are registered
         import sewing.signals

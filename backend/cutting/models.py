@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from fabric.models import FabricDefinition, FabricVariant
+from rest_framework.exceptions import ValidationError
+
 
 class CuttingRecord(models.Model):
     # Reference the FabricDefinition to get the fabric name
@@ -37,3 +39,16 @@ class CuttingRecordFabric(models.Model):
     def __str__(self):
         return (f"{self.fabric_variant} - "
                 f"XS: {self.xs}, S: {self.s}, M: {self.m}, L: {self.l}, XL: {self.xl}")
+        
+    def save(self, *args, **kwargs):
+        # Only perform the subtraction on creation.
+        if not self.pk:
+            variant = self.fabric_variant
+            # Use available_yard instead of total_yard.
+            # If available_yard is not set, initialize it to total_yard.
+            current_available = float(variant.available_yard) if variant.available_yard is not None else float(variant.total_yard)
+            if float(self.yard_usage) > current_available:
+                raise ValidationError("Not enough fabric available. Cutting usage cannot exceed the remaining fabric.")
+            variant.available_yard = current_available - float(self.yard_usage)
+            variant.save()
+        super().save(*args, **kwargs)

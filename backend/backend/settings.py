@@ -32,6 +32,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'cutting',
     'sewing',
+    'finished_product',
+    'packing_app',
+    'reports',
+    'order',
     
     
     
@@ -50,6 +54,9 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'backend.urls'
+
+AUTH_USER_MODEL = 'authentication.CustomUser'
+
 
 TEMPLATES = [
     {
