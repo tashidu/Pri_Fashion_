@@ -73,3 +73,26 @@ class OrderItemCreateView(generics.CreateAPIView):
         # Save order item and deduct inventory
         serializer.save(order=order, finished_product=finished_product)
         inventory.deduct_for_order(six_packs, twelve_packs, extras)
+        
+        
+        
+        
+class OrderSubmitView(APIView):
+    """
+    Lets Order Coordinator mark an order as 'submitted' (finished preparing).
+    """
+    def post(self, request, pk):
+        try:
+            order = Order.objects.get(pk=pk)
+
+            if order.status != 'draft':
+                return Response({"error": "Only draft orders can be submitted."}, status=status.HTTP_400_BAD_REQUEST)
+
+            order.status = 'submitted'
+            order.save()
+
+            return Response({"status": "submitted", "order_id": order.id}, status=status.HTTP_200_OK)
+
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+        
