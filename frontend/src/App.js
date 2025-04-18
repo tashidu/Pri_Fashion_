@@ -22,7 +22,7 @@ import AddPackingSession from "./pages/AddPackingSession.js";
 import PackingReportChart from "./pages/PackingReportChart.js";
 import AddShop from "./pages/AddShop.js";
 import CreateOrder from "./pages/CreateOrder.js";
-
+import OrderListPage from "./pages/OrderListPage.js.js";
 
 
 function App() {
@@ -55,7 +55,7 @@ function App() {
         <Route path="/packing-report" element={<PackingReportChart />} />
         <Route path ="/addshop" element={<AddShop/>} />
         <Route path="/addorder" element={<CreateOrder />} />
-
+        <Route path="/order-list" element={<OrderListPage />} />
 
         
        
