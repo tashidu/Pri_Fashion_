@@ -44,6 +44,12 @@ const AddDailySewingRecord = () => {
               "N/A",
             color: detail.fabric_variant_data?.color || "#ffffff",
             totalCut,
+            // Store individual size quantities for validation
+            xs_cut: detail.xs || 0,
+            s_cut: detail.s || 0,
+            m_cut: detail.m || 0,
+            l_cut: detail.l || 0,
+            xl_cut: detail.xl || 0,
           };
         });
         setProductColors(options);
@@ -67,12 +73,37 @@ const AddDailySewingRecord = () => {
     if (!selectedOption)
       return window.alert("Selected color details not found.");
 
-    const newDailyTotal =
-      parseInt(xs || 0) +
-      parseInt(s || 0) +
-      parseInt(m || 0) +
-      parseInt(l || 0) +
-      parseInt(xl || 0);
+    // Validate each size individually
+    const parsedXs = parseInt(xs || 0);
+    const parsedS = parseInt(s || 0);
+    const parsedM = parseInt(m || 0);
+    const parsedL = parseInt(l || 0);
+    const parsedXl = parseInt(xl || 0);
+    const parsedDamage = parseInt(damageCount || 0);
+
+    // Check for negative values
+    if (parsedXs < 0 || parsedS < 0 || parsedM < 0 || parsedL < 0 || parsedXl < 0 || parsedDamage < 0) {
+      return window.alert("All quantities must be non-negative values.");
+    }
+
+    // Check individual size limits
+    if (parsedXs > selectedOption.xs_cut) {
+      return window.alert(`XS quantity (${parsedXs}) exceeds the available cutting quantity (${selectedOption.xs_cut}).`);
+    }
+    if (parsedS > selectedOption.s_cut) {
+      return window.alert(`S quantity (${parsedS}) exceeds the available cutting quantity (${selectedOption.s_cut}).`);
+    }
+    if (parsedM > selectedOption.m_cut) {
+      return window.alert(`M quantity (${parsedM}) exceeds the available cutting quantity (${selectedOption.m_cut}).`);
+    }
+    if (parsedL > selectedOption.l_cut) {
+      return window.alert(`L quantity (${parsedL}) exceeds the available cutting quantity (${selectedOption.l_cut}).`);
+    }
+    if (parsedXl > selectedOption.xl_cut) {
+      return window.alert(`XL quantity (${parsedXl}) exceeds the available cutting quantity (${selectedOption.xl_cut}).`);
+    }
+
+    const newDailyTotal = parsedXs + parsedS + parsedM + parsedL + parsedXl;
 
     if (newDailyTotal > selectedOption.totalCut) {
       return window.alert(
@@ -82,12 +113,12 @@ const AddDailySewingRecord = () => {
 
     const payload = {
       cutting_record_fabric: selectedColor,
-      xs: parseInt(xs || 0),
-      s: parseInt(s || 0),
-      m: parseInt(m || 0),
-      l: parseInt(l || 0),
-      xl: parseInt(xl || 0),
-      damage_count: parseInt(damageCount || 0),
+      xs: parsedXs,
+      s: parsedS,
+      m: parsedM,
+      l: parsedL,
+      xl: parsedXl,
+      damage_count: parsedDamage,
     };
 
     axios
@@ -194,9 +225,11 @@ const AddDailySewingRecord = () => {
                 <label>{size}:</label>
                 <input
                   type="number"
+                  min="0"
                   value={sizeMap[size]}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value || 0);
+                    // Ensure value is not negative
+                    const val = Math.max(0, parseInt(e.target.value || 0));
                     switch (size) {
                       case "XS":
                         setXs(val);
@@ -228,8 +261,13 @@ const AddDailySewingRecord = () => {
             <label>Damage Count:</label>
             <input
               type="number"
+              min="0"
               value={damageCount}
-              onChange={(e) => setDamageCount(e.target.value)}
+              onChange={(e) => {
+                // Ensure value is not negative
+                const val = Math.max(0, parseInt(e.target.value || 0));
+                setDamageCount(val);
+              }}
               style={{ width: "100%", padding: "8px", marginTop: "5px" }}
             />
           </div>
