@@ -1,6 +1,7 @@
-import { useState } from "react"; 
+import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { setUserRole } from "../utils/auth";
 
 function Login() {
     const [username, setUsername] = useState("");
@@ -19,7 +20,7 @@ function Login() {
         try {
             const response = await axios.post("http://127.0.0.1:8000/api/auth/login/", { username, password });
             localStorage.setItem("token", response.data.access);
-            localStorage.setItem("role", response.data.role);
+            setUserRole(response.data.role);
             setError("");
 
             const roleRoutes = {
@@ -100,7 +101,7 @@ function Login() {
     return (
         <div style={styles.container}>
             <div style={styles.card}>
-                <img src="/logo.jpg" alt="Logo" style={styles.logo} /> 
+                <img src="/logo.jpg" alt="Logo" style={styles.logo} />
                 <h2 style={styles.heading}>Login</h2>
 
                 {error && <p style={styles.errorText}>{error}</p>}
@@ -113,7 +114,7 @@ function Login() {
                         onChange={(e) => setUsername(e.target.value)}
                         style={styles.input}
                     />
-                    
+
                     <input
                         type="password"
                         placeholder="Password"
@@ -121,8 +122,8 @@ function Login() {
                         onChange={(e) => setPassword(e.target.value)}
                         style={styles.input}
                     />
-                    
-                    <button 
+
+                    <button
                         type="submit"
                         disabled={!username || !password}
                         style={{

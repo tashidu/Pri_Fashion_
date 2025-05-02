@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
-import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 
 const AddCuttingRecord = () => {
   // Overall cutting record fields
@@ -98,9 +98,9 @@ const AddCuttingRecord = () => {
 
   // Custom option component that shows a color swatch + label
   const ColourOption = ({ data, innerRef, innerProps }) => (
-    <div 
-      ref={innerRef} 
-      {...innerProps} 
+    <div
+      ref={innerRef}
+      {...innerProps}
       style={{ display: 'flex', alignItems: 'center', padding: '4px' }}
     >
       <div
@@ -240,12 +240,12 @@ const AddCuttingRecord = () => {
 
   return (
     <>
-      <InventoryManagerNavBar/>
+      <RoleBasedNavBar/>
       <div className="main-content">
 
       <div style={formStyles.container}>
         <h2 style={formStyles.header}>Add Cutting Record</h2>
-        
+
         {error && <div style={{...formStyles.alert, ...formStyles.alertError}}>{error}</div>}
         {success && <div style={{...formStyles.alert, ...formStyles.alertSuccess}}>{success}</div>}
 
@@ -253,7 +253,7 @@ const AddCuttingRecord = () => {
           {/* Fabric Definition Dropdown */}
           <div style={formStyles.formGroup}>
             <label style={formStyles.label}>Fabric Definition:</label>
-            <select 
+            <select
               style={formStyles.select}
               value={selectedFabricDefinition}
               onChange={(e) => setSelectedFabricDefinition(e.target.value)}
@@ -285,10 +285,10 @@ const AddCuttingRecord = () => {
             {/* Cutting Date */}
             <div style={formStyles.formGroup}>
               <label style={formStyles.label}>Cutting Date:</label>
-              <input 
+              <input
                 style={formStyles.input}
-                type="date" 
-                value={cuttingDate} 
+                type="date"
+                value={cuttingDate}
                 onChange={(e) => setCuttingDate(e.target.value)}
                 required
               />
@@ -299,7 +299,7 @@ const AddCuttingRecord = () => {
           {/* Description */}
           <div style={formStyles.formGroup}>
             <label style={formStyles.label}>Description:</label>
-            <textarea 
+            <textarea
               style={formStyles.textarea}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -308,7 +308,7 @@ const AddCuttingRecord = () => {
           </div>
 
           <h3 style={{...formStyles.header, marginTop: '30px'}}>Fabric Details</h3>
-          
+
           {details.map((detail, index) => {
             // Find the selected variant object to set the value in React-Select
             const currentVariant = fabricVariants.find(v => v.id === detail.fabric_variant);
@@ -335,7 +335,7 @@ const AddCuttingRecord = () => {
                     Delete Detail
                   </button>
                 </div>
-                
+
                 {/* Fabric Variant (Color) via React-Select */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '15px' }}>
                   <div>
@@ -365,7 +365,7 @@ const AddCuttingRecord = () => {
                   {/* Yard Usage */}
                   <div>
                     <label style={formStyles.label}>Yard Usage:</label>
-                    <input 
+                    <input
                       style={formStyles.input}
                       type="number"
                       step="0.01"
@@ -382,7 +382,7 @@ const AddCuttingRecord = () => {
                 <div style={formStyles.sizesGrid}>
                   <div style={formStyles.sizeBox}>
                     <label style={formStyles.sizeLabel}>XS</label>
-                    <input 
+                    <input
                       style={formStyles.sizeInput}
                       type="number"
                       value={detail.xs}
@@ -391,7 +391,7 @@ const AddCuttingRecord = () => {
                   </div>
                   <div style={formStyles.sizeBox}>
                     <label style={formStyles.sizeLabel}>S</label>
-                    <input 
+                    <input
                       style={formStyles.sizeInput}
                       type="number"
                       value={detail.s}
@@ -400,7 +400,7 @@ const AddCuttingRecord = () => {
                   </div>
                   <div style={formStyles.sizeBox}>
                     <label style={formStyles.sizeLabel}>M</label>
-                    <input 
+                    <input
                       style={formStyles.sizeInput}
                       type="number"
                       value={detail.m}
@@ -409,7 +409,7 @@ const AddCuttingRecord = () => {
                   </div>
                   <div style={formStyles.sizeBox}>
                     <label style={formStyles.sizeLabel}>L</label>
-                    <input 
+                    <input
                       style={formStyles.sizeInput}
                       type="number"
                       value={detail.l}
@@ -418,7 +418,7 @@ const AddCuttingRecord = () => {
                   </div>
                   <div style={formStyles.sizeBox}>
                     <label style={formStyles.sizeLabel}>XL</label>
-                    <input 
+                    <input
                       style={formStyles.sizeInput}
                       type="number"
                       value={detail.xl}
@@ -430,17 +430,17 @@ const AddCuttingRecord = () => {
             );
           })}
 
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={addDetailRow}
             style={formStyles.buttonSecondary}
           >
             + Add Another Detail
           </button>
-          
+
           <div style={{textAlign: 'center', marginTop: '30px'}}>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={loading}
               style={formStyles.buttonPrimary}
             >

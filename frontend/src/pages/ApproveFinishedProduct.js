@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
-import OwnerNavBar from '../components/OwnerNavBar';
+import RoleBasedNavBar from '../components/RoleBasedNavBar';
 
 const ApproveFinishedProduct = () => {
   const { id } = useParams();
@@ -67,7 +67,7 @@ const ApproveFinishedProduct = () => {
 
   return (
     <>
-      <OwnerNavBar />
+      <RoleBasedNavBar />
       <div className="main-content">
         <h2>Approve Finished Product - Batch ID: {id}</h2>
         {error && <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>}

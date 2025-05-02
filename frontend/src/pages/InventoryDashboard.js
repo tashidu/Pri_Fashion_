@@ -1,12 +1,12 @@
 import React from "react";
-import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 
 function InventoryDashboard() {
     return (
         <>
-        <InventoryManagerNavBar/>
+        <RoleBasedNavBar/>
         <div className="main-content">
-            
+
 
             <h1>Inventory Dashboard</h1>
             <p>Manage fabric stock, track inventory levels, and handle suppliers.</p>

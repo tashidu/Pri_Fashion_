@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import OwnerNavBar from "../components/OwnerNavBar";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { format } from "date-fns"; // Import date-fns for formatting
 
 const ViewDailySewingHistory = () => {
@@ -67,7 +67,7 @@ const ViewDailySewingHistory = () => {
 
   return (
     <>
-      <OwnerNavBar />
+      <RoleBasedNavBar />
       <div className="main-content">
         <h2>Daily Sewing History</h2>
 

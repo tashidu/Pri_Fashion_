@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
-import OwnerNavBar from "../components/OwnerNavBar";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 
 const ViewFabricVariants = () => {
   const { id } = useParams(); // FabricDefinition ID from URL
@@ -24,7 +24,7 @@ const ViewFabricVariants = () => {
   if (!fabricDetail) {
     return (
       <>
-        <OwnerNavBar />
+        <RoleBasedNavBar />
         <div className="container main-content mt-4">
           {message ? (
             <div className="alert alert-danger text-center">{message}</div>
@@ -38,7 +38,7 @@ const ViewFabricVariants = () => {
 
   return (
     <>
-      <OwnerNavBar />
+      <RoleBasedNavBar />
       <div className="container main-content mt-4">
         <h2 className="text-center mb-4">
           Variants for Fabric: {fabricDetail.fabric_name}

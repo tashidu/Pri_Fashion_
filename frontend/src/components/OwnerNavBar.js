@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Outlet, Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import { logout } from "../utils/auth";
 
 function PriFashionNavBar() {
   // Set sidebar to open if window width >= 768px; otherwise, minimized.
@@ -108,12 +109,12 @@ function PriFashionNavBar() {
               {isSidebarOpen && <span>Sign Up</span>}
             </Link>
             <li className="nav-item mb-2">
-            <Link className="nav-link d-flex align-items-center text-dark" to="/">
+            <a className="nav-link d-flex align-items-center text-dark" href="#" onClick={(e) => { e.preventDefault(); logout(); }}>
               <div className="me-2 text-center" style={{ width: "24px" }}>
-                <i className="bi bi-person-plus"></i>
+                <i className="bi bi-box-arrow-right"></i>
               </div>
               {isSidebarOpen && <span>Log Out</span>}
-            </Link>
+            </a>
           </li>
           </li>
         </ul>

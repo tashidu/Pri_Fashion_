@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { BarChart, XAxis, YAxis, Tooltip, Legend, Bar, ResponsiveContainer } from 'recharts';
-import OwnerNavBar from "../components/OwnerNavBar";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 
 const PackingReportChart = () => {
   const [data, setData] = useState([]);
@@ -15,7 +15,7 @@ const PackingReportChart = () => {
     axios.get('http://localhost:8000/api/reports/product-packing-report/')
       .then(res => {
         setData(res.data);
-        
+
         // Calculate totals for analytics
         const sewn = res.data.reduce((acc, item) => acc + item.total_sewn, 0);
         const packed = res.data.reduce((acc, item) => acc + item.total_packed, 0);
@@ -32,7 +32,7 @@ const PackingReportChart = () => {
 
   return (
     <>
-    <OwnerNavBar/>
+    <RoleBasedNavBar/>
     <div className="main-content">
       <h2 className="text-xl mb-4">Packing Overview</h2>
 

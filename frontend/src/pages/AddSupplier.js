@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import InventoryManagerNavBar from '../components/InventoryManagerNavBar';
+import RoleBasedNavBar from '../components/RoleBasedNavBar';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const AddSupplier = () => {
@@ -33,7 +33,7 @@ const AddSupplier = () => {
 
     return (
         <>
-            <InventoryManagerNavBar />
+            <RoleBasedNavBar />
             <div className="main-content">
                 <div className='row justify-content-center'>
                     <div className='col-md-6'>
@@ -47,31 +47,31 @@ const AddSupplier = () => {
                                 <form onSubmit={handleSubmit}>
                                     <div className='mb-3'>
                                         <label className='form-label'>Name</label>
-                                        <input 
-                                            type='text' 
-                                            className='form-control' 
-                                            value={name} 
-                                            onChange={(e) => setName(e.target.value)} 
-                                            required 
+                                        <input
+                                            type='text'
+                                            className='form-control'
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            required
                                         />
                                     </div>
                                     <div className='mb-3'>
                                         <label className='form-label'>Address</label>
-                                        <textarea 
-                                            className='form-control' 
-                                            value={address} 
-                                            onChange={(e) => setAddress(e.target.value)} 
-                                            required 
+                                        <textarea
+                                            className='form-control'
+                                            value={address}
+                                            onChange={(e) => setAddress(e.target.value)}
+                                            required
                                         />
                                     </div>
                                     <div className='mb-3'>
                                         <label className='form-label'>Telephone Number</label>
-                                        <input 
-                                            type='text' 
-                                            className='form-control' 
-                                            value={telNo} 
-                                            onChange={(e) => setTelNo(e.target.value)} 
-                                            required 
+                                        <input
+                                            type='text'
+                                            className='form-control'
+                                            value={telNo}
+                                            onChange={(e) => setTelNo(e.target.value)}
+                                            required
                                         />
                                     </div>
                                     <button type='submit' className='btn btn-primary w-100'>Add Supplier</button>

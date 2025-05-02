@@ -1,7 +1,7 @@
 // src/pages/ViewApprovedProductReport.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import OwnerNavBar from "../components/OwnerNavBar";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 
 const ViewApprovedProductReport = () => {
   const [products, setProducts] = useState([]);
@@ -21,7 +21,7 @@ const ViewApprovedProductReport = () => {
 
   return (
     <>
-      <OwnerNavBar />
+      <RoleBasedNavBar />
       <div className="main-content">
         <h2>Approved Product Report</h2>
         {error && <p style={{ color: "red" }}>{error}</p>}
@@ -49,7 +49,7 @@ const ViewApprovedProductReport = () => {
           </thead>
           <tbody>
             {products.map((prod) => {
-              const total = 
+              const total =
                 (prod.total_sewn_xs || 0) +
                 (prod.total_sewn_s || 0) +
                 (prod.total_sewn_m || 0) +

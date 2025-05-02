@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import OwnerNavBar from "../components/OwnerNavBar";
+import InverntoryManagerNavBar from "../components/InventoryManagerNavBar";
 
 const AddPackingSession = () => {
   const [finishedProducts, setFinishedProducts] = useState([]);
@@ -64,7 +64,7 @@ const AddPackingSession = () => {
 
   return (
     <>
-      <OwnerNavBar />
+      <InverntoryManagerNavBar/>
       <div className="main-content">
         <h2 className="mb-3">Add Packing Session</h2>
 

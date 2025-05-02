@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
-import OwnerNavBar from '../components/OwnerNavBar';
+import RoleBasedNavBar from '../components/RoleBasedNavBar';
 
 function Signup() {
   const [username, setUsername] = useState("");
@@ -28,7 +28,7 @@ function Signup() {
   return (
     <>
       {/* Sidebar */}
-      <OwnerNavBar />
+      <RoleBasedNavBar />
 
       {/* Main Content */}
       <div className="container mt-5" style={{ marginLeft: "200px", transition: "margin-left 0.3s ease" }}>

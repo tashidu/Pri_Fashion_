@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { FaTshirt, FaCut, FaBoxes, FaChartLine, FaExclamationTriangle, FaCalendarCheck, FaBuilding, FaTachometerAlt, FaSignOutAlt, FaBars, FaAngleRight } from "react-icons/fa";
+import { FaStore, FaShoppingCart, FaChartLine, FaTachometerAlt, FaSignOutAlt, FaBars, FaAngleRight } from "react-icons/fa";
 import { logout } from "../utils/auth";
 
-function InventoryManagerNavBar() {
+function SalesTeamNavBar() {
   // Set sidebar to open if window width >= 768px; otherwise, minimized.
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
   const [activeSubmenu, setActiveSubmenu] = useState(null);
@@ -48,58 +48,30 @@ function InventoryManagerNavBar() {
     {
       title: "Dashboard",
       icon: <FaTachometerAlt />,
-      path: "/inventory-dashboard"
+      path: "/sales-dashboard"
     },
     {
-      title: "Suppliers",
-      icon: <FaBuilding />,
-      path: "/addsupplier",
+      title: "Shops",
+      icon: <FaStore />,
+      path: "/viewshops",
       subItems: [
-        { title: "Add Supplier", path: "/addsupplier" },
-        { title: "View Suppliers", path: "/viewsuppliers" }
+        { title: "View Shops", path: "/viewshops" },
+        { title: "Add Shop", path: "/addshop" }
       ]
     },
     {
-      title: "Fabric",
-      icon: <FaTshirt />,
-      path: "/addfabric",
+      title: "Orders",
+      icon: <FaShoppingCart />,
+      path: "/order-list",
       subItems: [
-        { title: "Add Fabric", path: "/addfabric" },
-        { title: "View Fabrics", path: "/viewfabric" }
+        { title: "View Orders", path: "/order-list" },
+        { title: "Create Order", path: "/createorder" }
       ]
-    },
-    {
-      title: "Cutting",
-      icon: <FaCut />,
-      path: "/addcutting",
-      subItems: [
-        { title: "Add Cutting", path: "/addcutting" },
-        { title: "View Cutting", path: "/viewcutting" }
-      ]
-    },
-    {
-      title: "Sewing",
-      icon: <FaCalendarCheck />,
-      path: "/adddailysewing",
-      subItems: [
-        { title: "Add Daily Sewing", path: "/adddailysewing" },
-        { title: "Sewing History", path: "/daily-sewing-history" }
-      ]
-    },
-    {
-      title: "Packing",
-      icon: <FaBoxes />,
-      path: "/add-packing-session"
-    },
-    {
-      title: "Damaged Items",
-      icon: <FaExclamationTriangle />,
-      path: "/damaged-clothes"
     },
     {
       title: "Reports",
       icon: <FaChartLine />,
-      path: "/addshop"
+      path: "/sales-report"
     }
   ];
 
@@ -179,8 +151,6 @@ function InventoryManagerNavBar() {
             <span className="fw-bold fs-5 text-primary">Pri Fashion</span>
           )}
         </div>
-
-
 
         {/* Navigation items */}
         <div className="nav-container flex-grow-1" style={{ overflowY: "hidden" }}>
@@ -343,4 +313,4 @@ function InventoryManagerNavBar() {
   );
 }
 
-export default InventoryManagerNavBar;
+export default SalesTeamNavBar;

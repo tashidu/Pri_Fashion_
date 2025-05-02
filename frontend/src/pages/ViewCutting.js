@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import OwnerNavBar from "../components/OwnerNavBar";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 
 const ViewCutting = () => {
   const [cuttingRecords, setCuttingRecords] = useState([]);
@@ -55,7 +55,7 @@ const ViewCutting = () => {
 
   return (
     <>
-      <OwnerNavBar />
+      <RoleBasedNavBar />
       <div className="container main-content mt-4">
         <h2>Cutting Records</h2>
         {error && <p style={{ color: "red" }}>{error}</p>}

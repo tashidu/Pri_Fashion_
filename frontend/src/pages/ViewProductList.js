@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import OwnerNavBar from "../components/OwnerNavBar";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { Link } from "react-router-dom";
 
 const ViewProductList = () => {
@@ -26,7 +26,7 @@ const ViewProductList = () => {
 
   return (
     <>
-      <OwnerNavBar />
+      <RoleBasedNavBar />
       <div className="main-content">
         <h2>Product List</h2>
         {error && <p style={{ color: "red" }}>{error}</p>}

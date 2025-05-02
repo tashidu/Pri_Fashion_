@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import OwnerNavBar from '../components/OwnerNavBar';
+import RoleBasedNavBar from '../components/RoleBasedNavBar';
 import { useNavigate } from 'react-router-dom';
 
 const ViewFabrics = () => {
@@ -28,7 +28,7 @@ const ViewFabrics = () => {
 
   return (
     <>
-      <OwnerNavBar />
+      <RoleBasedNavBar />
       {/* Added 'main-content' to ensure proper left margin is applied */}
       <div className="container main-content mt-4">
         <h2 className="text-center mb-4">Fabric List</h2>
@@ -61,7 +61,7 @@ const ViewFabrics = () => {
                   <td>{fabric.date_added}</td>
                   <td>{fabric.variant_count}</td>
                   <td>
-                    <button 
+                    <button
                       className="btn btn-info btn-sm"
                       onClick={() => handleViewVariants(fabric.id)}
                     >

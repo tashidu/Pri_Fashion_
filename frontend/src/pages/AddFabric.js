@@ -4,7 +4,7 @@ import Select from "react-select";
 import { FaPlus, FaTrash } from "react-icons/fa";
 import { Container, Row, Col, Form, Button, Card, Alert } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 
 const AddFabric = () => {
   // State variables
@@ -102,7 +102,7 @@ const AddFabric = () => {
 
   return (
     <>
-    <InventoryManagerNavBar/>
+    <RoleBasedNavBar/>
     <div className="main-content">
     <Container className="add-fabric-container" style={{ padding: '2rem 0', backgroundColor: '#f4f6f9' }}>
       <Row className="justify-content-center">

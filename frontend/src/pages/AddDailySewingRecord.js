@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import Select from "react-select";
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from "react-bootstrap";
 
@@ -279,7 +279,7 @@ const AddDailySewingRecord = () => {
 
   return (
     <>
-      <InventoryManagerNavBar />
+      <RoleBasedNavBar />
       <Container className="main-content py-4">
         <Row className="justify-content-center">
           <Col md={10} lg={8}>
