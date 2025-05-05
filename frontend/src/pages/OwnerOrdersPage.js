@@ -3,8 +3,9 @@ import axios from "axios";
 import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaPrint, FaTruck, FaDownload, FaFileAlt } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import "bootstrap/dist/css/bootstrap.min.css";
-import jsPDF from "jspdf";
-import 'jspdf-autotable';
+// Import jsPDF and jspdf-autotable
+import { jsPDF } from "jspdf";
+import { autoTable } from 'jspdf-autotable';
 
 const OwnerOrdersPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
@@ -363,58 +364,61 @@ const OwnerOrdersPage = () => {
 
     if (!order || !order.items) {
       setError("Cannot generate invoice: Order data is missing.");
-      return null;
+      return;
     }
 
     if (!order.items.length) {
       setError("Cannot generate invoice: No order items found.");
-      return null;
+      return;
     }
 
     if (!order.invoice_number) {
       setError("Cannot generate invoice: Invoice number is missing.");
-      return null;
+      return;
     }
 
     try {
-      // Initialize jsPDF with default a4 paper size
-      const pdf = new jsPDF({
+      // Create a new jsPDF instance
+      const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
 
       // Add company header
-      pdf.setFontSize(20);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Pri Fashion', 20, 20);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Pri Fashion', 20, 20);
 
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('Quality Clothes for Everyone', 20, 28);
-      pdf.text('Sri Lanka', 20, 34);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Quality Clothes for Everyone', 20, 28);
+      doc.text('Sri Lanka', 20, 34);
 
       // Add invoice details
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(`INVOICE #${order.invoice_number}`, 120, 20);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`INVOICE #${order.invoice_number}`, 120, 20);
 
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Date: ${new Date().toLocaleDateString()}`, 120, 28);
-      pdf.text(`Order ID: ${order.id}`, 120, 34);
-      pdf.text(`Status: ${order.status.toUpperCase()}`, 120, 40);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 120, 28);
+      doc.text(`Order ID: ${order.id}`, 120, 34);
+      doc.text(`Status: ${order.status.toUpperCase()}`, 120, 40);
 
       // Add customer info
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Bill To:', 20, 50);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Bill To:', 20, 50);
 
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`${order.shop_name || order.shop || 'Customer'}`, 20, 58);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${order.shop_name || order.shop || 'Customer'}`, 20, 58);
 
-      // Prepare table data safely
-      const tableBody = order.items.map(item => {
+      // Prepare table data
+      const tableBody = [];
+
+      // Add each order item to the table
+      order.items.forEach(item => {
         const productName = item.finished_product_name || `Product #${item.finished_product || 'Unknown'}`;
         const qty6Packs = item.quantity_6_packs || 0;
         const qty12Packs = item.quantity_12_packs || 0;
@@ -426,25 +430,25 @@ const OwnerOrdersPage = () => {
         let subtotal = 0;
 
         if (item.subtotal && item.total_units && item.total_units > 0) {
-          unitPrice = item.subtotal / item.total_units;
-          subtotal = item.subtotal;
+          unitPrice = parseFloat(item.subtotal) / parseFloat(item.total_units);
+          subtotal = parseFloat(item.subtotal);
         } else if (item.subtotal) {
-          subtotal = item.subtotal;
+          subtotal = parseFloat(item.subtotal);
         }
 
-        return [
+        tableBody.push([
           productName,
           qty6Packs,
           qty12Packs,
           qtyExtra,
           totalUnits,
-          `LKR ${parseFloat(unitPrice).toFixed(2)}`,
-          `LKR ${parseFloat(subtotal).toFixed(2)}`
-        ];
+          `LKR ${unitPrice.toFixed(2)}`,
+          `LKR ${subtotal.toFixed(2)}`
+        ]);
       });
 
-      // Add order items table
-      pdf.autoTable({
+      // Add the table to the PDF
+      autoTable(doc, {
         startY: 70,
         head: [['Product', '6 Packs', '12 Packs', 'Extra Items', 'Total Units', 'Unit Price', 'Subtotal']],
         body: tableBody,
@@ -453,72 +457,58 @@ const OwnerOrdersPage = () => {
         headStyles: { fillColor: [41, 128, 185], textColor: 255 },
       });
 
-      // Add total - safely handle the case where finalY might not be available
-      let finalY = 200; // Default position if autoTable doesn't set it
+      // Get the final Y position after the table
+      let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 200;
 
-      if (pdf.previousAutoTable && pdf.previousAutoTable.finalY) {
-        finalY = pdf.previousAutoTable.finalY + 10;
-      }
+      // Calculate total amount
+      const totalAmount = parseFloat(order.total_amount || 0);
 
-      // Calculate total amount safely
-      const totalAmount = order.total_amount ||
-                         order.items.reduce((sum, item) => sum + (item.subtotal || 0), 0) ||
-                         0;
-
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(`Total Amount: LKR ${parseFloat(totalAmount).toFixed(2)}`, 120, finalY);
+      // Add total amount
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Total Amount: LKR ${totalAmount.toFixed(2)}`, 120, finalY);
 
       // Add payment information if available
-      if (order.amount_paid > 0) {
+      if (parseFloat(order.amount_paid || 0) > 0) {
         finalY += 6;
-        pdf.text(`Amount Paid: LKR ${parseFloat(order.amount_paid).toFixed(2)}`, 120, finalY);
+        doc.text(`Amount Paid: LKR ${parseFloat(order.amount_paid || 0).toFixed(2)}`, 120, finalY);
 
-        if (order.balance_due > 0) {
+        if (parseFloat(order.balance_due || 0) > 0) {
           finalY += 6;
-          pdf.text(`Balance Due: LKR ${parseFloat(order.balance_due).toFixed(2)}`, 120, finalY);
+          doc.text(`Balance Due: LKR ${parseFloat(order.balance_due || 0).toFixed(2)}`, 120, finalY);
         }
       }
 
       // Add payment terms if it's a credit payment
       if (order.payment_method === 'credit' && order.credit_term_months > 0) {
         finalY += 8;
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'italic');
-        pdf.text(`Payment Terms: ${order.credit_term_months} months credit`, 120, finalY);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'italic');
+        doc.text(`Payment Terms: ${order.credit_term_months} months credit`, 120, finalY);
 
         if (order.payment_due_date) {
           finalY += 5;
-          pdf.text(`Payment Due Date: ${new Date(order.payment_due_date).toLocaleDateString()}`, 120, finalY);
+          doc.text(`Payment Due Date: ${new Date(order.payment_due_date).toLocaleDateString()}`, 120, finalY);
         }
       }
 
       // Add footer
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('Thank you for your business!', 20, finalY + 20);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Thank you for your business!', 20, finalY + 20);
 
       // Add company contact information
       finalY += 30;
-      pdf.setFontSize(8);
-      pdf.text('Pri Fashion | Sri Lanka | Quality Clothes for Everyone', 20, finalY);
+      doc.setFontSize(8);
+      doc.text('Pri Fashion | Sri Lanka | Quality Clothes for Everyone', 20, finalY);
 
       // Save the PDF if autosave is true
       if (autosave) {
-        pdf.save(`Invoice-${order.invoice_number}.pdf`);
-
-        setSuccessMessage("Invoice printed successfully!");
-        setTimeout(() => {
-          setSuccessMessage("");
-        }, 3000);
+        doc.save(`Invoice-${order.invoice_number}.pdf`);
       }
-
-      // Return the PDF document for further processing
-      return pdf;
     } catch (error) {
       console.error("Error generating PDF:", error);
       setError(`Failed to generate PDF invoice: ${error.message || "Unknown error"}`);
-      return null;
     }
   };
 
@@ -736,7 +726,16 @@ const OwnerOrdersPage = () => {
                               {order.status === "invoiced" && (
                                 <>
                                   <button
-                                    onClick={() => printInvoice(order)}
+                                    onClick={() => {
+                                      try {
+                                        printInvoice(order, true);
+                                        setSuccessMessage("Invoice printed successfully!");
+                                        setTimeout(() => setSuccessMessage(""), 3000);
+                                      } catch (error) {
+                                        console.error("Print error:", error);
+                                        setError(`Failed to print invoice: ${error.message || "Unknown error"}`);
+                                      }
+                                    }}
                                     className="btn btn-sm btn-info d-flex align-items-center"
                                     title="Print Invoice"
                                   >
@@ -999,7 +998,16 @@ const OwnerOrdersPage = () => {
 
                       {selectedOrder.invoice_number && (
                         <button
-                          onClick={() => printInvoice(selectedOrder)}
+                          onClick={() => {
+                            try {
+                              printInvoice(selectedOrder, true);
+                              setSuccessMessage("Invoice printed successfully!");
+                              setTimeout(() => setSuccessMessage(""), 3000);
+                            } catch (error) {
+                              console.error("Print error:", error);
+                              setError(`Failed to print invoice: ${error.message || "Unknown error"}`);
+                            }
+                          }}
                           className="btn btn-info text-white"
                         >
                           <FaPrint className="me-2" /> Print Invoice
@@ -1032,11 +1040,13 @@ const OwnerOrdersPage = () => {
                       {selectedOrder.invoice_number && (
                         <button
                           onClick={() => {
-                            const pdfDoc = printInvoice(selectedOrder, false);
-                            if (pdfDoc) {
-                              pdfDoc.save(`Invoice-${selectedOrder.invoice_number}.pdf`);
+                            try {
+                              printInvoice(selectedOrder, true);
                               setSuccessMessage("Invoice downloaded successfully!");
                               setTimeout(() => setSuccessMessage(""), 3000);
+                            } catch (error) {
+                              console.error("Download error:", error);
+                              setError(`Failed to download invoice: ${error.message || "Unknown error"}`);
                             }
                           }}
                           className="btn btn-secondary"
