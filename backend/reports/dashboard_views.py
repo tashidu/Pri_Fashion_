@@ -1,9 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.db.models import Count, Sum, F, Q
+from django.db.models import Count, Sum, F, Q, Value
+from django.db.models.functions import Coalesce
 from fabric.models import FabricDefinition, FabricVariant, Supplier
-from cutting.models import CuttingRecord
+from cutting.models import CuttingRecord, CuttingRecordFabric
 from sewing.models import DailySewingRecord
 from packing_app.models import PackingSession
 from datetime import datetime, timedelta
@@ -191,6 +192,70 @@ class ProductionTrendsView(APIView):
                 })
 
             return Response(months, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ColorAnalysisView(APIView):
+    """
+    API endpoint that returns analysis of most used fabric colors.
+    """
+    def get(self, request, format=None):
+        try:
+            # Get the most used fabric colors in cutting records
+            # We need to join CuttingRecordFabric with FabricVariant to get color information
+            color_analysis = CuttingRecordFabric.objects.values(
+                'fabric_variant__color',
+                'fabric_variant__color_name'
+            ).annotate(
+                count=Count('id'),
+                total_yard_usage=Sum('yard_usage')
+            ).order_by('-count')[:5]
+
+            # Format the response
+            result = []
+            for item in color_analysis:
+                result.append({
+                    'colorCode': item['fabric_variant__color'],
+                    'colorName': item['fabric_variant__color_name'] or 'Unknown',
+                    'count': item['count'],
+                    'yardUsage': float(item['total_yard_usage'])
+                })
+
+            return Response(result, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class FabricStockView(APIView):
+    """
+    API endpoint that returns remaining fabric stock with yard amounts and costs.
+    """
+    def get(self, request, format=None):
+        try:
+            # Get fabrics with available yards and price information
+            fabrics = FabricVariant.objects.filter(
+                available_yard__gt=0
+            ).select_related('fabric_definition').order_by('-available_yard')[:5]
+
+            # Format the response
+            result = []
+            for fabric in fabrics:
+                result.append({
+                    'id': fabric.id,
+                    'name': f"{fabric.fabric_definition.fabric_name} - {fabric.color_name}",
+                    'colorCode': fabric.color,
+                    'availableYards': float(fabric.available_yard),
+                    'pricePerYard': float(fabric.price_per_yard)
+                })
+
+            return Response(result, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({

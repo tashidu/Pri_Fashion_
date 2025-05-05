@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
-import { Container, Row, Col, Card, Button, Badge, Tooltip, OverlayTrigger, Modal, Table, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Tooltip, OverlayTrigger, Modal, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DashboardCard from "../components/DashboardCard";
@@ -8,26 +8,14 @@ import {
   FaTshirt,
   FaCut,
   FaBoxes,
-  FaExclamationTriangle,
   FaCalendarCheck,
   FaBuilding,
   FaInfoCircle,
   FaSearch,
   FaHistory,
-  FaArrowDown,
-  FaKeyboard,
-  FaBell
+  FaKeyboard
 } from 'react-icons/fa';
-import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
-  ResponsiveContainer,
-  Area,
-  AreaChart
-} from 'recharts';
+// No chart imports needed
 
 function InventoryDashboard() {
     const navigate = useNavigate();
@@ -43,15 +31,8 @@ function InventoryDashboard() {
     });
     const [loading, setLoading] = useState(true);
     const [recentActivity, setRecentActivity] = useState([]);
-    const [lowStockItems, setLowStockItems] = useState([]);
-    const [chartData, setChartData] = useState([
-        { name: 'Jan', fabricUsage: 650, cuttingRecords: 120 },
-        { name: 'Feb', fabricUsage: 590, cuttingRecords: 115 },
-        { name: 'Mar', fabricUsage: 800, cuttingRecords: 130 },
-        { name: 'Apr', fabricUsage: 810, cuttingRecords: 125 },
-        { name: 'May', fabricUsage: 760, cuttingRecords: 140 },
-        { name: 'Jun', fabricUsage: 850, cuttingRecords: 135 }
-    ]);
+    const [remainingFabrics, setRemainingFabrics] = useState([]);
+    const [topFabricColors, setTopFabricColors] = useState([]);
     const dashboardRef = useRef(null);
 
     // Add resize event listener to update sidebar state
@@ -110,27 +91,91 @@ function InventoryDashboard() {
                     ]);
                 }
 
-                // Fetch low stock items
+                // Fetch remaining fabric stock
                 try {
-                    const lowStockResponse = await axios.get('http://localhost:8000/api/reports/dashboard/low-stock/');
-                    setLowStockItems(lowStockResponse.data);
+                    const fabricStockResponse = await axios.get('http://localhost:8000/api/reports/dashboard/fabric-stock/');
+                    setRemainingFabrics(fabricStockResponse.data);
                 } catch (error) {
-                    console.error('Error fetching low stock items:', error);
+                    console.error('Error fetching fabric stock:', error);
                     // Fallback to sample data if API fails
-                    setLowStockItems([
-                        { id: 1, name: 'Black Cotton', type: 'fabric', current: 12, threshold: 20 },
-                        { id: 2, name: 'Blue Denim', type: 'fabric', current: 8, threshold: 15 },
-                        { id: 3, name: 'Red Polyester', type: 'fabric', current: 5, threshold: 10 }
+                    setRemainingFabrics([
+                        {
+                            id: 1,
+                            name: 'Black Cotton',
+                            colorCode: '#000000',
+                            availableYards: 45.5,
+                            pricePerYard: 8.99
+                        },
+                        {
+                            id: 2,
+                            name: 'Blue Denim',
+                            colorCode: '#0000FF',
+                            availableYards: 32.25,
+                            pricePerYard: 12.50
+                        },
+                        {
+                            id: 3,
+                            name: 'Red Polyester',
+                            colorCode: '#FF0000',
+                            availableYards: 28.75,
+                            pricePerYard: 7.25
+                        },
+                        {
+                            id: 4,
+                            name: 'White Cotton',
+                            colorCode: '#FFFFFF',
+                            availableYards: 50.0,
+                            pricePerYard: 6.99
+                        },
+                        {
+                            id: 5,
+                            name: 'Gray Wool',
+                            colorCode: '#808080',
+                            availableYards: 15.5,
+                            pricePerYard: 14.75
+                        }
                     ]);
                 }
 
-                // Fetch production trends for chart
+                // Fetch top fabric colors for analysis
                 try {
-                    const trendsResponse = await axios.get('http://localhost:8000/api/reports/dashboard/production-trends/');
-                    setChartData(trendsResponse.data);
+                    const colorAnalysisResponse = await axios.get('http://localhost:8000/api/reports/dashboard/color-analysis/');
+                    setTopFabricColors(colorAnalysisResponse.data);
                 } catch (error) {
-                    console.error('Error fetching production trends:', error);
-                    // Chart data remains as the default sample data
+                    console.error('Error fetching color analysis:', error);
+                    // Fallback to sample data if API fails
+                    setTopFabricColors([
+                        {
+                            colorCode: '#000000',
+                            colorName: 'Black',
+                            count: 24,
+                            yardUsage: 120.5
+                        },
+                        {
+                            colorCode: '#0000FF',
+                            colorName: 'Blue',
+                            count: 18,
+                            yardUsage: 90.25
+                        },
+                        {
+                            colorCode: '#FF0000',
+                            colorName: 'Red',
+                            count: 15,
+                            yardUsage: 75.0
+                        },
+                        {
+                            colorCode: '#FFFFFF',
+                            colorName: 'White',
+                            count: 12,
+                            yardUsage: 60.75
+                        },
+                        {
+                            colorCode: '#808080',
+                            colorName: 'Gray',
+                            count: 9,
+                            yardUsage: 45.5
+                        }
+                    ]);
                 }
 
                 setLoading(false);
@@ -152,43 +197,62 @@ function InventoryDashboard() {
             return;
         }
 
-        switch (e.key) {
-            case 'f':
-                if (e.ctrlKey) {
+        // View shortcuts
+        if (e.ctrlKey) {
+            switch (e.key) {
+                case 'f':
                     e.preventDefault();
                     navigate('/viewfabric');
-                }
-                break;
-            case 'c':
-                if (e.ctrlKey) {
+                    break;
+                case 'c':
                     e.preventDefault();
                     navigate('/viewcutting');
-                }
-                break;
-            case 's':
-                if (e.ctrlKey) {
+                    break;
+                case 's':
                     e.preventDefault();
                     navigate('/daily-sewing-history');
-                }
-                break;
-            case 'p':
-                if (e.ctrlKey) {
-                    e.preventDefault();
-                    navigate('/add-packing-session');
-                }
-                break;
-            case 'u':
-                if (e.ctrlKey) {
+                    break;
+                case 'u':
                     e.preventDefault();
                     navigate('/viewsuppliers');
-                }
-                break;
-            case '?':
-                e.preventDefault();
-                setShowShortcutModal(true);
-                break;
-            default:
-                break;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        // Add shortcuts (Alt key combinations)
+        if (e.altKey) {
+            switch (e.key) {
+                case 's':
+                    e.preventDefault();
+                    navigate('/addsupplier');
+                    break;
+                case 'f':
+                    e.preventDefault();
+                    navigate('/addfabric');
+                    break;
+                case 'c':
+                    e.preventDefault();
+                    navigate('/addcutting');
+                    break;
+                case 'd':
+                    e.preventDefault();
+                    navigate('/adddailysewing');
+                    break;
+                case 'p':
+                    e.preventDefault();
+                    navigate('/add-packing-session');
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        // Help shortcut
+        if (e.key === '?') {
+            e.preventDefault();
+            setShowShortcutModal(true);
         }
     }, [navigate]);
 
@@ -289,34 +353,6 @@ function InventoryDashboard() {
                     </Col>
                 </Row>
 
-                {/* Welcome Card - Only shown on first visit */}
-                <Row className="mb-4">
-                    <Col>
-                        <Card className="shadow-sm border-0" style={{ backgroundColor: "#f8f9fa" }}>
-                            <Card.Body>
-                                <div className="d-flex align-items-center">
-                                    <div className="me-4 p-3 rounded-circle" style={{ backgroundColor: "#D9EDFB" }}>
-                                        <FaInfoCircle size={24} className="text-primary" />
-                                    </div>
-                                    <div>
-                                        <h5 className="mb-1">Quick Tips</h5>
-                                        <p className="mb-0">
-                                            Press <kbd>?</kbd> anytime to see keyboard shortcuts. Use the quick action buttons below for common tasks.
-                                        </p>
-                                    </div>
-                                    <Button
-                                        variant="link"
-                                        className="ms-auto"
-                                        onClick={() => document.getElementById('quick-actions').scrollIntoView({ behavior: 'smooth' })}
-                                    >
-                                        Get Started
-                                    </Button>
-                                </div>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                </Row>
-
                 {/* Stats Cards */}
                 <Row>
                     <Col md={4} lg={2} sm={6} className="mb-4">
@@ -366,10 +402,10 @@ function InventoryDashboard() {
 
                     <Col md={4} lg={2} sm={6} className="mb-4">
                         <DashboardCard
-                            title="Low Stock"
-                            value={loading ? "..." : stats.lowStockCount}
-                            icon={<FaExclamationTriangle />}
-                            linkTo="#low-stock"
+                            title="Fabric Value"
+                            value={loading ? "..." : `Rs. ${remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toFixed(2)}`}
+                            icon={<FaTshirt />}
+                            linkTo="#fabric-stock"
                             color="#FFECB3"
                         />
                     </Col>
@@ -383,61 +419,111 @@ function InventoryDashboard() {
                                 <h5 className="mb-0">Quick Actions</h5>
                             </Card.Header>
                             <Card.Body>
-                                <div className="d-flex flex-wrap gap-2">
-                                    <OverlayTrigger
-                                        placement="top"
-                                        delay={{ show: 250, hide: 400 }}
-                                        overlay={(props) => renderTooltip(props, 'Ctrl+F', 'View Fabrics')}
-                                    >
-                                        <Button variant="outline-primary" onClick={() => navigate('/viewfabric')}>
-                                            <FaTshirt className="me-2" />
-                                            View Fabrics
-                                        </Button>
-                                    </OverlayTrigger>
+                                <div>
+                                    <h6 className="mb-3">View Pages</h6>
+                                    <div className="d-flex flex-wrap gap-2 mb-4">
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Ctrl+F', 'View Fabrics')}
+                                        >
+                                            <Button variant="outline-primary" onClick={() => navigate('/viewfabric')}>
+                                                <FaTshirt className="me-2" />
+                                                View Fabrics
+                                            </Button>
+                                        </OverlayTrigger>
 
-                                    <OverlayTrigger
-                                        placement="top"
-                                        delay={{ show: 250, hide: 400 }}
-                                        overlay={(props) => renderTooltip(props, 'Ctrl+C', 'View Cutting')}
-                                    >
-                                        <Button variant="outline-success" onClick={() => navigate('/viewcutting')}>
-                                            <FaCut className="me-2" />
-                                            View Cutting
-                                        </Button>
-                                    </OverlayTrigger>
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Ctrl+C', 'View Cutting')}
+                                        >
+                                            <Button variant="outline-primary" onClick={() => navigate('/viewcutting')}>
+                                                <FaCut className="me-2" />
+                                                View Cutting
+                                            </Button>
+                                        </OverlayTrigger>
 
-                                    <OverlayTrigger
-                                        placement="top"
-                                        delay={{ show: 250, hide: 400 }}
-                                        overlay={(props) => renderTooltip(props, 'Ctrl+S', 'Sewing History')}
-                                    >
-                                        <Button variant="outline-info" onClick={() => navigate('/daily-sewing-history')}>
-                                            <FaCalendarCheck className="me-2" />
-                                            Sewing History
-                                        </Button>
-                                    </OverlayTrigger>
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Ctrl+S', 'Sewing History')}
+                                        >
+                                            <Button variant="outline-primary" onClick={() => navigate('/daily-sewing-history')}>
+                                                <FaCalendarCheck className="me-2" />
+                                                Sewing History
+                                            </Button>
+                                        </OverlayTrigger>
 
-                                    <OverlayTrigger
-                                        placement="top"
-                                        delay={{ show: 250, hide: 400 }}
-                                        overlay={(props) => renderTooltip(props, 'Ctrl+P', 'Add Packing')}
-                                    >
-                                        <Button variant="outline-warning" onClick={() => navigate('/add-packing-session')}>
-                                            <FaBoxes className="me-2" />
-                                            Add Packing
-                                        </Button>
-                                    </OverlayTrigger>
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Ctrl+U', 'View Suppliers')}
+                                        >
+                                            <Button variant="outline-primary" onClick={() => navigate('/viewsuppliers')}>
+                                                <FaBuilding className="me-2" />
+                                                View Suppliers
+                                            </Button>
+                                        </OverlayTrigger>
+                                    </div>
 
-                                    <OverlayTrigger
-                                        placement="top"
-                                        delay={{ show: 250, hide: 400 }}
-                                        overlay={(props) => renderTooltip(props, 'Ctrl+U', 'View Suppliers')}
-                                    >
-                                        <Button variant="outline-secondary" onClick={() => navigate('/viewsuppliers')}>
-                                            <FaBuilding className="me-2" />
-                                            View Suppliers
-                                        </Button>
-                                    </OverlayTrigger>
+                                    <h6 className="mb-3">Add New Items</h6>
+                                    <div className="d-flex flex-wrap gap-2">
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Alt+S', 'Add Supplier')}
+                                        >
+                                            <Button variant="outline-success" onClick={() => navigate('/addsupplier')}>
+                                                <FaBuilding className="me-2" />
+                                                Add Supplier
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Alt+F', 'Add Fabric')}
+                                        >
+                                            <Button variant="outline-success" onClick={() => navigate('/addfabric')}>
+                                                <FaTshirt className="me-2" />
+                                                Add Fabric
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Alt+C', 'Add Cutting')}
+                                        >
+                                            <Button variant="outline-success" onClick={() => navigate('/addcutting')}>
+                                                <FaCut className="me-2" />
+                                                Add Cutting
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Alt+D', 'Add Daily Sewing')}
+                                        >
+                                            <Button variant="outline-success" onClick={() => navigate('/adddailysewing')}>
+                                                <FaCalendarCheck className="me-2" />
+                                                Add Daily Sewing
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Alt+P', 'Add Packing Session')}
+                                        >
+                                            <Button variant="outline-success" onClick={() => navigate('/add-packing-session')}>
+                                                <FaBoxes className="me-2" />
+                                                Add Packing
+                                            </Button>
+                                        </OverlayTrigger>
+                                    </div>
                                 </div>
                             </Card.Body>
                         </Card>
@@ -446,55 +532,9 @@ function InventoryDashboard() {
 
                 {/* Main Content */}
                 <Row>
-                    {/* Chart Section */}
-                    <Col lg={8} className="mb-4">
-                        <Card className="shadow-sm h-100">
-                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
-                                <h5 className="mb-0">Production Overview</h5>
-                                <Button variant="link" size="sm" onClick={() => navigate('/reports')}>
-                                    View Full Report
-                                </Button>
-                            </Card.Header>
-                            <Card.Body>
-                                <div style={{ width: '100%', height: '300px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart
-                                            data={chartData}
-                                            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis dataKey="name" />
-                                            <YAxis />
-                                            <RechartsTooltip />
-                                            <Legend />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="fabricUsage"
-                                                name="Fabric Usage (yards)"
-                                                stackId="1"
-                                                stroke="#8884d8"
-                                                fill="#8884d8"
-                                                fillOpacity={0.3}
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="cuttingRecords"
-                                                name="Cutting Records"
-                                                stackId="2"
-                                                stroke="#82ca9d"
-                                                fill="#82ca9d"
-                                                fillOpacity={0.3}
-                                            />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-
                     {/* Recent Activity */}
-                    <Col lg={4} className="mb-4">
-                        <Card className="shadow-sm h-100">
+                    <Col lg={12} className="mb-4">
+                        <Card className="shadow-sm">
                             <Card.Header className="bg-white d-flex justify-content-between align-items-center">
                                 <h5 className="mb-0">Recent Activity</h5>
                                 <Button variant="link" size="sm">
@@ -502,7 +542,7 @@ function InventoryDashboard() {
                                 </Button>
                             </Card.Header>
                             <Card.Body className="p-0">
-                                <div className="activity-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                <div className="activity-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                     {recentActivity.map((activity) => (
                                         <div
                                             key={activity.id}
@@ -531,58 +571,149 @@ function InventoryDashboard() {
                     </Col>
                 </Row>
 
-                {/* Low Stock Alert */}
-                <Row id="low-stock">
-                    <Col>
-                        <Card className="shadow-sm mb-4">
+                {/* Fabric Color Analysis */}
+                <Row className="mb-4">
+                    <Col lg={6}>
+                        <Card className="shadow-sm h-100">
                             <Card.Header className="bg-white d-flex justify-content-between align-items-center">
                                 <h5 className="mb-0">
-                                    <FaBell className="text-warning me-2" />
-                                    Low Stock Alerts
+                                    <FaTshirt className="text-primary me-2" />
+                                    Most Used Fabric Colors
                                 </h5>
-                                <Button variant="link" size="sm">
-                                    <FaArrowDown /> Export
+                                <Button variant="link" size="sm" onClick={() => navigate('/viewcutting')}>
+                                    View All Cutting
                                 </Button>
                             </Card.Header>
                             <Card.Body>
-                                {lowStockItems.length > 0 ? (
+                                <div className="color-analysis">
+                                    {loading ? (
+                                        <div className="text-center py-4">
+                                            <div className="spinner-border text-primary" role="status">
+                                                <span className="visually-hidden">Loading...</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <div className="d-flex mb-4">
+                                                {topFabricColors.map((color, index) => (
+                                                    <div key={index} className="text-center me-4">
+                                                        <div
+                                                            className="color-circle mb-2"
+                                                            style={{
+                                                                backgroundColor: color.colorCode,
+                                                                width: '50px',
+                                                                height: '50px',
+                                                                borderRadius: '50%',
+                                                                border: '2px solid #fff',
+                                                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                                                margin: '0 auto'
+                                                            }}
+                                                        ></div>
+                                                        <div className="small fw-bold">{color.colorName}</div>
+                                                        <div className="small text-muted">{color.count} cuts</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <Table hover size="sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Color</th>
+                                                        <th>Total Cuts</th>
+                                                        <th>Yard Usage</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {topFabricColors.map((color, index) => (
+                                                        <tr key={index}>
+                                                            <td>
+                                                                <div className="d-flex align-items-center">
+                                                                    <div
+                                                                        style={{
+                                                                            width: '20px',
+                                                                            height: '20px',
+                                                                            backgroundColor: color.colorCode,
+                                                                            borderRadius: '4px',
+                                                                            marginRight: '8px'
+                                                                        }}
+                                                                    ></div>
+                                                                    {color.colorName}
+                                                                </div>
+                                                            </td>
+                                                            <td>{color.count}</td>
+                                                            <td>{color.yardUsage} yards</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </Table>
+                                        </div>
+                                    )}
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+
+                    {/* Remaining Fabric Stock */}
+                    <Col lg={6} id="fabric-stock">
+                        <Card className="shadow-sm h-100">
+                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+                                <h5 className="mb-0">
+                                    <FaTshirt className="text-success me-2" />
+                                    Remaining Fabric Stock
+                                </h5>
+                                <Button variant="link" size="sm" onClick={() => navigate('/viewfabric')}>
+                                    View All Fabrics
+                                </Button>
+                            </Card.Header>
+                            <Card.Body>
+                                {loading ? (
+                                    <div className="text-center py-4">
+                                        <div className="spinner-border text-success" role="status">
+                                            <span className="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                ) : (
                                     <Table hover responsive>
                                         <thead>
                                             <tr>
-                                                <th>Item</th>
-                                                <th>Type</th>
-                                                <th>Current Stock</th>
-                                                <th>Threshold</th>
-                                                <th>Status</th>
-                                                <th>Action</th>
+                                                <th>Fabric</th>
+                                                <th>Available Yards</th>
+                                                <th>Cost</th>
+                                                <th>Total Value</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {lowStockItems.map((item) => (
-                                                <tr key={item.id}>
-                                                    <td>{item.name}</td>
-                                                    <td>{item.type}</td>
-                                                    <td>{item.current}</td>
-                                                    <td>{item.threshold}</td>
+                                            {remainingFabrics.map((fabric) => (
+                                                <tr key={fabric.id}>
                                                     <td>
-                                                        <Badge bg={item.current < item.threshold * 0.5 ? "danger" : "warning"}>
-                                                            {item.current < item.threshold * 0.5 ? "Critical" : "Low"}
-                                                        </Badge>
+                                                        <div className="d-flex align-items-center">
+                                                            <div
+                                                                style={{
+                                                                    width: '20px',
+                                                                    height: '20px',
+                                                                    backgroundColor: fabric.colorCode,
+                                                                    borderRadius: '4px',
+                                                                    marginRight: '8px'
+                                                                }}
+                                                            ></div>
+                                                            {fabric.name}
+                                                        </div>
                                                     </td>
-                                                    <td>
-                                                        <Button variant="outline-primary" size="sm">
-                                                            Restock
-                                                        </Button>
-                                                    </td>
+                                                    <td>{fabric.availableYards} yards</td>
+                                                    <td>Rs. {fabric.pricePerYard.toFixed(2)}/yard</td>
+                                                    <td>Rs. {(fabric.availableYards * fabric.pricePerYard).toFixed(2)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
+                                        <tfoot className="table-group-divider">
+                                            <tr className="fw-bold">
+                                                <td>Total</td>
+                                                <td>{remainingFabrics.reduce((sum, fabric) => sum + fabric.availableYards, 0).toFixed(2)} yards</td>
+                                                <td></td>
+                                                <td>Rs. {remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toFixed(2)}</td>
+                                            </tr>
+                                        </tfoot>
                                     </Table>
-                                ) : (
-                                    <Alert variant="success">
-                                        <FaInfoCircle className="me-2" />
-                                        All inventory items are above their minimum threshold levels.
-                                    </Alert>
                                 )}
                             </Card.Body>
                         </Card>
@@ -604,25 +735,52 @@ function InventoryDashboard() {
                             </tr>
                         </thead>
                         <tbody>
+                            <tr className="table-primary">
+                                <td colSpan="2" className="fw-bold">View Pages (Ctrl + Key)</td>
+                            </tr>
                             <tr>
                                 <td><kbd>Ctrl</kbd> + <kbd>F</kbd></td>
-                                <td>Go to View Fabrics</td>
+                                <td>View Fabrics</td>
                             </tr>
                             <tr>
                                 <td><kbd>Ctrl</kbd> + <kbd>C</kbd></td>
-                                <td>Go to View Cutting</td>
+                                <td>View Cutting</td>
                             </tr>
                             <tr>
                                 <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
-                                <td>Go to Sewing History</td>
-                            </tr>
-                            <tr>
-                                <td><kbd>Ctrl</kbd> + <kbd>P</kbd></td>
-                                <td>Go to Add Packing Session</td>
+                                <td>Sewing History</td>
                             </tr>
                             <tr>
                                 <td><kbd>Ctrl</kbd> + <kbd>U</kbd></td>
-                                <td>Go to View Suppliers</td>
+                                <td>View Suppliers</td>
+                            </tr>
+
+                            <tr className="table-success">
+                                <td colSpan="2" className="fw-bold">Add Pages (Alt + Key)</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Alt</kbd> + <kbd>S</kbd></td>
+                                <td>Add Supplier</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Alt</kbd> + <kbd>F</kbd></td>
+                                <td>Add Fabric</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Alt</kbd> + <kbd>C</kbd></td>
+                                <td>Add Cutting</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Alt</kbd> + <kbd>D</kbd></td>
+                                <td>Add Daily Sewing</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Alt</kbd> + <kbd>P</kbd></td>
+                                <td>Add Packing Session</td>
+                            </tr>
+
+                            <tr className="table-info">
+                                <td colSpan="2" className="fw-bold">Other Shortcuts</td>
                             </tr>
                             <tr>
                                 <td><kbd>?</kbd></td>
