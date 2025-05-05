@@ -62,6 +62,14 @@ function PriFashionNavBar() {
             </Link>
           </li>
           <li className="nav-item mb-2">
+            <Link className="nav-link d-flex align-items-center text-dark" to="/viewsuppliers">
+              <div className="me-2 text-center" style={{ width: "24px" }}>
+                <i className="bi bi-building"></i>
+              </div>
+              {isSidebarOpen && <span>Suppliers</span>}
+            </Link>
+          </li>
+          <li className="nav-item mb-2">
             <Link className="nav-link d-flex align-items-center text-dark" to="/viewfabric">
               <div className="me-2 text-center" style={{ width: "24px" }}>
                 <i className="bi bi-card-text"></i>

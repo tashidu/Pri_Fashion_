@@ -6,6 +6,7 @@ import InventoryDashboard from "./pages/InventoryDashboard";
 import OrdersDashboard from "./pages/OrdersDashboard";
 import SalesDashboard from "./pages/SalesDashboard";
 import AddSupplier from "./pages/AddSupplier";
+import ViewSuppliers from "./pages/ViewSuppliers";
 import AddFabric from "./pages/AddFabric";
 
 import EditFabric from "./pages/EditFabric";
@@ -37,6 +38,7 @@ function App() {
         <Route path="/orders-dashboard" element={<OrdersDashboard />} />
         <Route path="/sales-dashboard" element={<SalesDashboard />} />
         <Route path="/addsupplier" element={<AddSupplier />} />
+        <Route path="/viewsuppliers" element={<ViewSuppliers />} />
         <Route path="/addfabric" element={<AddFabric />} />
 
         <Route path="/edit-fabric/:id" component={EditFabric} />
