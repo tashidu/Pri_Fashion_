@@ -54,3 +54,63 @@
     margin-left: 60px; /* same as your minimized sidebar width */
   }
 }
+
+/* Sidebar transition effects */
+.sidebar {
+  transition: all 0.3s ease;
+}
+
+/* Card styling with the preferred color */
+.custom-card {
+  background-color: #D9EDFB;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: none;
+}
+
+.custom-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Activity list styling */
+.activity-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.activity-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.activity-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.activity-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.activity-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Dashboard specific styles */
+.dashboard-welcome-card {
+  background: linear-gradient(135deg, #D9EDFB 0%, #f0f7ff 100%);
+  border: none;
+}
+
+/* Mobile responsiveness improvements */
+@media (max-width: 767px) {
+  .main-content {
+    padding: 1rem;
+    padding-top: 70px; /* Space for the top navbar on mobile */
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.5rem;
+  }
+}
