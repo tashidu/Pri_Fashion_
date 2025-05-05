@@ -68,9 +68,9 @@ const ViewFabricVariants = () => {
                       <span>{variant.color}</span>
                     </div>
                   </td>
-                  <td>{variant.total_yard}</td>
-                  <td>{variant.price_per_yard}</td>
-                  <td>{(variant.total_yard * variant.price_per_yard).toFixed(2)}</td>
+                  <td>{variant.total_yard} yards</td>
+                  <td>Rs. {variant.price_per_yard}/yard</td>
+                  <td>Rs. {(variant.total_yard * variant.price_per_yard).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

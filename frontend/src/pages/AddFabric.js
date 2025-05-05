@@ -355,7 +355,7 @@ const AddFabric = () => {
                     <div className="mt-2 p-2 bg-light rounded">
                       <strong>Preview:</strong> {variant.colorName || "Unnamed"} -
                       {variant.totalYard ? ` ${variant.totalYard} yards` : " No yards specified"} -
-                      {variant.pricePerYard ? ` $${variant.pricePerYard}/yard` : " No price specified"}
+                      {variant.pricePerYard ? ` Rs. ${variant.pricePerYard}/yard` : " No price specified"}
                     </div>
                   </Card.Body>
                 </Card>
