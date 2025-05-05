@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaPrint } from "react-icons/fa";
+import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaPrint, FaTruck, FaDownload, FaFileAlt } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import jsPDF from "jspdf";
@@ -187,8 +187,12 @@ const OwnerOrdersPage = () => {
   };
 
   const handleMarkDelivered = async (orderId) => {
-    const confirm = window.confirm("Are you sure you want to mark this order as delivered and paid?");
+    const confirm = window.confirm("Are you sure you want to mark this order as delivered?");
     if (!confirm) return;
+
+    // Get delivery details
+    const deliveryNotes = prompt("Enter any delivery notes (optional):", "");
+    const deliveredItemsCount = parseInt(prompt("Enter the number of items delivered:", "0"));
 
     setProcessing(true);
     try {
@@ -197,22 +201,39 @@ const OwnerOrdersPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          delivery_notes: deliveryNotes || "",
+          delivered_items_count: deliveredItemsCount || 0
+        })
       });
 
       if (response.ok) {
+        const data = await response.json();
+
         // Update the order status locally to avoid refetching
         const updatedOrders = orders.map(order =>
-          order.id === orderId ? { ...order, status: 'delivered' } : order
+          order.id === orderId ? {
+            ...order,
+            status: 'delivered',
+            delivery_date: data.delivery_date,
+            delivery_notes: deliveryNotes,
+            delivered_items_count: deliveredItemsCount
+          } : order
         );
         setOrders(updatedOrders);
 
         // Show success message
-        setSuccessMessage("Order marked as delivered and paid successfully!");
+        setSuccessMessage("Order marked as delivered successfully!");
 
         // Hide success message after 3 seconds
         setTimeout(() => {
           setSuccessMessage("");
         }, 3000);
+
+        // Refresh order details if this is the selected order
+        if (selectedOrderId === orderId) {
+          viewOrderItems(orderId);
+        }
       } else {
         const data = await response.json();
         setError(data.error || "Failed to mark order as delivered");
@@ -225,14 +246,143 @@ const OwnerOrdersPage = () => {
     }
   };
 
-  const printInvoice = (order) => {
-    if (!order || !order.items || order.items.length === 0) {
-      setError("Cannot print invoice: No order items found.");
+  const handleRecordPayment = async (orderId) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) {
+      setError("Order not found");
       return;
     }
 
+    // Calculate balance due
+    const totalAmount = parseFloat(order.total_amount || 0);
+    const amountPaid = parseFloat(order.amount_paid || 0);
+    const balanceDue = totalAmount - amountPaid;
+
+    // Get payment method
+    const paymentMethod = prompt(
+      "Select payment method (cash, check, bank_transfer, credit, advance):",
+      "cash"
+    );
+
+    if (!paymentMethod) return;
+
+    // Get payment amount
+    const amountToPayStr = prompt(
+      `Enter payment amount (Balance due: LKR ${balanceDue.toFixed(2)}):`,
+      balanceDue.toFixed(2)
+    );
+
+    if (!amountToPayStr) return;
+
+    const amountToPay = parseFloat(amountToPayStr);
+    if (isNaN(amountToPay) || amountToPay <= 0) {
+      setError("Invalid payment amount");
+      return;
+    }
+
+    // Prepare payment data
+    const paymentData = {
+      payment_method: paymentMethod,
+      amount_paid: amountToPay,
+      payment_date: new Date().toISOString().split('T')[0]
+    };
+
+    // Get additional details based on payment method
+    if (paymentMethod === 'check') {
+      paymentData.check_number = prompt("Enter check number:", "");
+      paymentData.check_date = prompt("Enter check date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+      paymentData.bank_name = prompt("Enter bank name:", "");
+    } else if (paymentMethod === 'credit') {
+      const creditTermMonths = parseInt(prompt("Enter credit term in months (3, 6, etc.):", "3"));
+      paymentData.credit_term_months = creditTermMonths;
+    }
+
+    // Get owner notes
+    const ownerNotes = prompt("Enter any notes about this payment (optional):", "");
+    if (ownerNotes) {
+      paymentData.owner_notes = ownerNotes;
+    }
+
+    setProcessing(true);
     try {
-      const pdf = new jsPDF();
+      const response = await fetch(`http://localhost:8000/api/orders/orders/${orderId}/record-payment/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Update the order status locally to avoid refetching
+        const updatedOrders = orders.map(order =>
+          order.id === orderId ? {
+            ...order,
+            status: data.status,
+            payment_status: data.payment_status,
+            amount_paid: data.amount_paid,
+            payment_method: paymentData.payment_method,
+            payment_date: paymentData.payment_date,
+            check_number: paymentData.check_number,
+            check_date: paymentData.check_date,
+            bank_name: paymentData.bank_name,
+            credit_term_months: paymentData.credit_term_months,
+            owner_notes: paymentData.owner_notes
+          } : order
+        );
+        setOrders(updatedOrders);
+
+        // Show success message
+        setSuccessMessage(data.message || "Payment recorded successfully!");
+
+        // Hide success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 3000);
+
+        // Refresh order details if this is the selected order
+        if (selectedOrderId === orderId) {
+          viewOrderItems(orderId);
+        }
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to record payment");
+      }
+    } catch (error) {
+      console.error("Record payment failed:", error);
+      setError("Error recording payment. Please try again.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const printInvoice = (order, autosave = true) => {
+    console.log("Generating invoice for order:", order);
+
+    if (!order || !order.items) {
+      setError("Cannot generate invoice: Order data is missing.");
+      return null;
+    }
+
+    if (!order.items.length) {
+      setError("Cannot generate invoice: No order items found.");
+      return null;
+    }
+
+    if (!order.invoice_number) {
+      setError("Cannot generate invoice: Invoice number is missing.");
+      return null;
+    }
+
+    try {
+      // Initialize jsPDF with default a4 paper size
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
 
       // Add company header
       pdf.setFontSize(20);
@@ -247,13 +397,13 @@ const OwnerOrdersPage = () => {
       // Add invoice details
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(`INVOICE #${order.invoice_number}`, 140, 20);
+      pdf.text(`INVOICE #${order.invoice_number}`, 120, 20);
 
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Date: ${new Date().toLocaleDateString()}`, 140, 28);
-      pdf.text(`Order ID: ${order.id}`, 140, 34);
-      pdf.text(`Status: ${order.status.toUpperCase()}`, 140, 40);
+      pdf.text(`Date: ${new Date().toLocaleDateString()}`, 120, 28);
+      pdf.text(`Order ID: ${order.id}`, 120, 34);
+      pdf.text(`Status: ${order.status.toUpperCase()}`, 120, 40);
 
       // Add customer info
       pdf.setFontSize(12);
@@ -261,47 +411,114 @@ const OwnerOrdersPage = () => {
       pdf.text('Bill To:', 20, 50);
 
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`${order.shop_name}`, 20, 58);
+      pdf.text(`${order.shop_name || order.shop || 'Customer'}`, 20, 58);
+
+      // Prepare table data safely
+      const tableBody = order.items.map(item => {
+        const productName = item.finished_product_name || `Product #${item.finished_product || 'Unknown'}`;
+        const qty6Packs = item.quantity_6_packs || 0;
+        const qty12Packs = item.quantity_12_packs || 0;
+        const qtyExtra = item.quantity_extra_items || 0;
+        const totalUnits = item.total_units || 0;
+
+        // Calculate unit price safely
+        let unitPrice = 0;
+        let subtotal = 0;
+
+        if (item.subtotal && item.total_units && item.total_units > 0) {
+          unitPrice = item.subtotal / item.total_units;
+          subtotal = item.subtotal;
+        } else if (item.subtotal) {
+          subtotal = item.subtotal;
+        }
+
+        return [
+          productName,
+          qty6Packs,
+          qty12Packs,
+          qtyExtra,
+          totalUnits,
+          `LKR ${parseFloat(unitPrice).toFixed(2)}`,
+          `LKR ${parseFloat(subtotal).toFixed(2)}`
+        ];
+      });
 
       // Add order items table
       pdf.autoTable({
         startY: 70,
         head: [['Product', '6 Packs', '12 Packs', 'Extra Items', 'Total Units', 'Unit Price', 'Subtotal']],
-        body: order.items.map(item => [
-          item.finished_product_name || `Product #${item.finished_product}`,
-          item.quantity_6_packs,
-          item.quantity_12_packs,
-          item.quantity_extra_items,
-          item.total_units,
-          `LKR ${(item.subtotal / item.total_units).toFixed(2)}`,
-          `LKR ${item.subtotal.toFixed(2)}`
-        ]),
+        body: tableBody,
         theme: 'striped',
         styles: { fontSize: 10 },
         headStyles: { fillColor: [41, 128, 185], textColor: 255 },
       });
 
-      // Add total
-      const finalY = pdf.previousAutoTable.finalY + 10;
+      // Add total - safely handle the case where finalY might not be available
+      let finalY = 200; // Default position if autoTable doesn't set it
+
+      if (pdf.previousAutoTable && pdf.previousAutoTable.finalY) {
+        finalY = pdf.previousAutoTable.finalY + 10;
+      }
+
+      // Calculate total amount safely
+      const totalAmount = order.total_amount ||
+                         order.items.reduce((sum, item) => sum + (item.subtotal || 0), 0) ||
+                         0;
+
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(`Total Amount: LKR ${order.total_amount.toFixed(2)}`, 140, finalY);
+      pdf.text(`Total Amount: LKR ${parseFloat(totalAmount).toFixed(2)}`, 120, finalY);
+
+      // Add payment information if available
+      if (order.amount_paid > 0) {
+        finalY += 6;
+        pdf.text(`Amount Paid: LKR ${parseFloat(order.amount_paid).toFixed(2)}`, 120, finalY);
+
+        if (order.balance_due > 0) {
+          finalY += 6;
+          pdf.text(`Balance Due: LKR ${parseFloat(order.balance_due).toFixed(2)}`, 120, finalY);
+        }
+      }
+
+      // Add payment terms if it's a credit payment
+      if (order.payment_method === 'credit' && order.credit_term_months > 0) {
+        finalY += 8;
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'italic');
+        pdf.text(`Payment Terms: ${order.credit_term_months} months credit`, 120, finalY);
+
+        if (order.payment_due_date) {
+          finalY += 5;
+          pdf.text(`Payment Due Date: ${new Date(order.payment_due_date).toLocaleDateString()}`, 120, finalY);
+        }
+      }
 
       // Add footer
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
       pdf.text('Thank you for your business!', 20, finalY + 20);
 
-      // Save the PDF
-      pdf.save(`Invoice-${order.invoice_number}.pdf`);
+      // Add company contact information
+      finalY += 30;
+      pdf.setFontSize(8);
+      pdf.text('Pri Fashion | Sri Lanka | Quality Clothes for Everyone', 20, finalY);
 
-      setSuccessMessage("Invoice printed successfully!");
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
+      // Save the PDF if autosave is true
+      if (autosave) {
+        pdf.save(`Invoice-${order.invoice_number}.pdf`);
+
+        setSuccessMessage("Invoice printed successfully!");
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 3000);
+      }
+
+      // Return the PDF document for further processing
+      return pdf;
     } catch (error) {
       console.error("Error generating PDF:", error);
-      setError("Failed to generate PDF invoice. Please try again.");
+      setError(`Failed to generate PDF invoice: ${error.message || "Unknown error"}`);
+      return null;
     }
   };
 
@@ -440,6 +657,7 @@ const OwnerOrdersPage = () => {
                         <th>Order ID</th>
                         <th>Shop</th>
                         <th>Status</th>
+                        <th>Payment</th>
                         <th>Created Date</th>
                         <th>Invoice #</th>
                         <th>Total Amount</th>
@@ -456,9 +674,33 @@ const OwnerOrdersPage = () => {
                               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                             </span>
                           </td>
+                          <td>
+                            {order.payment_status ? (
+                              <span className={`badge ${
+                                order.payment_status === 'paid' ? 'bg-success' :
+                                order.payment_status === 'partially_paid' ? 'bg-warning text-dark' :
+                                'bg-danger'
+                              }`}>
+                                {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1).replace('_', ' ')}
+                              </span>
+                            ) : (
+                              order.status === 'delivered' ? (
+                                <span className="badge bg-danger">Unpaid</span>
+                              ) : (
+                                <span className="badge bg-secondary">N/A</span>
+                              )
+                            )}
+                          </td>
                           <td>{new Date(order.created_at).toLocaleDateString()}</td>
                           <td>{order.invoice_number || "-"}</td>
-                          <td>LKR {order.total_amount?.toFixed(2) || "0.00"}</td>
+                          <td>
+                            <div>LKR {parseFloat(order.total_amount || 0).toFixed(2)}</div>
+                            {order.amount_paid > 0 && (
+                              <small className="text-muted">
+                                Paid: LKR {parseFloat(order.amount_paid || 0).toFixed(2)}
+                              </small>
+                            )}
+                          </td>
                           <td>
                             <div className="d-flex gap-2">
                               <button
@@ -505,11 +747,22 @@ const OwnerOrdersPage = () => {
                                     onClick={() => handleMarkDelivered(order.id)}
                                     disabled={processing}
                                     className="btn btn-sm btn-success d-flex align-items-center"
-                                    title="Mark as Delivered and Paid"
+                                    title="Mark as Delivered"
                                   >
-                                    <FaMoneyBillWave className="me-1" /> Paid
+                                    <FaTruck className="me-1" /> Deliver
                                   </button>
                                 </>
+                              )}
+
+                              {(order.status === "delivered" || order.status === "partially_paid" || order.status === "payment_due") && (
+                                <button
+                                  onClick={() => handleRecordPayment(order.id)}
+                                  disabled={processing}
+                                  className="btn btn-sm btn-warning d-flex align-items-center"
+                                  title="Record Payment"
+                                >
+                                  <FaMoneyBillWave className="me-1" /> Payment
+                                </button>
                               )}
                             </div>
                           </td>
@@ -593,17 +846,100 @@ const OwnerOrdersPage = () => {
                     <div className="row mb-3">
                       <div className="col-md-6">
                         <p className="mb-1"><strong>Shop:</strong> {selectedOrder.shop_name}</p>
-                        <p className="mb-1"><strong>Status:</strong> {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}</p>
+                        <p className="mb-1"><strong>Status:</strong> <span className={`badge ${getBadgeClass(selectedOrder.status)}`}>
+                          {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                        </span></p>
                         <p className="mb-1"><strong>Created:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</p>
-                      </div>
-                      <div className="col-md-6">
-                        <p className="mb-1"><strong>Invoice Number:</strong> {selectedOrder.invoice_number || "Not invoiced yet"}</p>
-                        <p className="mb-1"><strong>Total Amount:</strong> LKR {selectedOrder.total_amount?.toFixed(2) || "0.00"}</p>
                         {selectedOrder.approval_date && (
                           <p className="mb-1"><strong>Approved Date:</strong> {new Date(selectedOrder.approval_date).toLocaleString()}</p>
                         )}
+                        {selectedOrder.delivery_date && (
+                          <p className="mb-1"><strong>Delivery Date:</strong> {new Date(selectedOrder.delivery_date).toLocaleString()}</p>
+                        )}
+                        {selectedOrder.delivered_items_count > 0 && (
+                          <p className="mb-1"><strong>Items Delivered:</strong> {selectedOrder.delivered_items_count}</p>
+                        )}
+                        {selectedOrder.delivery_notes && (
+                          <p className="mb-1"><strong>Delivery Notes:</strong> {selectedOrder.delivery_notes}</p>
+                        )}
+                      </div>
+                      <div className="col-md-6">
+                        <p className="mb-1"><strong>Invoice Number:</strong> {selectedOrder.invoice_number || "Not invoiced yet"}</p>
+                        <p className="mb-1"><strong>Total Amount:</strong> LKR {parseFloat(selectedOrder.total_amount || 0).toFixed(2)}</p>
+
+                        {/* Payment Information */}
+                        {selectedOrder.payment_status && (
+                          <p className="mb-1">
+                            <strong>Payment Status:</strong>
+                            <span className={`badge ms-1 ${
+                              selectedOrder.payment_status === 'paid' ? 'bg-success' :
+                              selectedOrder.payment_status === 'partially_paid' ? 'bg-warning text-dark' :
+                              'bg-danger'
+                            }`}>
+                              {selectedOrder.payment_status.charAt(0).toUpperCase() + selectedOrder.payment_status.slice(1).replace('_', ' ')}
+                            </span>
+                          </p>
+                        )}
+
+                        {selectedOrder.amount_paid > 0 && (
+                          <p className="mb-1"><strong>Amount Paid:</strong> LKR {parseFloat(selectedOrder.amount_paid || 0).toFixed(2)}</p>
+                        )}
+
+                        {selectedOrder.balance_due > 0 && (
+                          <p className="mb-1"><strong>Balance Due:</strong> LKR {parseFloat(selectedOrder.balance_due || 0).toFixed(2)}</p>
+                        )}
+
+                        {selectedOrder.payment_method && (
+                          <p className="mb-1"><strong>Payment Method:</strong> {selectedOrder.payment_method.charAt(0).toUpperCase() + selectedOrder.payment_method.slice(1)}</p>
+                        )}
+
+                        {selectedOrder.payment_date && (
+                          <p className="mb-1"><strong>Last Payment Date:</strong> {new Date(selectedOrder.payment_date).toLocaleDateString()}</p>
+                        )}
+
+                        {/* Check Payment Details */}
+                        {selectedOrder.payment_method === 'check' && (
+                          <>
+                            {selectedOrder.check_number && (
+                              <p className="mb-1"><strong>Check Number:</strong> {selectedOrder.check_number}</p>
+                            )}
+                            {selectedOrder.check_date && (
+                              <p className="mb-1"><strong>Check Date:</strong> {new Date(selectedOrder.check_date).toLocaleDateString()}</p>
+                            )}
+                            {selectedOrder.bank_name && (
+                              <p className="mb-1"><strong>Bank:</strong> {selectedOrder.bank_name}</p>
+                            )}
+                          </>
+                        )}
+
+                        {/* Credit Payment Details */}
+                        {selectedOrder.payment_method === 'credit' && (
+                          <>
+                            {selectedOrder.credit_term_months > 0 && (
+                              <p className="mb-1"><strong>Credit Term:</strong> {selectedOrder.credit_term_months} months</p>
+                            )}
+                            {selectedOrder.payment_due_date && (
+                              <p className="mb-1">
+                                <strong>Payment Due Date:</strong> {new Date(selectedOrder.payment_due_date).toLocaleDateString()}
+                                {selectedOrder.is_payment_overdue && (
+                                  <span className="badge bg-danger ms-2">Overdue</span>
+                                )}
+                              </p>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
+
+                    {/* Owner Notes */}
+                    {selectedOrder.owner_notes && (
+                      <div className="mb-3">
+                        <h6 className="fw-bold">Owner Notes:</h6>
+                        <div className="p-2 bg-light rounded">
+                          {selectedOrder.owner_notes}
+                        </div>
+                      </div>
+                    )}
 
                     <h6 className="fw-bold mb-3">Order Items</h6>
                     {selectedOrderItems.length > 0 ? (
@@ -627,7 +963,7 @@ const OwnerOrdersPage = () => {
                                 <td>{item.quantity_12_packs}</td>
                                 <td>{item.quantity_extra_items}</td>
                                 <td>{item.total_units}</td>
-                                <td>LKR {item.subtotal?.toFixed(2) || "0.00"}</td>
+                                <td>LKR {parseFloat(item.subtotal || 0).toFixed(2)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -640,7 +976,7 @@ const OwnerOrdersPage = () => {
                     )}
 
                     {/* Action buttons based on order status */}
-                    <div className="mt-4 d-flex gap-2 justify-content-end">
+                    <div className="mt-4 d-flex flex-wrap gap-2 justify-content-end">
                       {selectedOrder.status === "submitted" && (
                         <button
                           onClick={() => handleApproveOrder(selectedOrder.id)}
@@ -661,23 +997,52 @@ const OwnerOrdersPage = () => {
                         </button>
                       )}
 
-                      {selectedOrder.status === "invoiced" && (
-                        <>
-                          <button
-                            onClick={() => printInvoice(selectedOrder)}
-                            className="btn btn-info text-white"
-                          >
-                            <FaPrint className="me-2" /> Print Invoice
-                          </button>
+                      {selectedOrder.invoice_number && (
+                        <button
+                          onClick={() => printInvoice(selectedOrder)}
+                          className="btn btn-info text-white"
+                        >
+                          <FaPrint className="me-2" /> Print Invoice
+                        </button>
+                      )}
 
-                          <button
-                            onClick={() => handleMarkDelivered(selectedOrder.id)}
-                            disabled={processing}
-                            className="btn btn-success"
-                          >
-                            <FaMoneyBillWave className="me-2" /> Mark as Delivered & Paid
-                          </button>
-                        </>
+                      {selectedOrder.status === "invoiced" && (
+                        <button
+                          onClick={() => handleMarkDelivered(selectedOrder.id)}
+                          disabled={processing}
+                          className="btn btn-success"
+                        >
+                          <FaTruck className="me-2" /> Mark as Delivered
+                        </button>
+                      )}
+
+                      {(selectedOrder.status === "delivered" ||
+                        selectedOrder.status === "partially_paid" ||
+                        selectedOrder.status === "payment_due") && (
+                        <button
+                          onClick={() => handleRecordPayment(selectedOrder.id)}
+                          disabled={processing}
+                          className="btn btn-warning"
+                        >
+                          <FaMoneyBillWave className="me-2" /> Record Payment
+                        </button>
+                      )}
+
+                      {/* Download Invoice as PDF */}
+                      {selectedOrder.invoice_number && (
+                        <button
+                          onClick={() => {
+                            const pdfDoc = printInvoice(selectedOrder, false);
+                            if (pdfDoc) {
+                              pdfDoc.save(`Invoice-${selectedOrder.invoice_number}.pdf`);
+                              setSuccessMessage("Invoice downloaded successfully!");
+                              setTimeout(() => setSuccessMessage(""), 3000);
+                            }
+                          }}
+                          className="btn btn-secondary"
+                        >
+                          <FaDownload className="me-2" /> Download Invoice
+                        </button>
                       )}
                     </div>
                   </div>

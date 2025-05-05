@@ -20,6 +20,17 @@ class Order(models.Model):
         ('approved', 'Approved'),
         ('invoiced', 'Invoiced'),
         ('delivered', 'Delivered'),
+        ('paid', 'Paid'),
+        ('partially_paid', 'Partially Paid'),
+        ('payment_due', 'Payment Due'),
+    ]
+
+    PAYMENT_METHOD_CHOICES = [
+        ('cash', 'Cash'),
+        ('check', 'Check'),
+        ('bank_transfer', 'Bank Transfer'),
+        ('credit', 'Credit (Pay Later)'),
+        ('advance', 'Advance Payment'),
     ]
 
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
@@ -30,10 +41,44 @@ class Order(models.Model):
     approval_date = models.DateTimeField(null=True, blank=True)
     invoice_number = models.CharField(max_length=50, blank=True)
 
+    # Delivery tracking
+    delivery_date = models.DateTimeField(null=True, blank=True)
+    delivered_items_count = models.PositiveIntegerField(default=0)
+    delivery_notes = models.TextField(blank=True)
+
+    # Payment tracking
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True)
+    payment_status = models.CharField(max_length=20, blank=True, default='unpaid')
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    payment_date = models.DateTimeField(null=True, blank=True)
+
+    # Check payment details
+    check_number = models.CharField(max_length=50, blank=True)
+    check_date = models.DateField(null=True, blank=True)
+    bank_name = models.CharField(max_length=100, blank=True)
+
+    # Credit payment details
+    payment_due_date = models.DateField(null=True, blank=True)
+    credit_term_months = models.PositiveIntegerField(default=0)  # 0 means immediate payment
+
+    # Owner notes
+    owner_notes = models.TextField(blank=True)
+
     @property
     def total_amount(self):
         return sum(item.subtotal for item in self.items.all())
 
+    @property
+    def balance_due(self):
+        # Convert to float to avoid type mismatch between float and Decimal
+        return float(self.total_amount) - float(self.amount_paid)
+
+    @property
+    def is_payment_overdue(self):
+        if not self.payment_due_date:
+            return False
+        from django.utils import timezone
+        return self.payment_due_date < timezone.now().date() and self.balance_due > 0
 
     def __str__(self):
         return f"Order #{self.id} - {self.shop.name}"

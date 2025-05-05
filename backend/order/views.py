@@ -106,13 +106,15 @@ class OrderSubmitView(APIView):
             return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
+
+
 class GenerateInvoiceView(APIView):
     """
     Allows owners to generate an invoice for an approved order.
     """
     def post(self, request, pk):
         try:
-            order = Order.objects.get(pk=pk)
+            order = Order.objects.prefetch_related('items__finished_product').get(pk=pk)
 
             if order.status != 'approved':
                 return Response({"error": "Only approved orders can be invoiced."}, status=status.HTTP_400_BAD_REQUEST)
@@ -125,11 +127,30 @@ class GenerateInvoiceView(APIView):
             order.invoice_number = invoice_number
             order.save()
 
+            # Calculate total amount
+            total_amount = order.total_amount
+
+            # Get order items with calculated fields
+            items = []
+            for item in order.items.all():
+                items.append({
+                    'id': item.id,
+                    'finished_product': item.finished_product.id,
+                    'finished_product_name': item.finished_product.cutting_record.product_name if hasattr(item.finished_product, 'cutting_record') else f"Product #{item.finished_product.id}",
+                    'quantity_6_packs': item.quantity_6_packs,
+                    'quantity_12_packs': item.quantity_12_packs,
+                    'quantity_extra_items': item.quantity_extra_items,
+                    'total_units': item.total_units,
+                    'subtotal': item.subtotal
+                })
+
             return Response({
                 "status": "invoiced",
                 "order_id": order.id,
                 "invoice_number": invoice_number,
-                "total_amount": order.total_amount
+                "total_amount": total_amount,
+                "items": items,
+                "shop_name": order.shop.name
             }, status=status.HTTP_200_OK)
 
         except Order.DoesNotExist:
@@ -138,7 +159,7 @@ class GenerateInvoiceView(APIView):
 
 class MarkOrderDeliveredView(APIView):
     """
-    Allows owners to mark an invoiced order as delivered/paid.
+    Allows owners to mark an invoiced order as delivered.
     """
     def post(self, request, pk):
         try:
@@ -147,14 +168,111 @@ class MarkOrderDeliveredView(APIView):
             if order.status != 'invoiced':
                 return Response({"error": "Only invoiced orders can be marked as delivered."}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Get delivery details from request
+            delivery_notes = request.data.get('delivery_notes', '')
+            delivered_items_count = request.data.get('delivered_items_count', 0)
+
+            # Update order
             order.status = 'delivered'
+            order.delivery_date = timezone.now()
+            order.delivery_notes = delivery_notes
+            order.delivered_items_count = delivered_items_count
             order.save()
 
             return Response({
                 "status": "delivered",
                 "order_id": order.id,
-                "message": "Order has been marked as delivered and paid."
+                "delivery_date": order.delivery_date,
+                "message": "Order has been marked as delivered."
             }, status=status.HTTP_200_OK)
 
         except Order.DoesNotExist:
             return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class RecordPaymentView(APIView):
+    """
+    Allows owners to record payment for an order.
+    """
+    def post(self, request, pk):
+        try:
+            order = Order.objects.get(pk=pk)
+
+            if order.status not in ['invoiced', 'delivered', 'partially_paid', 'payment_due']:
+                return Response({"error": "Only invoiced or delivered orders can have payments recorded."},
+                               status=status.HTTP_400_BAD_REQUEST)
+
+            # Get payment details from request
+            payment_method = request.data.get('payment_method', '')
+            # Convert to Decimal instead of float to avoid type mismatch with DecimalField
+            from decimal import Decimal
+            amount_paid = Decimal(str(request.data.get('amount_paid', 0)))
+            payment_date = request.data.get('payment_date', timezone.now())
+
+            # Check payment details
+            check_number = request.data.get('check_number', '')
+            check_date = request.data.get('check_date', None)
+            bank_name = request.data.get('bank_name', '')
+
+            # Credit payment details
+            credit_term_months = int(request.data.get('credit_term_months', 0))
+
+            # Owner notes
+            owner_notes = request.data.get('owner_notes', '')
+
+            # Update order
+            order.payment_method = payment_method
+
+            # Add to existing amount paid
+            order.amount_paid += amount_paid
+
+            # Set payment date
+            if payment_date:
+                order.payment_date = payment_date
+
+            # Update check details if payment method is check
+            if payment_method == 'check':
+                order.check_number = check_number
+                order.check_date = check_date
+                order.bank_name = bank_name
+
+            # Update credit details if payment method is credit
+            if payment_method == 'credit':
+                order.credit_term_months = credit_term_months
+                # Calculate payment due date
+                if credit_term_months > 0:
+                    from datetime import datetime, timedelta
+                    if isinstance(payment_date, str):
+                        payment_date = datetime.strptime(payment_date, '%Y-%m-%d')
+                    due_date = payment_date + timedelta(days=30 * credit_term_months)
+                    order.payment_due_date = due_date
+
+            # Update owner notes
+            if owner_notes:
+                order.owner_notes = owner_notes
+
+            # Update payment status based on amount paid vs total
+            if order.amount_paid >= order.total_amount:
+                order.payment_status = 'paid'
+                order.status = 'paid'
+            elif order.amount_paid > 0:
+                order.payment_status = 'partially_paid'
+                order.status = 'partially_paid'
+            else:
+                order.payment_status = 'unpaid'
+
+            order.save()
+
+            return Response({
+                "status": order.status,
+                "order_id": order.id,
+                "payment_status": order.payment_status,
+                "amount_paid": order.amount_paid,
+                "balance_due": order.balance_due,
+                "message": f"Payment of LKR {amount_paid} has been recorded."
+            }, status=status.HTTP_200_OK)
+
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

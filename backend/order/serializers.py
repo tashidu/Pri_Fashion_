@@ -22,9 +22,26 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     total_amount = serializers.ReadOnlyField()
+    balance_due = serializers.ReadOnlyField()
+    is_payment_overdue = serializers.ReadOnlyField()
     shop_name = serializers.ReadOnlyField(source='shop.name')
 
     class Meta:
         model = Order
-        fields = ['id', 'shop', 'shop_name', 'placed_by', 'created_at',
-                  'status', 'approval_date', 'invoice_number', 'total_amount', 'items']
+        fields = [
+            'id', 'shop', 'shop_name', 'placed_by', 'created_at',
+            'status', 'approval_date', 'invoice_number', 'total_amount',
+            # Delivery fields
+            'delivery_date', 'delivered_items_count', 'delivery_notes',
+            # Payment fields
+            'payment_method', 'payment_status', 'amount_paid', 'payment_date',
+            'balance_due', 'is_payment_overdue',
+            # Check payment details
+            'check_number', 'check_date', 'bank_name',
+            # Credit payment details
+            'payment_due_date', 'credit_term_months',
+            # Owner notes
+            'owner_notes',
+            # Items
+            'items'
+        ]
