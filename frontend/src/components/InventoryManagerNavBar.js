@@ -89,7 +89,11 @@ function InventoryManagerNavBar() {
     {
       title: "Packing",
       icon: <FaBoxes />,
-      path: "/add-packing-session"
+      path: "/add-packing-session",
+      subItems: [
+        { title: "Add Packing Session", path: "/add-packing-session" },
+        { title: "View Packing History", path: "/view-packing-sessions" }
+      ]
     },
     {
       title: "Damaged Items",

@@ -19,6 +19,7 @@ import ViewProductList from './pages/ViewProductList.js';
 import ApproveFinishedProduct from "./pages/ApproveFinishedProduct";
 import ViewApproveProduct from "./pages/ViewApproveProduct.js";
 import AddPackingSession from "./pages/AddPackingSession.js";
+import ViewPackingSessions from "./pages/ViewPackingSessions.js";
 import PackingReportChart from "./pages/PackingReportChart.js";
 import AddShop from "./pages/AddShop.js";
 import CreateOrder from "./pages/CreateOrder.js";
@@ -49,17 +50,18 @@ function App() {
         <Route path="/adddailysewing" element={<AddDailySewingRecord />} />
         <Route path="/daily-sewing-history" element={<ViewDailySewingHistory />} />
         <Route path="/viewproductlist" element={<ViewProductList />} />
-        <Route path="/approve-finished-product/:id" element={<ApproveFinishedProduct />} /> 
-        <Route path="/approveproduct-list" element={<ViewApproveProduct />} /> 
+        <Route path="/approve-finished-product/:id" element={<ApproveFinishedProduct />} />
+        <Route path="/approveproduct-list" element={<ViewApproveProduct />} />
         <Route path="/add-packing-session" element={<AddPackingSession />} />
+        <Route path="/view-packing-sessions" element={<ViewPackingSessions />} />
         <Route path="/packing-report" element={<PackingReportChart />} />
         <Route path ="/addshop" element={<AddShop/>} />
         <Route path="/addorder" element={<CreateOrder />} />
         <Route path="/order-list" element={<OrderListPage />} />
 
-        
-       
-       
+
+
+
 
 
 

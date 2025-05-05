@@ -94,6 +94,14 @@ function PriFashionNavBar() {
             </Link>
           </li>
           <li className="nav-item mb-2">
+            <Link className="nav-link d-flex align-items-center text-dark" to="/view-packing-sessions">
+              <div className="me-2 text-center" style={{ width: "24px" }}>
+                <i className="bi bi-box-seam"></i>
+              </div>
+              {isSidebarOpen && <span>Packing History</span>}
+            </Link>
+          </li>
+          <li className="nav-item mb-2">
             <Link className="nav-link d-flex align-items-center text-dark" to="/order">
               <div className="me-2 text-center" style={{ width: "24px" }}>
                 <i className="bi bi-clipboard-check"></i>

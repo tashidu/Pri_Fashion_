@@ -1,7 +1,7 @@
 from rest_framework import generics, serializers
 from .models import PackingSession, PackingInventory
 from finished_product.models import FinishedProduct
-from .serializers import PackingSessionSerializer
+from .serializers import PackingSessionSerializer, PackingSessionHistorySerializer
 
 class PackingSessionCreateView(generics.CreateAPIView):
     queryset = PackingSession.objects.all()
@@ -37,5 +37,11 @@ class PackingSessionCreateView(generics.CreateAPIView):
         print("❌ Other error:", e)
         raise serializers.ValidationError("Unexpected error: " + str(e))
 
-    
-    
+class PackingSessionListView(generics.ListAPIView):
+    """
+    Returns a list of all packing sessions with history, ordered by date.
+    """
+    queryset = PackingSession.objects.all().order_by('-date')
+    serializer_class = PackingSessionHistorySerializer
+
+
