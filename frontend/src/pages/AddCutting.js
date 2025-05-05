@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
-import { Card, Form, Button, Row, Col, Spinner, Alert, Container, Badge } from 'react-bootstrap';
-import { BsScissors, BsPlus, BsTrash, BsCheck2Circle, BsExclamationTriangle } from 'react-icons/bs';
+import { Card, Form, Button, Row, Col, Spinner, Alert, Container, Badge, Modal } from 'react-bootstrap';
+import { BsScissors, BsPlus, BsTrash, BsCheck2Circle, BsExclamationTriangle, BsFilePdf } from 'react-icons/bs';
+import jsPDF from 'jspdf';
 
 const AddCuttingRecord = () => {
   // Overall cutting record fields
@@ -29,6 +30,8 @@ const AddCuttingRecord = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
   const [validated, setValidated] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [submittedRecord, setSubmittedRecord] = useState(null);
 
   // Add resize event listener to update sidebar state
   useEffect(() => {
@@ -142,15 +145,28 @@ const AddCuttingRecord = () => {
     };
 
     try {
-      await axios.post("http://localhost:8000/api/cutting/cutting-records/", payload);
+      const response = await axios.post("http://localhost:8000/api/cutting/cutting-records/", payload);
       setSuccess('Cutting record created successfully!');
-      // Reset form fields
-      setSelectedFabricDefinition('');
-      setCuttingDate('');
-      setDescription('');
-      setProductName('');
-      setDetails([{ fabric_variant: '', yard_usage: '', xs: 0, s: 0, m: 0, l: 0, xl: 0 }]);
-      setValidated(false);
+
+      // Store the submitted record for PDF generation
+      const recordData = {
+        ...response.data,
+        fabric_name: fabricDefinitions.find(fd => fd.id === parseInt(selectedFabricDefinition))?.fabric_name || 'Unknown Fabric',
+        details: response.data.details.map(detail => {
+          const variant = fabricVariants.find(v => v.id === detail.fabric_variant);
+          return {
+            ...detail,
+            color: variant?.color || 'Unknown',
+            color_name: variant?.color_name || variant?.color || 'Unknown'
+          };
+        }),
+        totalQuantities: totalQuantities
+      };
+
+      setSubmittedRecord(recordData);
+
+      // Show the PDF generation modal
+      setShowPdfModal(true);
     } catch (err) {
       console.error('Error creating cutting record:', err);
       if (err.response && err.response.data) {
@@ -165,6 +181,170 @@ const AddCuttingRecord = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Function to generate PDF directly without using html2canvas
+  const generatePDF = () => {
+    if (!submittedRecord) return;
+
+    try {
+      // Create a new PDF document
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Set font sizes and styles
+      const titleFontSize = 18;
+      const headingFontSize = 14;
+      const normalFontSize = 10;
+      const smallFontSize = 8;
+
+      // Add title
+      pdf.setFontSize(titleFontSize);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Cutting Record', 105, 20, { align: 'center' });
+
+      // Add general information section
+      pdf.setFontSize(headingFontSize);
+      pdf.text('General Information', 20, 35);
+
+      pdf.setFontSize(normalFontSize);
+      pdf.setFont('helvetica', 'normal');
+
+      // Draw table for general info
+      pdf.line(20, 40, 190, 40); // Top horizontal line
+
+      const generalInfoData = [
+        ['Record ID', submittedRecord.id.toString()],
+        ['Product Name', submittedRecord.product_name],
+        ['Fabric', submittedRecord.fabric_name],
+        ['Cutting Date', new Date(submittedRecord.cutting_date).toLocaleDateString()],
+        ['Description', submittedRecord.description || 'N/A']
+      ];
+
+      let yPos = 45;
+      generalInfoData.forEach((row, index) => {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(row[0], 25, yPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(row[1], 80, yPos);
+        yPos += 8;
+        pdf.line(20, yPos - 3, 190, yPos - 3); // Horizontal line after each row
+      });
+
+      // Add fabric details section
+      pdf.setFontSize(headingFontSize);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Fabric Details', 20, yPos + 10);
+
+      // Table headers for fabric details
+      const headers = ['Color', 'Yard Usage', 'XS', 'S', 'M', 'L', 'XL', 'Total'];
+      const colWidths = [50, 25, 15, 15, 15, 15, 15, 20];
+
+      // Calculate starting positions for each column
+      const colPositions = [];
+      let currentPos = 20;
+      colWidths.forEach(width => {
+        colPositions.push(currentPos);
+        currentPos += width;
+      });
+
+      // Draw table header
+      yPos += 15;
+      pdf.setFontSize(normalFontSize);
+      pdf.setFont('helvetica', 'bold');
+
+      // Draw header background
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(20, yPos - 5, 170, 8, 'F');
+
+      // Draw header text
+      headers.forEach((header, index) => {
+        pdf.text(header, colPositions[index] + 2, yPos);
+      });
+
+      // Draw horizontal line after header
+      yPos += 3;
+      pdf.line(20, yPos, 190, yPos);
+
+      // Draw table rows
+      pdf.setFont('helvetica', 'normal');
+      submittedRecord.details.forEach((detail, index) => {
+        yPos += 8;
+
+        // Calculate total for this row
+        const total = parseInt(detail.xs || 0) +
+                      parseInt(detail.s || 0) +
+                      parseInt(detail.m || 0) +
+                      parseInt(detail.l || 0) +
+                      parseInt(detail.xl || 0);
+
+        // Draw row data
+        pdf.text(detail.color_name || detail.color, colPositions[0] + 2, yPos);
+        pdf.text(`${detail.yard_usage} yards`, colPositions[1] + 2, yPos);
+        pdf.text(detail.xs?.toString() || '0', colPositions[2] + 2, yPos);
+        pdf.text(detail.s?.toString() || '0', colPositions[3] + 2, yPos);
+        pdf.text(detail.m?.toString() || '0', colPositions[4] + 2, yPos);
+        pdf.text(detail.l?.toString() || '0', colPositions[5] + 2, yPos);
+        pdf.text(detail.xl?.toString() || '0', colPositions[6] + 2, yPos);
+        pdf.text(total.toString(), colPositions[7] + 2, yPos);
+
+        // Draw horizontal line after row
+        yPos += 3;
+        pdf.line(20, yPos, 190, yPos);
+      });
+
+      // Draw totals row
+      yPos += 8;
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(20, yPos - 5, 170, 8, 'F');
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Total', colPositions[0] + 2, yPos);
+      pdf.text(`${submittedRecord.totalQuantities.yard_usage.toFixed(2)} yards`, colPositions[1] + 2, yPos);
+      pdf.text(submittedRecord.totalQuantities.xs.toString(), colPositions[2] + 2, yPos);
+      pdf.text(submittedRecord.totalQuantities.s.toString(), colPositions[3] + 2, yPos);
+      pdf.text(submittedRecord.totalQuantities.m.toString(), colPositions[4] + 2, yPos);
+      pdf.text(submittedRecord.totalQuantities.l.toString(), colPositions[5] + 2, yPos);
+      pdf.text(submittedRecord.totalQuantities.xl.toString(), colPositions[6] + 2, yPos);
+      pdf.text(submittedRecord.totalQuantities.total.toString(), colPositions[7] + 2, yPos);
+
+      // Add footer
+      pdf.setFontSize(smallFontSize);
+      pdf.setFont('helvetica', 'italic');
+      pdf.text(`Generated on: ${new Date().toLocaleString()}`, 105, 280, { align: 'center' });
+      pdf.text('Fashion Garment Management System', 105, 285, { align: 'center' });
+
+      // Save the PDF
+      pdf.save(`Cutting_Record_${submittedRecord.id}_${submittedRecord.product_name}.pdf`);
+
+      // Reset form after PDF generation
+      setShowPdfModal(false);
+      setSelectedFabricDefinition('');
+      setCuttingDate('');
+      setDescription('');
+      setProductName('');
+      setDetails([{ fabric_variant: '', yard_usage: '', xs: 0, s: 0, m: 0, l: 0, xl: 0 }]);
+      setValidated(false);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setError('Failed to generate PDF. Please try again.');
+      setShowPdfModal(false);
+    }
+  };
+
+  // Function to handle modal close without generating PDF
+  const handleCloseModal = () => {
+    setShowPdfModal(false);
+    // Reset form
+    setSelectedFabricDefinition('');
+    setCuttingDate('');
+    setDescription('');
+    setProductName('');
+    setDetails([{ fabric_variant: '', yard_usage: '', xs: 0, s: 0, m: 0, l: 0, xl: 0 }]);
+    setValidated(false);
   };
 
   // Custom option component that shows a color swatch + label
@@ -520,6 +700,42 @@ const AddCuttingRecord = () => {
           </Card.Body>
         </Card>
       </div>
+
+      {/* PDF Generation Modal */}
+      <Modal show={showPdfModal} onHide={handleCloseModal} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Generate Cutting Record PDF</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Would you like to generate a PDF for this cutting record?</p>
+
+          {submittedRecord && (
+            <div className="mb-3">
+              <p>The PDF will include the following information:</p>
+              <ul>
+                <li><strong>Product Name:</strong> {submittedRecord.product_name}</li>
+                <li><strong>Fabric:</strong> {submittedRecord.fabric_name}</li>
+                <li><strong>Cutting Date:</strong> {new Date(submittedRecord.cutting_date).toLocaleDateString()}</li>
+                <li><strong>Total Quantities:</strong> XS: {submittedRecord.totalQuantities.xs},
+                  S: {submittedRecord.totalQuantities.s},
+                  M: {submittedRecord.totalQuantities.m},
+                  L: {submittedRecord.totalQuantities.l},
+                  XL: {submittedRecord.totalQuantities.xl}</li>
+                <li><strong>Total Items:</strong> {submittedRecord.totalQuantities.total}</li>
+                <li><strong>Total Yard Usage:</strong> {submittedRecord.totalQuantities.yard_usage.toFixed(2)} yards</li>
+              </ul>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModal}>
+            No, Skip
+          </Button>
+          <Button variant="primary" onClick={generatePDF}>
+            <BsFilePdf className="me-2" /> Generate PDF
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };
