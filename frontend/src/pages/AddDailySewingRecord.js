@@ -11,6 +11,7 @@ const AddDailySewingRecord = () => {
   const [selectedColor, setSelectedColor] = useState("");
   const [alreadySewn, setAlreadySewn] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768); // Track sidebar state
 
   const [xs, setXs] = useState(0);
   const [s, setS] = useState(0);
@@ -22,6 +23,16 @@ const AddDailySewingRecord = () => {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValid, setFormValid] = useState(false);
+
+  // Add resize event listener to update sidebar state
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSidebarOpen(window.innerWidth >= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     axios
@@ -280,6 +291,13 @@ const AddDailySewingRecord = () => {
   return (
     <>
       <RoleBasedNavBar />
+      <div
+        style={{
+          marginLeft: isSidebarOpen ? "240px" : "70px",
+          width: `calc(100% - ${isSidebarOpen ? "240px" : "70px"})`,
+          transition: "all 0.3s ease"
+        }}
+      >
       <Container className="py-4">
         <Row className="justify-content-center">
           <Col md={10} lg={8}>
@@ -509,6 +527,7 @@ const AddDailySewingRecord = () => {
           </Col>
         </Row>
       </Container>
+      </div>
     </>
   );
 };
