@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
+import { Card, Form, Button, Row, Col, Spinner, Alert, Container, Badge } from 'react-bootstrap';
+import { BsScissors, BsPlus, BsTrash, BsCheck2Circle, BsExclamationTriangle } from 'react-icons/bs';
 
 const AddCuttingRecord = () => {
   // Overall cutting record fields
@@ -9,7 +11,7 @@ const AddCuttingRecord = () => {
   const [selectedFabricDefinition, setSelectedFabricDefinition] = useState('');
   const [cuttingDate, setCuttingDate] = useState('');
   const [description, setDescription] = useState('');
-  const [productName, setProductName] = useState(''); // New product name field
+  const [productName, setProductName] = useState('');
 
   // For storing variants of the currently selected FabricDefinition
   const [fabricVariants, setFabricVariants] = useState([]);
@@ -20,27 +22,53 @@ const AddCuttingRecord = () => {
   ]);
 
   // Loading, error, success states
-  const [loading, setLoading] = useState(false);
+  const [loadingDefinitions, setLoadingDefinitions] = useState(true);
+  const [loadingVariants, setLoadingVariants] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const [validated, setValidated] = useState(false);
+
+  // Add resize event listener to update sidebar state
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSidebarOpen(window.innerWidth >= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // 1. Fetch fabric definitions on mount
   useEffect(() => {
+    setLoadingDefinitions(true);
     axios.get("http://localhost:8000/api/fabric-definitions/")
       .then((res) => {
         setFabricDefinitions(res.data);
+        setLoadingDefinitions(false);
       })
-      .catch((err) => console.error('Error fetching fabric definitions:', err));
+      .catch((err) => {
+        console.error('Error fetching fabric definitions:', err);
+        setError('Failed to load fabric definitions. Please try again.');
+        setLoadingDefinitions(false);
+      });
   }, []);
 
   // 2. Fetch variants when a FabricDefinition is selected
   useEffect(() => {
     if (selectedFabricDefinition) {
+      setLoadingVariants(true);
       axios.get(`http://localhost:8000/api/fabric-definitions/${selectedFabricDefinition}/variants/`)
         .then((res) => {
           setFabricVariants(res.data);
+          setLoadingVariants(false);
         })
-        .catch((err) => console.error('Error fetching fabric variants:', err));
+        .catch((err) => {
+          console.error('Error fetching fabric variants:', err);
+          setError('Failed to load fabric variants. Please try again.');
+          setLoadingVariants(false);
+        });
     } else {
       setFabricVariants([]);
     }
@@ -67,7 +95,41 @@ const AddCuttingRecord = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+
+    // Form validation
+    const form = e.currentTarget;
+    if (form.checkValidity() === false) {
+      e.stopPropagation();
+      setValidated(true);
+      return;
+    }
+
+    // Check if any detail has a fabric variant selected
+    const hasValidDetails = details.some(detail => detail.fabric_variant);
+    if (!hasValidDetails) {
+      setError('Please select at least one fabric variant for your cutting details.');
+      return;
+    }
+
+    // Validate yard availability for each detail
+    let yardValidationError = false;
+    details.forEach(detail => {
+      if (detail.fabric_variant) {
+        const variant = fabricVariants.find(v => v.id === detail.fabric_variant);
+        if (variant && parseFloat(detail.yard_usage) > (variant.available_yard || variant.total_yard)) {
+          yardValidationError = true;
+          setError(`Yard usage for ${variant.color_name || variant.color} exceeds available yards (${variant.available_yard || variant.total_yard} yards available).`);
+        }
+      }
+    });
+
+    if (yardValidationError) {
+      setValidated(true);
+      return;
+    }
+
+    setValidated(true);
+    setIsSubmitting(true);
     setError('');
     setSuccess('');
 
@@ -75,7 +137,7 @@ const AddCuttingRecord = () => {
       fabric_definition: selectedFabricDefinition,
       cutting_date: cuttingDate,
       description: description,
-      product_name: productName, // Include product name in payload
+      product_name: productName,
       details: details
     };
 
@@ -86,13 +148,22 @@ const AddCuttingRecord = () => {
       setSelectedFabricDefinition('');
       setCuttingDate('');
       setDescription('');
-      setProductName(''); // Reset product name field
+      setProductName('');
       setDetails([{ fabric_variant: '', yard_usage: '', xs: 0, s: 0, m: 0, l: 0, xl: 0 }]);
+      setValidated(false);
     } catch (err) {
       console.error('Error creating cutting record:', err);
-      setError('Failed to create cutting record.');
+      if (err.response && err.response.data) {
+        // Display more specific error message if available
+        const errorMessage = typeof err.response.data === 'string'
+          ? err.response.data
+          : 'Failed to create cutting record. Please check your inputs.';
+        setError(errorMessage);
+      } else {
+        setError('Failed to create cutting record. Please try again.');
+      }
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -116,336 +187,338 @@ const AddCuttingRecord = () => {
     </div>
   );
 
-  // Some simple inline styles for a nicer layout
-  const formStyles = {
-    container: {
-      maxWidth: '900px',
-      margin: '0 auto',
-      padding: '30px',
-      backgroundColor: '#ffffff',
-      borderRadius: '8px',
-      boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+  // Calculate total quantities for all details
+  const totalQuantities = details.reduce(
+    (acc, detail) => {
+      acc.xs += parseInt(detail.xs) || 0;
+      acc.s += parseInt(detail.s) || 0;
+      acc.m += parseInt(detail.m) || 0;
+      acc.l += parseInt(detail.l) || 0;
+      acc.xl += parseInt(detail.xl) || 0;
+      acc.total += (parseInt(detail.xs) || 0) +
+                  (parseInt(detail.s) || 0) +
+                  (parseInt(detail.m) || 0) +
+                  (parseInt(detail.l) || 0) +
+                  (parseInt(detail.xl) || 0);
+      acc.yard_usage += parseFloat(detail.yard_usage) || 0;
+      return acc;
     },
-    header: {
-      borderBottom: '2px solid #f0f0f0',
-      paddingBottom: '15px',
-      marginBottom: '25px',
-      color: '#2c3e50',
-    },
-    formGroup: {
-      marginBottom: '20px',
-    },
-    label: {
-      display: 'block',
-      marginBottom: '8px',
-      fontWeight: '500',
-      color: '#555',
-    },
-    input: {
-      width: '100%',
-      padding: '10px 12px',
-      border: '1px solid #ddd',
-      borderRadius: '4px',
-      fontSize: '16px',
-    },
-    select: {
-      width: '100%',
-      padding: '10px 12px',
-      border: '1px solid #ddd',
-      borderRadius: '4px',
-      fontSize: '16px',
-      backgroundColor: '#fff',
-    },
-    textarea: {
-      width: '100%',
-      padding: '10px 12px',
-      border: '1px solid #ddd',
-      borderRadius: '4px',
-      fontSize: '16px',
-      minHeight: '100px',
-    },
-    detailCard: {
-      border: '1px solid #e0e0e0',
-      borderRadius: '6px',
-      padding: '20px',
-      marginBottom: '20px',
-      backgroundColor: '#f9f9f9',
-    },
-    detailHeader: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '15px',
-    },
-    sizesGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(5, 1fr)',
-      gap: '10px',
-      marginTop: '15px',
-    },
-    sizeBox: {
-      textAlign: 'center',
-    },
-    sizeLabel: {
-      display: 'block',
-      marginBottom: '5px',
-      fontWeight: '500',
-    },
-    sizeInput: {
-      width: '100%',
-      padding: '8px',
-      textAlign: 'center',
-      border: '1px solid #ddd',
-      borderRadius: '4px',
-    },
-    buttonPrimary: {
-      backgroundColor: '#3498db',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      padding: '12px 24px',
-      fontSize: '16px',
-      cursor: 'pointer',
-      transition: 'background-color 0.3s',
-    },
-    buttonSecondary: {
-      backgroundColor: '#95a5a6',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      padding: '10px 20px',
-      fontSize: '14px',
-      cursor: 'pointer',
-      transition: 'background-color 0.3s',
-      marginBottom: '20px',
-      marginRight: '10px'
-    },
-    alert: {
-      padding: '12px 16px',
-      borderRadius: '4px',
-      marginBottom: '20px',
-      fontWeight: '500',
-    },
-    alertSuccess: {
-      backgroundColor: '#d4edda',
-      color: '#155724',
-      border: '1px solid #c3e6cb',
-    },
-    alertError: {
-      backgroundColor: '#f8d7da',
-      color: '#721c24',
-      border: '1px solid #f5c6cb',
-    }
-  };
+    { xs: 0, s: 0, m: 0, l: 0, xl: 0, total: 0, yard_usage: 0 }
+  );
 
   return (
     <>
-      <RoleBasedNavBar/>
-      <div style={formStyles.container}>
-        <h2 style={formStyles.header}>Add Cutting Record</h2>
+      <RoleBasedNavBar />
+      <div
+        style={{
+          marginLeft: isSidebarOpen ? "240px" : "70px",
+          width: `calc(100% - ${isSidebarOpen ? "240px" : "70px"})`,
+          transition: "all 0.3s ease",
+          padding: "20px"
+        }}
+      >
+        <h2 className="mb-4">
+          <BsScissors className="me-2" />
+          Add Cutting Record
+        </h2>
 
-        {error && <div style={{...formStyles.alert, ...formStyles.alertError}}>{error}</div>}
-        {success && <div style={{...formStyles.alert, ...formStyles.alertSuccess}}>{success}</div>}
+        {success && (
+          <Alert variant="success" className="d-flex align-items-center">
+            <BsCheck2Circle className="me-2" size={20} />
+            {success}
+          </Alert>
+        )}
 
-        <form onSubmit={handleSubmit}>
-          {/* Fabric Definition Dropdown */}
-          <div style={formStyles.formGroup}>
-            <label style={formStyles.label}>Fabric Definition:</label>
-            <select
-              style={formStyles.select}
-              value={selectedFabricDefinition}
-              onChange={(e) => setSelectedFabricDefinition(e.target.value)}
-              required
-            >
-              <option value="">Select Fabric Group</option>
-              {fabricDefinitions.map((fd) => (
-                <option key={fd.id} value={fd.id}>
-                  {fd.fabric_name}
-                </option>
-              ))}
-            </select>
-          </div>
+        {error && (
+          <Alert variant="danger" className="d-flex align-items-center">
+            <BsExclamationTriangle className="me-2" size={20} />
+            {error}
+          </Alert>
+        )}
 
-          {/* Product Name Field */}
-          <div style={formStyles.formGroup}>
-            <label style={formStyles.label}>Product Name:</label>
-            <input
-              style={formStyles.input}
-              type="text"
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              placeholder="Enter product name"
-              required
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            {/* Cutting Date */}
-            <div style={formStyles.formGroup}>
-              <label style={formStyles.label}>Cutting Date:</label>
-              <input
-                style={formStyles.input}
-                type="date"
-                value={cuttingDate}
-                onChange={(e) => setCuttingDate(e.target.value)}
-                required
-              />
-            </div>
-            <div></div> {/* empty space for additional fields */}
-          </div>
-
-          {/* Description */}
-          <div style={formStyles.formGroup}>
-            <label style={formStyles.label}>Description:</label>
-            <textarea
-              style={formStyles.textarea}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter details about this cutting record..."
-            />
-          </div>
-
-          <h3 style={{...formStyles.header, marginTop: '30px'}}>Fabric Details</h3>
-
-          {details.map((detail, index) => {
-            // Find the selected variant object to set the value in React-Select
-            const currentVariant = fabricVariants.find(v => v.id === detail.fabric_variant);
-            const currentValue = currentVariant
-              ? { value: currentVariant.id, label: currentVariant.color, color: currentVariant.color }
-              : null;
-
-            // Prepare the variant options for React-Select
-            const variantOptions = fabricVariants.map((variant) => ({
-              value: variant.id,
-              label: variant.color,
-              color: variant.color,
-            }));
-
-            return (
-              <div key={index} style={formStyles.detailCard}>
-                <div style={formStyles.detailHeader}>
-                  <h4 style={{margin: 0}}>Detail #{index + 1}</h4>
-                  <button
-                    type="button"
-                    onClick={() => removeDetailRow(index)}
-                    style={formStyles.buttonSecondary}
-                  >
-                    Delete Detail
-                  </button>
-                </div>
-
-                {/* Fabric Variant (Color) via React-Select */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '15px' }}>
-                  <div>
-                    <label style={formStyles.label}>Fabric Variant (Color):</label>
-                    <Select
-                      options={variantOptions}
-                      components={{ Option: ColourOption }}
-                      value={currentValue}
-                      onChange={(selectedOption) => {
-                        // Update the detail row with the selected variant ID
-                        handleDetailChange(index, 'fabric_variant', selectedOption.value);
-                      }}
-                      placeholder="Select Variant"
-                      styles={{
-                        control: (provided) => ({
-                          ...provided,
-                          borderColor: '#ddd',
-                          boxShadow: 'none',
-                          '&:hover': {
-                            borderColor: '#aaa'
-                          }
-                        })
-                      }}
-                    />
-                  </div>
-
-                  {/* Yard Usage */}
-                  <div>
-                    <label style={formStyles.label}>Yard Usage:</label>
-                    <input
-                      style={formStyles.input}
-                      type="number"
-                      step="0.01"
-                      value={detail.yard_usage}
-                      onChange={(e) => handleDetailChange(index, 'yard_usage', e.target.value)}
+        <Card className="mb-4 shadow-sm" style={{ backgroundColor: "#D9EDFB", borderRadius: "10px" }}>
+          <Card.Body>
+            <Form noValidate validated={validated} onSubmit={handleSubmit}>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label><strong>Fabric Definition</strong></Form.Label>
+                    {loadingDefinitions ? (
+                      <div className="d-flex align-items-center">
+                        <Spinner animation="border" size="sm" className="me-2" />
+                        <span>Loading fabrics...</span>
+                      </div>
+                    ) : (
+                      <Form.Select
+                        value={selectedFabricDefinition}
+                        onChange={(e) => setSelectedFabricDefinition(e.target.value)}
+                        required
+                      >
+                        <option value="">Select Fabric Group</option>
+                        {fabricDefinitions.map((fd) => (
+                          <option key={fd.id} value={fd.id}>
+                            {fd.fabric_name}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    )}
+                    <Form.Control.Feedback type="invalid">
+                      Please select a fabric definition.
+                    </Form.Control.Feedback>
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label><strong>Product Name</strong></Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
+                      placeholder="Enter product name"
                       required
-                      placeholder="Enter yards used"
                     />
-                  </div>
-                </div>
+                    <Form.Control.Feedback type="invalid">
+                      Please provide a product name.
+                    </Form.Control.Feedback>
+                  </Form.Group>
+                </Col>
+              </Row>
 
-                {/* Size quantities in a grid */}
-                <label style={{...formStyles.label, marginTop: '10px'}}>Size Quantities:</label>
-                <div style={formStyles.sizesGrid}>
-                  <div style={formStyles.sizeBox}>
-                    <label style={formStyles.sizeLabel}>XS</label>
-                    <input
-                      style={formStyles.sizeInput}
-                      type="number"
-                      value={detail.xs}
-                      onChange={(e) => handleDetailChange(index, 'xs', e.target.value)}
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label><strong>Cutting Date</strong></Form.Label>
+                    <Form.Control
+                      type="date"
+                      value={cuttingDate}
+                      onChange={(e) => setCuttingDate(e.target.value)}
+                      required
                     />
-                  </div>
-                  <div style={formStyles.sizeBox}>
-                    <label style={formStyles.sizeLabel}>S</label>
-                    <input
-                      style={formStyles.sizeInput}
-                      type="number"
-                      value={detail.s}
-                      onChange={(e) => handleDetailChange(index, 's', e.target.value)}
+                    <Form.Control.Feedback type="invalid">
+                      Please select a cutting date.
+                    </Form.Control.Feedback>
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label><strong>Description</strong></Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Enter details about this cutting record..."
                     />
-                  </div>
-                  <div style={formStyles.sizeBox}>
-                    <label style={formStyles.sizeLabel}>M</label>
-                    <input
-                      style={formStyles.sizeInput}
-                      type="number"
-                      value={detail.m}
-                      onChange={(e) => handleDetailChange(index, 'm', e.target.value)}
-                    />
-                  </div>
-                  <div style={formStyles.sizeBox}>
-                    <label style={formStyles.sizeLabel}>L</label>
-                    <input
-                      style={formStyles.sizeInput}
-                      type="number"
-                      value={detail.l}
-                      onChange={(e) => handleDetailChange(index, 'l', e.target.value)}
-                    />
-                  </div>
-                  <div style={formStyles.sizeBox}>
-                    <label style={formStyles.sizeLabel}>XL</label>
-                    <input
-                      style={formStyles.sizeInput}
-                      type="number"
-                      value={detail.xl}
-                      onChange={(e) => handleDetailChange(index, 'xl', e.target.value)}
-                    />
-                  </div>
-                </div>
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <h4 className="mt-4 mb-3 border-bottom pb-2">Fabric Details</h4>
+
+              {details.map((detail, index) => {
+                // Find the selected variant object to set the value in React-Select
+                const currentVariant = fabricVariants.find(v => v.id === detail.fabric_variant);
+                const currentValue = currentVariant
+                  ? {
+                      value: currentVariant.id,
+                      label: `${currentVariant.color_name || currentVariant.color} (${currentVariant.available_yard || currentVariant.total_yard} yards available)`,
+                      color: currentVariant.color,
+                      available_yard: currentVariant.available_yard || currentVariant.total_yard,
+                      total_yard: currentVariant.total_yard
+                    }
+                  : null;
+
+                // Prepare the variant options for React-Select
+                const variantOptions = fabricVariants.map((variant) => ({
+                  value: variant.id,
+                  label: `${variant.color_name || variant.color} (${variant.available_yard || variant.total_yard} yards available)`,
+                  color: variant.color,
+                  available_yard: variant.available_yard || variant.total_yard,
+                  total_yard: variant.total_yard
+                }));
+
+                return (
+                  <Card key={index} className="mb-3 border">
+                    <Card.Header className="d-flex justify-content-between align-items-center bg-light">
+                      <h5 className="mb-0">Detail #{index + 1}</h5>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => removeDetailRow(index)}
+                        disabled={details.length === 1}
+                      >
+                        <BsTrash className="me-1" /> Remove
+                      </Button>
+                    </Card.Header>
+                    <Card.Body>
+                      <Row>
+                        <Col md={6}>
+                          <Form.Group className="mb-3">
+                            <Form.Label><strong>Fabric Variant (Color)</strong></Form.Label>
+                            {loadingVariants ? (
+                              <div className="d-flex align-items-center">
+                                <Spinner animation="border" size="sm" className="me-2" />
+                                <span>Loading variants...</span>
+                              </div>
+                            ) : (
+                              <>
+                                <Select
+                                  options={variantOptions}
+                                  components={{ Option: ColourOption }}
+                                  value={currentValue}
+                                  onChange={(selectedOption) => {
+                                    handleDetailChange(index, 'fabric_variant', selectedOption.value);
+                                  }}
+                                  placeholder="Select Variant"
+                                  isDisabled={!selectedFabricDefinition}
+                                  styles={{
+                                    control: (provided) => ({
+                                      ...provided,
+                                      borderColor: '#ddd',
+                                      boxShadow: 'none',
+                                      height: '38px',
+                                      '&:hover': {
+                                        borderColor: '#aaa'
+                                      }
+                                    }),
+                                    valueContainer: (provided) => ({
+                                      ...provided,
+                                      height: '38px',
+                                      padding: '0 8px'
+                                    })
+                                  }}
+                                />
+                                {!detail.fabric_variant && validated && (
+                                  <div className="text-danger small mt-1">
+                                    Please select a fabric variant.
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </Form.Group>
+                        </Col>
+                        <Col md={6}>
+                          <Form.Group className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <Form.Label className="mb-0"><strong>Yard Usage</strong></Form.Label>
+                              {currentVariant && (
+                                <span className={parseFloat(detail.yard_usage) > (currentVariant.available_yard || currentVariant.total_yard) ? "text-danger small" : "text-success small"}>
+                                  Available: {currentVariant.available_yard || currentVariant.total_yard} yards
+                                </span>
+                              )}
+                            </div>
+                            <Form.Control
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={detail.yard_usage}
+                              onChange={(e) => handleDetailChange(index, 'yard_usage', e.target.value)}
+                              required
+                              placeholder="Enter yards used"
+                              isInvalid={currentVariant && parseFloat(detail.yard_usage) > (currentVariant.available_yard || currentVariant.total_yard)}
+                              className={currentVariant && parseFloat(detail.yard_usage) > (currentVariant.available_yard || currentVariant.total_yard) ? "border-danger" : ""}
+                              style={{ height: '38px' }}
+                            />
+                            <Form.Control.Feedback type="invalid">
+                              {currentVariant && parseFloat(detail.yard_usage) > (currentVariant.available_yard || currentVariant.total_yard)
+                                ? `Exceeds available yards (${currentVariant.available_yard || currentVariant.total_yard} yards available)`
+                                : "Please enter valid yard usage."}
+                            </Form.Control.Feedback>
+                          </Form.Group>
+                        </Col>
+                      </Row>
+
+                      <Form.Label className="mt-2"><strong>Size Quantities</strong></Form.Label>
+                      <Row>
+                        {["XS", "S", "M", "L", "XL"].map((size, sizeIndex) => {
+                          const sizeKey = size.toLowerCase();
+                          return (
+                            <Col key={sizeIndex} xs={6} sm={4} md={2} className="mb-3">
+                              <Form.Group>
+                                <Form.Label className="text-center d-block">{size}</Form.Label>
+                                <Form.Control
+                                  type="number"
+                                  min="0"
+                                  value={detail[sizeKey]}
+                                  onChange={(e) => {
+                                    const val = Math.max(0, parseInt(e.target.value || 0));
+                                    handleDetailChange(index, sizeKey, val);
+                                  }}
+                                  className="text-center"
+                                />
+                              </Form.Group>
+                            </Col>
+                          );
+                        })}
+                        <Col xs={6} sm={4} md={2} className="mb-3">
+                          <Form.Group>
+                            <Form.Label className="text-center d-block">Total</Form.Label>
+                            <div className="form-control text-center bg-light">
+                              {parseInt(detail.xs || 0) +
+                               parseInt(detail.s || 0) +
+                               parseInt(detail.m || 0) +
+                               parseInt(detail.l || 0) +
+                               parseInt(detail.xl || 0)}
+                            </div>
+                          </Form.Group>
+                        </Col>
+                      </Row>
+                    </Card.Body>
+                  </Card>
+                );
+              })}
+
+              <div className="d-flex justify-content-between mb-4">
+                <Button
+                  variant="outline-primary"
+                  onClick={addDetailRow}
+                  className="d-flex align-items-center"
+                >
+                  <BsPlus size={20} className="me-1" /> Add Another Detail
+                </Button>
+
+                <Card className="border-0" style={{ backgroundColor: "#e8f4fe" }}>
+                  <Card.Body className="py-2">
+                    <div className="d-flex flex-column">
+                      <div className="d-flex align-items-center mb-2">
+                        <strong className="me-2">Total Quantities:</strong>
+                        <Badge bg="primary" className="me-1">XS: {totalQuantities.xs}</Badge>
+                        <Badge bg="primary" className="me-1">S: {totalQuantities.s}</Badge>
+                        <Badge bg="primary" className="me-1">M: {totalQuantities.m}</Badge>
+                        <Badge bg="primary" className="me-1">L: {totalQuantities.l}</Badge>
+                        <Badge bg="primary" className="me-1">XL: {totalQuantities.xl}</Badge>
+                        <Badge bg="success" className="ms-2">Total: {totalQuantities.total}</Badge>
+                      </div>
+                      <div className="d-flex align-items-center">
+                        <strong className="me-2">Total Yard Usage:</strong>
+                        <Badge bg="info">{totalQuantities.yard_usage.toFixed(2)} yards</Badge>
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
               </div>
-            );
-          })}
 
-          <button
-            type="button"
-            onClick={addDetailRow}
-            style={formStyles.buttonSecondary}
-          >
-            + Add Another Detail
-          </button>
-
-          <div style={{textAlign: 'center', marginTop: '30px'}}>
-            <button
-              type="submit"
-              disabled={loading}
-              style={formStyles.buttonPrimary}
-            >
-              {loading ? 'Submitting...' : 'Submit Cutting Record'}
-            </button>
-          </div>
-        </form>
+              <div className="d-flex justify-content-center mt-4">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  disabled={isSubmitting}
+                  className="px-5"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Cutting Record'
+                  )}
+                </Button>
+              </div>
+            </Form>
+          </Card.Body>
+        </Card>
       </div>
     </>
   );
