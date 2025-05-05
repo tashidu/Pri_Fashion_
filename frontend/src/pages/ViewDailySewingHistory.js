@@ -11,6 +11,7 @@ const ViewDailySewingHistory = () => {
   const [sortField, setSortField] = useState("date"); // default sort by date
   const [sortOrder, setSortOrder] = useState("desc"); // 'asc' or 'desc'
   const [loading, setLoading] = useState(true); // Loading state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768); // Track sidebar state
 
   useEffect(() => {
     // Fetch records on component mount
@@ -25,6 +26,16 @@ const ViewDailySewingHistory = () => {
         setError("Failed to load daily sewing history.");
         setLoading(false);
       });
+  }, []);
+
+  // Add resize event listener to update sidebar state
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSidebarOpen(window.innerWidth >= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   // Filter records based on search term (product_name search)
@@ -68,7 +79,15 @@ const ViewDailySewingHistory = () => {
   return (
     <>
       <RoleBasedNavBar />
-      <div className="main-content">
+      <div
+        className="main-content"
+        style={{
+          marginLeft: isSidebarOpen ? "240px" : "70px",
+          width: `calc(100% - ${isSidebarOpen ? "240px" : "70px"})`,
+          transition: "all 0.3s ease",
+          padding: "20px"
+        }}
+      >
         <h2>Daily Sewing History</h2>
 
         {error && <p style={{ color: "red" }}>{error}</p>}
