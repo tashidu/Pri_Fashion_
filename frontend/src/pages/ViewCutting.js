@@ -3,14 +3,18 @@ import axios from "axios";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import {
   Container, Row, Col, Card, Table, Button,
-  Form, InputGroup, Badge, Spinner, Alert
+  Form, InputGroup, Badge, Spinner, Alert,
+  Modal
 } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import {
   FaSearch, FaSort, FaSortUp, FaSortDown,
   FaEye, FaEyeSlash, FaTshirt, FaCut,
-  FaCalendarAlt, FaFilter, FaPlus, FaDownload
+  FaCalendarAlt, FaFilter, FaPlus, FaDownload,
+  FaFilePdf, FaCheck, FaTimes
 } from 'react-icons/fa';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ViewCutting = () => {
   const navigate = useNavigate();
@@ -23,6 +27,8 @@ const ViewCutting = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: 'cutting_date', direction: 'desc' });
   const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState(null);
 
   // Add resize event listener to update sidebar state
   useEffect(() => {
@@ -178,10 +184,123 @@ const ViewCutting = () => {
     setSortConfig({ key: 'cutting_date', direction: 'desc' });
   };
 
-  // Generate PDF report (placeholder function)
-  const generatePDF = (recordId) => {
-    alert(`PDF generation for record ${recordId} would be implemented here`);
-    // Actual PDF generation would be implemented here
+  // Open PDF confirmation modal
+  const openPdfModal = (record) => {
+    setSelectedRecord(record);
+    setShowPdfModal(true);
+  };
+
+  // Close PDF confirmation modal
+  const closePdfModal = () => {
+    setShowPdfModal(false);
+    setSelectedRecord(null);
+  };
+
+  // Generate PDF report
+  const generatePDF = () => {
+    if (!selectedRecord) return;
+
+    try {
+      const { totalYard, totalQuantity, totalVariants } = getAggregates(selectedRecord);
+      const productName = selectedRecord.product_name || "N/A";
+      const fabricName = selectedRecord.fabric_definition_data?.fabric_name || "N/A";
+
+      // Create PDF document with orientation and unit specifications
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Add title and company info
+      doc.setFontSize(20);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Cutting Record Report", 105, 15, { align: 'center' });
+
+      doc.setFontSize(12);
+      doc.text("Fashion Garment Management System", 105, 25, { align: 'center' });
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 30, { align: 'center' });
+
+      // Add cutting record details
+      doc.setFontSize(14);
+      doc.text("Cutting Record Details", 14, 40);
+
+      doc.setFontSize(10);
+      const details = [
+        ["Product Name:", productName],
+        ["Fabric Name:", fabricName],
+        ["Cutting Date:", selectedRecord.cutting_date],
+        ["Total Quantity:", totalQuantity.toString()],
+        ["Total Yard Usage:", totalYard.toString()],
+        ["Variants Used:", totalVariants.toString()]
+      ];
+
+      // First table
+      let finalY = 45;
+      autoTable(doc, {
+        startY: finalY,
+        head: [["Property", "Value"]],
+        body: details,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        styles: { fontSize: 10 }
+      });
+
+      // Get the final Y position after the first table
+      finalY = (doc.lastAutoTable || doc.previousAutoTable).finalY + 10;
+
+      // Add color usage details
+      doc.setFontSize(14);
+      doc.text("Color Usage Details", 14, finalY);
+
+      if (selectedRecord.details && selectedRecord.details.length > 0) {
+        const colorDetails = selectedRecord.details.map(detail => [
+          detail.fabric_variant_data?.color_name || detail.fabric_variant_data?.color || "N/A",
+          detail.yard_usage,
+          detail.xs || 0,
+          detail.s || 0,
+          detail.m || 0,
+          detail.l || 0,
+          detail.xl || 0
+        ]);
+
+        // Second table
+        autoTable(doc, {
+          startY: finalY + 5,
+          head: [["Color", "Yard Usage", "XS", "S", "M", "L", "XL"]],
+          body: colorDetails,
+          theme: 'grid',
+          headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+          styles: { fontSize: 10 }
+        });
+      } else {
+        doc.text("No color details available", 14, finalY + 5);
+      }
+
+      // Add footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(
+          `Page ${i} of ${pageCount} - Fashion Garment Management System`,
+          105,
+          doc.internal.pageSize.height - 10,
+          { align: 'center' }
+        );
+      }
+
+      // Save the PDF with a clean filename
+      const cleanProductName = productName.replace(/[^a-zA-Z0-9]/g, '_');
+      doc.save(`Cutting_Record_${selectedRecord.id}_${cleanProductName}.pdf`);
+
+      // Close the modal
+      closePdfModal();
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again: " + error.message);
+      closePdfModal();
+    }
   };
 
   return (
@@ -383,7 +502,7 @@ const ViewCutting = () => {
                                 <Button
                                   variant="outline-success"
                                   size="sm"
-                                  onClick={() => generatePDF(record.id)}
+                                  onClick={() => openPdfModal(record)}
                                 >
                                   <FaDownload className="me-1" /> PDF
                                 </Button>
@@ -499,6 +618,34 @@ const ViewCutting = () => {
           </Card.Body>
         </Card>
       </Container>
+
+      {/* PDF Confirmation Modal */}
+      <Modal show={showPdfModal} onHide={closePdfModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FaFilePdf className="text-danger me-2" />
+            Generate PDF Report
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to generate a PDF report for this cutting record?</p>
+          {selectedRecord && (
+            <div className="bg-light p-3 rounded">
+              <p className="mb-1"><strong>Product:</strong> {selectedRecord.product_name || "N/A"}</p>
+              <p className="mb-1"><strong>Fabric:</strong> {selectedRecord.fabric_definition_data?.fabric_name || "N/A"}</p>
+              <p className="mb-0"><strong>Date:</strong> {selectedRecord.cutting_date}</p>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closePdfModal}>
+            <FaTimes className="me-1" /> Cancel
+          </Button>
+          <Button variant="success" onClick={generatePDF}>
+            <FaCheck className="me-1" /> Generate PDF
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };
