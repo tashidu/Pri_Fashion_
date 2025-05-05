@@ -25,6 +25,7 @@ import PackingReportChart from "./pages/PackingReportChart.js";
 import AddShop from "./pages/AddShop.js";
 import CreateOrder from "./pages/CreateOrder.js";
 import OrderListPage from "./pages/OrderListPage.js.js";
+import OwnerOrdersPage from "./pages/OwnerOrdersPage.js";
 
 
 function App() {
@@ -60,13 +61,7 @@ function App() {
         <Route path ="/addshop" element={<AddShop/>} />
         <Route path="/addorder" element={<CreateOrder />} />
         <Route path="/order-list" element={<OrderListPage />} />
-
-
-
-
-
-
-
+        <Route path="/owner-orders" element={<OwnerOrdersPage />} />
       </Routes>
     </Router>
   );

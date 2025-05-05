@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from .models import Shop, Order, OrderItem
 from .serializers import ShopSerializer, OrderSerializer, OrderItemSerializer
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from packing_app.models import PackingInventory
 from finished_product.models import FinishedProduct
 from rest_framework import serializers
@@ -17,9 +18,9 @@ class ShopListCreateView(generics.ListCreateAPIView):
 class ShopCreateView(generics.CreateAPIView):
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
-    
-    
-    
+
+
+
 class OrderListCreateView(generics.ListCreateAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
@@ -29,17 +30,25 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = OrderSerializer
 
 class OrderApproveView(APIView):
+    """
+    Allows owners to approve submitted orders.
+    """
     def post(self, request, pk):
         try:
             order = Order.objects.get(pk=pk)
 
-            if order.status == 'approved':
-                return Response({"error": "Order is already approved"}, status=status.HTTP_400_BAD_REQUEST)
+            if order.status != 'submitted':
+                return Response({"error": "Only submitted orders can be approved."}, status=status.HTTP_400_BAD_REQUEST)
 
             order.status = 'approved'
+            order.approval_date = timezone.now()
             order.save()
 
-            return Response({"status": "approved", "order_id": order.id}, status=status.HTTP_200_OK)
+            return Response({
+                "status": "approved",
+                "order_id": order.id,
+                "approval_date": order.approval_date
+            }, status=status.HTTP_200_OK)
 
         except Order.DoesNotExist:
             return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -73,10 +82,10 @@ class OrderItemCreateView(generics.CreateAPIView):
         # Save order item and deduct inventory
         serializer.save(order=order, finished_product=finished_product)
         inventory.deduct_for_order(six_packs, twelve_packs, extras)
-        
-        
-        
-        
+
+
+
+
 class OrderSubmitView(APIView):
     """
     Lets Order Coordinator mark an order as 'submitted' (finished preparing).
@@ -95,4 +104,57 @@ class OrderSubmitView(APIView):
 
         except Order.DoesNotExist:
             return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+
+
+class GenerateInvoiceView(APIView):
+    """
+    Allows owners to generate an invoice for an approved order.
+    """
+    def post(self, request, pk):
+        try:
+            order = Order.objects.get(pk=pk)
+
+            if order.status != 'approved':
+                return Response({"error": "Only approved orders can be invoiced."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Generate invoice number (simple implementation - can be enhanced)
+            current_date = timezone.now().strftime('%Y%m%d')
+            invoice_number = f"INV-{current_date}-{order.id}"
+
+            order.status = 'invoiced'
+            order.invoice_number = invoice_number
+            order.save()
+
+            return Response({
+                "status": "invoiced",
+                "order_id": order.id,
+                "invoice_number": invoice_number,
+                "total_amount": order.total_amount
+            }, status=status.HTTP_200_OK)
+
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class MarkOrderDeliveredView(APIView):
+    """
+    Allows owners to mark an invoiced order as delivered/paid.
+    """
+    def post(self, request, pk):
+        try:
+            order = Order.objects.get(pk=pk)
+
+            if order.status != 'invoiced':
+                return Response({"error": "Only invoiced orders can be marked as delivered."}, status=status.HTTP_400_BAD_REQUEST)
+
+            order.status = 'delivered'
+            order.save()
+
+            return Response({
+                "status": "delivered",
+                "order_id": order.id,
+                "message": "Order has been marked as delivered and paid."
+            }, status=status.HTTP_200_OK)
+
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)

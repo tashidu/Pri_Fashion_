@@ -110,11 +110,11 @@ function PriFashionNavBar() {
             </Link>
           </li>
           <li className="nav-item mb-2">
-            <Link className="nav-link d-flex align-items-center text-dark" to="/order">
+            <Link className="nav-link d-flex align-items-center text-dark" to="/owner-orders">
               <div className="me-2 text-center" style={{ width: "24px" }}>
                 <i className="bi bi-clipboard-check"></i>
               </div>
-              {isSidebarOpen && <span>Order</span>}
+              {isSidebarOpen && <span>Orders</span>}
             </Link>
           </li>
           <li className="nav-item mb-2">
