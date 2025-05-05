@@ -29,8 +29,7 @@ const ViewFabrics = () => {
   return (
     <>
       <RoleBasedNavBar />
-      {/* Added 'main-content' to ensure proper left margin is applied */}
-      <div className="container main-content mt-4">
+      <div className="container mt-4">
         <h2 className="text-center mb-4">Fabric List</h2>
         {message && <div className="alert alert-danger text-center">{message}</div>}
         <div className="table-responsive">

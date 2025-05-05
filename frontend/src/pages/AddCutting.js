@@ -241,8 +241,6 @@ const AddCuttingRecord = () => {
   return (
     <>
       <RoleBasedNavBar/>
-      <div className="main-content">
-
       <div style={formStyles.container}>
         <h2 style={formStyles.header}>Add Cutting Record</h2>
 
@@ -448,7 +446,6 @@ const AddCuttingRecord = () => {
             </button>
           </div>
         </form>
-      </div>
       </div>
     </>
   );

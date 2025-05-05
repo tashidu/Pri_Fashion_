@@ -280,7 +280,7 @@ const AddDailySewingRecord = () => {
   return (
     <>
       <RoleBasedNavBar />
-      <Container className="main-content py-4">
+      <Container className="py-4">
         <Row className="justify-content-center">
           <Col md={10} lg={8}>
             <Card className="shadow-sm">

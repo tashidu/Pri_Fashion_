@@ -5,9 +5,7 @@ function InventoryDashboard() {
     return (
         <>
         <RoleBasedNavBar/>
-        <div className="main-content">
-
-
+        <div>
             <h1>Inventory Dashboard</h1>
             <p>Manage fabric stock, track inventory levels, and handle suppliers.</p>
         </div>

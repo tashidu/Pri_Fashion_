@@ -65,7 +65,7 @@ const AddPackingSession = () => {
   return (
     <>
       <InverntoryManagerNavBar/>
-      <div className="main-content">
+      <div>
         <h2 className="mb-3">Add Packing Session</h2>
 
         {message && <div className="alert alert-success">{message}</div>}

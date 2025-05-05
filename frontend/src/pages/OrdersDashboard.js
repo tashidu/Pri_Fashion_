@@ -5,7 +5,7 @@ function OrdersDashboard() {
     return (
         <>
             <RoleBasedNavBar />
-            <div className="main-content">
+            <div>
                 <h1>Orders Dashboard</h1>
                 <p>Track incoming orders, manage order fulfillment, and oversee production workflow.</p>
             </div>

@@ -33,7 +33,7 @@ const PackingReportChart = () => {
   return (
     <>
     <RoleBasedNavBar/>
-    <div className="main-content">
+    <div>
       <h2 className="text-xl mb-4">Packing Overview</h2>
 
       {/* Displaying Quick Analytics */}

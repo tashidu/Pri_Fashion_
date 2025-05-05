@@ -103,7 +103,6 @@ const AddFabric = () => {
   return (
     <>
     <RoleBasedNavBar/>
-    <div className="main-content">
     <Container className="add-fabric-container" style={{ padding: '2rem 0', backgroundColor: '#f4f6f9' }}>
       <Row className="justify-content-center">
         <Col md={8} lg={6}>
@@ -226,7 +225,6 @@ const AddFabric = () => {
         </Col>
       </Row>
     </Container>
-    </div>
     </>
   );
 };
