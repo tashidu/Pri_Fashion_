@@ -6,6 +6,17 @@ const ViewCutting = () => {
   const [cuttingRecords, setCuttingRecords] = useState([]);
   const [expandedRows, setExpandedRows] = useState({}); // e.g., { recordId: true/false }
   const [error, setError] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768); // Track sidebar state
+
+  // Add resize event listener to update sidebar state
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSidebarOpen(window.innerWidth >= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Fetch cutting records on mount
   useEffect(() => {
@@ -56,7 +67,14 @@ const ViewCutting = () => {
   return (
     <>
       <RoleBasedNavBar />
-      <div className="container main-content mt-4">
+      <div
+        style={{
+          marginLeft: isSidebarOpen ? "240px" : "70px",
+          width: `calc(100% - ${isSidebarOpen ? "240px" : "70px"})`,
+          transition: "all 0.3s ease",
+          padding: "20px"
+        }}
+      >
         <h2>Cutting Records</h2>
         {error && <p style={{ color: "red" }}>{error}</p>}
 

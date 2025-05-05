@@ -11,9 +11,20 @@ const AddPackingSession = () => {
   const [extraItems, setExtraItems] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768); // Track sidebar state
   const navigate = useNavigate();
 
   const totalItems = pack6 * 6 + pack12 * 12 + Number(extraItems);
+
+  // Add resize event listener to update sidebar state
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSidebarOpen(window.innerWidth >= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     axios
@@ -65,7 +76,14 @@ const AddPackingSession = () => {
   return (
     <>
       <InverntoryManagerNavBar/>
-      <div>
+      <div
+        style={{
+          marginLeft: isSidebarOpen ? "240px" : "70px",
+          width: `calc(100% - ${isSidebarOpen ? "240px" : "70px"})`,
+          transition: "all 0.3s ease",
+          padding: "20px"
+        }}
+      >
         <h2 className="mb-3">Add Packing Session</h2>
 
         {message && <div className="alert alert-success">{message}</div>}

@@ -6,7 +6,18 @@ import { useNavigate } from 'react-router-dom';
 const ViewFabrics = () => {
   const [fabrics, setFabrics] = useState([]);
   const [message, setMessage] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768); // Track sidebar state
   const navigate = useNavigate();
+
+  // Add resize event listener to update sidebar state
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSidebarOpen(window.innerWidth >= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Fetch fabric definitions from your API
   useEffect(() => {
@@ -29,7 +40,14 @@ const ViewFabrics = () => {
   return (
     <>
       <RoleBasedNavBar />
-      <div className="container mt-4">
+      <div
+        style={{
+          marginLeft: isSidebarOpen ? "240px" : "70px",
+          width: `calc(100% - ${isSidebarOpen ? "240px" : "70px"})`,
+          transition: "all 0.3s ease",
+          padding: "20px"
+        }}
+      >
         <h2 className="text-center mb-4">Fabric List</h2>
         {message && <div className="alert alert-danger text-center">{message}</div>}
         <div className="table-responsive">
