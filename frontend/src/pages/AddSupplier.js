@@ -74,8 +74,7 @@ const AddSupplier = () => {
         setAddressError('');
         setTelNoError('');
         setValidated(false);
-        setMessage('');
-        setError('');
+        // Don't clear message or error when resetting form fields
     };
 
     // Handle form submission
@@ -102,9 +101,13 @@ const AddSupplier = () => {
         const supplierData = { name, address, tel_no: telNo };
 
         try {
-            const response = await axios.post('http://localhost:8000/api/addsuppliers/', supplierData);
+            const response = await axios.post('http://localhost:8000/api/suppliers/', supplierData);
             if (response.status === 201) {
+                // Set success message first, then reset form
                 setMessage('✅ Supplier added successfully!');
+                // Clear any previous errors
+                setError('');
+                // Reset form fields but keep the success message visible
                 resetForm();
             }
         } catch (error) {
@@ -138,13 +141,21 @@ const AddSupplier = () => {
                                     <h3 className="text-center mb-4">Add Supplier</h3>
 
                                     {message && (
-                                        <Alert variant="success" className="d-flex align-items-center">
+                                        <Alert
+                                            variant="success"
+                                            className="d-flex align-items-center"
+                                            style={{ fontSize: '1.1rem' }}
+                                        >
                                             {message}
                                         </Alert>
                                     )}
 
                                     {error && (
-                                        <Alert variant="danger" className="d-flex align-items-center">
+                                        <Alert
+                                            variant="danger"
+                                            className="d-flex align-items-center"
+                                            style={{ fontSize: '1.1rem' }}
+                                        >
                                             {error}
                                         </Alert>
                                     )}
