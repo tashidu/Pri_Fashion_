@@ -188,9 +188,6 @@ class SalesPerformanceView(APIView):
                 elif order.status == 'payment_due':
                     payment_due_count += 1
 
-                # Add to total paid
-                total_paid += float(order.amount_paid)
-
                 # Calculate order total
                 order_total = 0
                 for item in order.items.all():
@@ -204,6 +201,14 @@ class SalesPerformanceView(APIView):
 
                 # Add to total amount
                 total_amount += order_total
+
+                # Add to total paid based on order status
+                if order.status == 'paid':
+                    # For orders marked as 'paid', consider the total amount as paid
+                    total_paid += order_total
+                else:
+                    # For other orders, use the recorded amount_paid
+                    total_paid += float(order.amount_paid)
 
             # Create payment status object
             payment_status = {
