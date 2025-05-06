@@ -6,6 +6,7 @@ from .views import (
     OrderApproveView,
     ShopListCreateView,
     ShopCreateView,
+    ShopDistrictAnalysisView,
     OrderSubmitView,
     GenerateInvoiceView,
     MarkOrderDeliveredView,
@@ -16,6 +17,7 @@ from .views import (
 urlpatterns = [
     path('shops/', ShopListCreateView.as_view(), name='shop-list-create'),
     path('shops/create/', ShopCreateView.as_view(), name='shop-create'),
+    path('shops/district-analysis/', ShopDistrictAnalysisView.as_view(), name='shop-district-analysis'),
     path('orders/create/', OrderListCreateView.as_view(), name='order-list-create'),
     path('orders/items/', OrderItemCreateView.as_view(), name='orderitem-list-create'),
     path('orders/<int:pk>/', OrderDetailView.as_view(), name='order-detail'),

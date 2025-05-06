@@ -1,18 +1,75 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Container, Row, Col, Card, Form, Button, InputGroup, Alert, Spinner } from 'react-bootstrap';
-import { FaStore, FaMapMarkerAlt, FaPhone, FaSave, FaUndo, FaMapMarked } from 'react-icons/fa';
+import { FaStore, FaMapMarkerAlt, FaPhone, FaSave, FaUndo, FaMapMarked, FaSearchLocation } from 'react-icons/fa';
 import RoleBasedNavBar from '../components/RoleBasedNavBar';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Add custom CSS for the map
+const mapStyles = {
+    leafletContainer: {
+        height: '100%',
+        width: '100%',
+        borderRadius: '8px',
+    },
+    mapContainer: {
+        height: '300px',
+        width: '100%',
+        marginBottom: '10px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        border: '1px solid #ccc',
+    }
+};
+
+// Add global CSS for Leaflet
+const LeafletCSS = () => {
+    useEffect(() => {
+        // Add CSS to head
+        const style = document.createElement('style');
+        style.textContent = `
+            .leaflet-container {
+                height: 100%;
+                width: 100%;
+                border-radius: 8px;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Cleanup
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
+
+    return null;
+};
+
+// Fix for default marker icon in react-leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
 
 const AddShop = () => {
     const [shopData, setShopData] = useState({
         name: '',
         address: '',
         contact_number: '',
+        district: '',
         latitude: '',
         longitude: ''
     });
+
+    const [mapCenter, setMapCenter] = useState([7.8731, 80.7718]); // Default center of Sri Lanka
+    const [mapZoom, setMapZoom] = useState(8);
+    const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+    const mapRef = useRef(null);
 
     const [nameError, setNameError] = useState('');
     const [addressError, setAddressError] = useState('');
@@ -85,6 +142,85 @@ const AddShop = () => {
         }
     };
 
+    // Function to get district from coordinates using OpenStreetMap's Nominatim API
+    const getDistrictFromCoordinates = async (lat, lon) => {
+        setIsSearchingLocation(true);
+        try {
+            const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`);
+
+            if (response.data && response.data.address) {
+                const address = response.data.address;
+                // Try to get district information - different countries use different terms
+                const district = address.district || address.county || address.state_district || address.region || '';
+
+                setShopData(prevState => ({
+                    ...prevState,
+                    district: district,
+                    latitude: lat,
+                    longitude: lon
+                }));
+
+                // Update map center
+                setMapCenter([lat, lon]);
+                setMapZoom(13);
+
+                return district;
+            }
+        } catch (error) {
+            console.error("Error fetching location data:", error);
+        } finally {
+            setIsSearchingLocation(false);
+        }
+        return '';
+    };
+
+    // Function to get coordinates and district from address
+    const getLocationFromAddress = async () => {
+        if (!shopData.address || shopData.address.trim().length < 5) {
+            setLocationError('Please enter a valid address');
+            return;
+        }
+
+        setIsSearchingLocation(true);
+        try {
+            const response = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(shopData.address)}&limit=1&addressdetails=1`);
+
+            if (response.data && response.data.length > 0) {
+                const result = response.data[0];
+                const lat = parseFloat(result.lat);
+                const lon = parseFloat(result.lon);
+
+                // Get district information
+                await getDistrictFromCoordinates(lat, lon);
+
+                setLocationError('');
+            } else {
+                setLocationError('Could not find location. Please try a more specific address.');
+            }
+        } catch (error) {
+            console.error("Error searching for address:", error);
+            setLocationError('Error searching for location. Please try again.');
+        } finally {
+            setIsSearchingLocation(false);
+        }
+    };
+
+    // Map click handler component
+    const LocationMarker = () => {
+        useMapEvents({
+            click: async (e) => {
+                const { lat, lng } = e.latlng;
+                await getDistrictFromCoordinates(lat, lng);
+            },
+        });
+
+        return shopData.latitude && shopData.longitude ? (
+            <Marker position={[shopData.latitude, shopData.longitude]}>
+                <Popup>Shop location</Popup>
+            </Marker>
+        ) : null;
+    };
+
     // Validate location
     const validateLocation = () => {
         // If we have both latitude and longitude, location is valid
@@ -110,6 +246,7 @@ const AddShop = () => {
             name: '',
             address: '',
             contact_number: '',
+            district: '',
             latitude: '',
             longitude: ''
         });
@@ -118,6 +255,9 @@ const AddShop = () => {
         setContactNumberError('');
         setLocationError('');
         setValidated(false);
+        // Reset map to default view
+        setMapCenter([7.8731, 80.7718]);
+        setMapZoom(8);
         // Don't clear message or error when resetting form fields
     };
 
@@ -143,10 +283,19 @@ const AddShop = () => {
 
         setIsSubmitting(true);
 
+        // Prepare data for submission
+        const shopDataToSubmit = {
+            ...shopData,
+            // Convert empty strings to null for backend
+            latitude: shopData.latitude || null,
+            longitude: shopData.longitude || null,
+            district: shopData.district || null
+        };
+
         // Send POST request to the Django backend to create a shop
-        axios.post('http://localhost:8000/api/orders/shops/create/', shopData)
+        axios.post('http://localhost:8000/api/orders/shops/create/', shopDataToSubmit)
             .then(() => {
-                setSuccess("Shop created successfully!");
+                setSuccess("Shop created successfully with district information for better analysis!");
                 resetForm();  // Clear form
                 setIsSubmitting(false);
             })
@@ -159,6 +308,7 @@ const AddShop = () => {
 
     return (
         <>
+            <LeafletCSS />
             <RoleBasedNavBar />
             <div
                 style={{
@@ -183,6 +333,11 @@ const AddShop = () => {
                                     {success && (
                                         <Alert variant="success" className="mb-4">
                                             {success}
+                                            <div className="mt-2">
+                                                <a href="/shop-analysis" className="alert-link">
+                                                    View Shop District Analysis Dashboard
+                                                </a>
+                                            </div>
                                         </Alert>
                                     )}
 
@@ -227,6 +382,14 @@ const AddShop = () => {
                                                     required
                                                     isInvalid={!!addressError}
                                                 />
+                                                <Button
+                                                    variant="outline-primary"
+                                                    onClick={getLocationFromAddress}
+                                                    disabled={isSearchingLocation || !shopData.address}
+                                                >
+                                                    <FaSearchLocation className="me-1" />
+                                                    {isSearchingLocation ? 'Searching...' : 'Find'}
+                                                </Button>
                                                 <Form.Control.Feedback type="invalid">
                                                     {addressError || 'Address is required'}
                                                 </Form.Control.Feedback>
@@ -236,7 +399,46 @@ const AddShop = () => {
                                             </Form.Text>
                                         </Form.Group>
 
+                                        <Form.Group className="mb-3">
+                                            <Form.Label><strong>District</strong></Form.Label>
+                                            <InputGroup>
+                                                <InputGroup.Text className="bg-light">
+                                                    <FaMapMarked className="text-primary" />
+                                                </InputGroup.Text>
+                                                <Form.Control
+                                                    type="text"
+                                                    name="district"
+                                                    value={shopData.district}
+                                                    onChange={handleChange}
+                                                    placeholder="District will be auto-detected from map or address"
+                                                    readOnly={false}
+                                                />
+                                            </InputGroup>
+                                            <Form.Text className="text-muted">
+                                                District information helps with regional sales analysis
+                                            </Form.Text>
+                                        </Form.Group>
 
+                                        <Form.Group className="mb-4">
+                                            <Form.Label><strong>Shop Location Map</strong></Form.Label>
+                                            <div style={mapStyles.mapContainer}>
+                                                <MapContainer
+                                                    center={mapCenter}
+                                                    zoom={mapZoom}
+                                                    style={mapStyles.leafletContainer}
+                                                    ref={mapRef}
+                                                >
+                                                    <TileLayer
+                                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                    />
+                                                    <LocationMarker />
+                                                </MapContainer>
+                                            </div>
+                                            <Form.Text className="text-muted">
+                                                Click on the map to set shop location and get district information
+                                            </Form.Text>
+                                        </Form.Group>
 
                                         <Form.Group className="mb-4">
                                             <Form.Label><strong>Contact Number</strong></Form.Label>

@@ -19,6 +19,16 @@ class ShopCreateView(generics.CreateAPIView):
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
 
+class ShopDistrictAnalysisView(generics.ListAPIView):
+    """
+    API endpoint that returns shops with district information for analysis.
+    """
+    serializer_class = ShopSerializer
+
+    def get_queryset(self):
+        # Return all shops, but prioritize ones with district information
+        return Shop.objects.all().order_by('-district', 'name')
+
 
 
 class OrderListCreateView(generics.ListCreateAPIView):

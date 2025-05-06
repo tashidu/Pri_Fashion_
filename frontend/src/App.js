@@ -29,6 +29,7 @@ import CreateOrder from "./pages/CreateOrder.js";
 import OrderListPage from "./pages/OrderListPage.js.js";
 import OwnerOrdersPage from "./pages/OwnerOrdersPage.js";
 import SalesTeamOrdersPage from "./pages/SalesTeamOrdersPage.js";
+import ShopAnalysisDashboard from "./pages/ShopAnalysisDashboard.js";
 
 
 function App() {
@@ -64,6 +65,7 @@ function App() {
         <Route path="/view-packing-sessions" element={<ViewPackingSessions />} />
         <Route path="/packing-report" element={<PackingReportChart />} />
         <Route path ="/addshop" element={<AddShop/>} />
+        <Route path="/shop-analysis" element={<ShopAnalysisDashboard />} />
         <Route path="/addorder" element={<CreateOrder />} />
         <Route path="/order-list" element={<OrderListPage />} />
         <Route path="/owner-orders" element={<OwnerOrdersPage />} />

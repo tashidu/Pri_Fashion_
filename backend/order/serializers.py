@@ -6,7 +6,7 @@ from finished_product.models import FinishedProduct
 class ShopSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shop
-        fields = ['id', 'name', 'address', 'contact_number']
+        fields = ['id', 'name', 'address', 'contact_number', 'district', 'latitude', 'longitude']
 
 class OrderItemSerializer(serializers.ModelSerializer):
     finished_product_name = serializers.ReadOnlyField(source='finished_product.cutting_record.product_name')
