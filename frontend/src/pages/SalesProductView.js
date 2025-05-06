@@ -4,6 +4,7 @@ import { Container, Row, Col, Card, Form, InputGroup, Button, Badge, Spinner, Im
 import { FaSearch, FaFilter, FaSortAmountDown, FaSortAmountUp, FaEye, FaEyeSlash, FaImage, FaMoneyBillWave, FaBoxes } from 'react-icons/fa';
 import SalesTeamNavBar from '../components/SalesTeamNavBar';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import './SalesProductView.css';
 
 const SalesProductView = () => {
     const [products, setProducts] = useState([]);
@@ -86,29 +87,10 @@ const SalesProductView = () => {
         return sortDirection === "asc" ? <FaSortAmountUp className="ms-1" /> : <FaSortAmountDown className="ms-1" />;
     };
 
-    // Format currency
+    // Format currency with LKR symbol
     const formatCurrency = (amount) => {
         if (amount === null || amount === undefined) return "N/A";
         return `Rs. ${parseFloat(amount).toFixed(2)}`;
-    };
-
-    // Get status badge class
-    const getStatusBadgeClass = (status) => {
-        switch (status) {
-            case "completed":
-                return "bg-success";
-            case "in_progress":
-                return "bg-warning";
-            case "pending":
-                return "bg-info";
-            default:
-                return "bg-secondary";
-        }
-    };
-
-    // Get color code
-    const getColorCode = (color) => {
-        return color || "#CCCCCC";
     };
 
     // Filter and sort products
@@ -117,9 +99,16 @@ const SalesProductView = () => {
             // Apply search filter
             const searchMatch = product.product_name.toLowerCase().includes(searchTerm.toLowerCase());
 
+            // Get stock level
+            const stockLevel = product.packing_inventory?.total_quantity || product.available_quantity;
+
+            // Always hide products with 0 stock
+            if (stockLevel <= 0) {
+                return false;
+            }
+
             // Apply status filter
             let statusMatch = true;
-            const stockLevel = product.packing_inventory?.total_quantity || product.available_quantity;
             if (statusFilter === "in_stock") {
                 statusMatch = stockLevel > 0;
             } else if (statusFilter === "out_of_stock") {
@@ -230,20 +219,28 @@ const SalesProductView = () => {
                                                 <Card.Body>
                                                     <Row>
                                                         <Col md={4} className="text-center mb-3 mb-md-0">
-                                                            {product.product_image ? (
-                                                                <Image
-                                                                    src={product.product_image}
-                                                                    alt={product.product_name}
-                                                                    fluid
-                                                                    className="product-image"
-                                                                    style={{ maxHeight: '200px', objectFit: 'contain' }}
-                                                                />
-                                                            ) : (
-                                                                <div className="no-image-placeholder d-flex flex-column align-items-center justify-content-center p-4 bg-light rounded" style={{ height: '200px' }}>
-                                                                    <FaImage size={40} className="text-secondary mb-2" />
-                                                                    <p className="text-muted">No image available</p>
-                                                                </div>
-                                                            )}
+                                                            <div className="product-image-container position-relative overflow-hidden shadow-sm rounded" style={{ height: '250px' }}>
+                                                                {product.product_image ? (
+                                                                    <>
+                                                                        <Image
+                                                                            src={product.product_image}
+                                                                            alt={product.product_name}
+                                                                            className="product-image w-100 h-100"
+                                                                            style={{ objectFit: 'cover', transition: 'transform 0.3s ease' }}
+                                                                            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                                                            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                                                        />
+                                                                        <div className="position-absolute bottom-0 start-0 end-0 p-2 text-white bg-dark bg-opacity-75">
+                                                                            <h6 className="mb-0">{product.product_name}</h6>
+                                                                        </div>
+                                                                    </>
+                                                                ) : (
+                                                                    <div className="no-image-placeholder d-flex flex-column align-items-center justify-content-center p-4 bg-light h-100">
+                                                                        <FaImage size={40} className="text-secondary mb-2" />
+                                                                        <p className="text-muted">No image available</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </Col>
                                                         <Col md={8}>
                                                             <h5 className="mb-3"><FaBoxes className="me-2 text-primary" />Packing Inventory</h5>
@@ -288,6 +285,78 @@ const SalesProductView = () => {
                 </tbody>
             </Table>
         </div>
+    );
+
+    // Render card view
+    const renderCardView = () => (
+        <Row className="g-4">
+            {loading ? (
+                <Col xs={12} className="text-center py-5">
+                    <Spinner animation="border" variant="primary" />
+                    <p className="mt-2">Loading products...</p>
+                </Col>
+            ) : currentItems.length === 0 ? (
+                <Col xs={12} className="text-center py-5">
+                    <p>No products found.</p>
+                </Col>
+            ) : (
+                currentItems.map((product) => (
+                    <Col key={product.id} xs={12} sm={6} md={4} lg={3}>
+                        <Card className="h-100 product-card shadow-sm border-0 overflow-hidden">
+                            <div className="product-image-container position-relative" style={{ height: '220px' }}>
+                                {product.product_image ? (
+                                    <Image
+                                        src={product.product_image}
+                                        alt={product.product_name}
+                                        className="card-img-top w-100 h-100"
+                                        style={{ objectFit: 'cover', transition: 'transform 0.5s ease' }}
+                                        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                                        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    />
+                                ) : (
+                                    <div className="d-flex flex-column align-items-center justify-content-center bg-light h-100">
+                                        <FaImage size={40} className="text-secondary mb-2" />
+                                        <p className="text-muted">No image</p>
+                                    </div>
+                                )}
+                                <div className="position-absolute top-0 end-0 m-2">
+                                    <Badge bg="success" pill className="px-2 py-1">
+                                        {product.packing_inventory?.total_quantity || product.available_quantity} in stock
+                                    </Badge>
+                                </div>
+                            </div>
+                            <Card.Body className="d-flex flex-column">
+                                <Card.Title className="mb-2 text-truncate">{product.product_name}</Card.Title>
+                                <Card.Text className="text-primary fw-bold mb-3">
+                                    {formatCurrency(product.selling_price)}
+                                </Card.Text>
+                                <div className="mt-auto">
+                                    <Button
+                                        variant="outline-primary"
+                                        size="sm"
+                                        className="w-100"
+                                        onClick={() => toggleRow(product.id)}
+                                    >
+                                        <FaEye className="me-1" /> View Details
+                                    </Button>
+                                </div>
+                            </Card.Body>
+
+                            {expandedRows[product.id] && (
+                                <Card.Footer className="bg-light p-3">
+                                    <h6 className="mb-2"><FaBoxes className="me-2 text-primary" />Inventory</h6>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <small>6-Packs: {product.packing_inventory?.number_of_6_packs || 0}</small>
+                                        <small>12-Packs: {product.packing_inventory?.number_of_12_packs || 0}</small>
+                                        <small>Extra: {product.packing_inventory?.extra_items || 0}</small>
+                                    </div>
+                                </Card.Footer>
+                            )}
+                        </Card>
+                    </Col>
+                ))
+            )}
+        </Row>
     );
 
     return (
@@ -335,7 +404,6 @@ const SalesProductView = () => {
                                         <Form.Select value={statusFilter} onChange={handleStatusFilter}>
                                             <option value="all">All Products</option>
                                             <option value="in_stock">In Stock</option>
-                                            <option value="out_of_stock">Out of Stock</option>
                                         </Form.Select>
                                     </InputGroup>
                                 </Col>
@@ -364,7 +432,7 @@ const SalesProductView = () => {
                     {/* Products list */}
                     <Card className="shadow-sm">
                         <Card.Body className="p-0 p-md-3">
-                            {renderTableView()}
+                            {viewMode === 'table' ? renderTableView() : renderCardView()}
                         </Card.Body>
                     </Card>
 
