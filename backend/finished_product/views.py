@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
-from finished_product.serializers import FinishedProductApprovalSerializer
+from finished_product.serializers import FinishedProductApprovalSerializer, FinishedProductImageSerializer
 from finished_product.models import FinishedProduct
 from finished_product.serializers import FinishedProductReportSerializer
 
@@ -27,6 +27,11 @@ class ApproveFinishedProductView(APIView):
 class FinishedProductReportView(ListAPIView):
     queryset = FinishedProduct.objects.all()
     serializer_class = FinishedProductReportSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
 
 class UpdateFinishedProductView(APIView):
     """
@@ -75,3 +80,35 @@ class FinishedProductStatusView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
         except FinishedProduct.DoesNotExist:
             return Response({"is_approved": False}, status=status.HTTP_200_OK)
+
+
+class UpdateProductImageView(APIView):
+    """
+    Endpoint for updating just the product image of a finished product.
+    This is used by owners to add or update product images after approval.
+    """
+    parser_classes = (MultiPartParser, FormParser)
+
+    def patch(self, request, pk, format=None):
+        try:
+            finished_product = FinishedProduct.objects.get(pk=pk)
+        except FinishedProduct.DoesNotExist:
+            return Response({"error": "Finished product not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if product_image is in the request data
+        if 'product_image' not in request.data:
+            return Response({"error": "No image provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update the product image
+        finished_product.product_image = request.data['product_image']
+        finished_product.save()
+
+        # Return success response with image URL
+        image_url = None
+        if finished_product.product_image:
+            image_url = request.build_absolute_uri(finished_product.product_image.url)
+
+        return Response({
+            "message": "Product image updated successfully.",
+            "product_image": image_url
+        }, status=status.HTTP_200_OK)

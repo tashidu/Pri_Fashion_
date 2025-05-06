@@ -38,6 +38,7 @@ class FinishedProductApprovalSerializer(serializers.ModelSerializer):
 class FinishedProductReportSerializer(serializers.ModelSerializer):
     total_clothing = serializers.SerializerMethodField()
     product_name = serializers.SerializerMethodField()
+    product_image = serializers.SerializerMethodField()
 
     class Meta:
         model = FinishedProduct
@@ -52,7 +53,8 @@ class FinishedProductReportSerializer(serializers.ModelSerializer):
             'total_sewn_l',
             'total_sewn_xl',
             'approval_date',
-            'total_clothing'
+            'total_clothing',
+            'product_image'
         ]
 
     def get_total_clothing(self, obj):
@@ -71,4 +73,18 @@ class FinishedProductReportSerializer(serializers.ModelSerializer):
         else:
             return f"{obj.cutting_record.fabric_definition.fabric_name} cut on {obj.cutting_record.cutting_date}"
 
+    def get_product_image(self, obj):
+        # Return the image URL if available
+        request = self.context.get('request')
+        if obj.product_image and request:
+            return request.build_absolute_uri(obj.product_image.url)
+        return None
 
+
+class FinishedProductImageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating just the product image of a finished product.
+    """
+    class Meta:
+        model = FinishedProduct
+        fields = ['product_image']
