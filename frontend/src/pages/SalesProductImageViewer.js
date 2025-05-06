@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Container, Row, Col, Card, Button, Badge, Spinner, Image, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Spinner, Image, Modal, Carousel } from 'react-bootstrap';
 import { FaImage, FaInfoCircle, FaBoxes, FaMoneyBillWave, FaTimes, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import SalesTeamNavBar from '../components/SalesTeamNavBar';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -14,6 +14,7 @@ const SalesProductImageViewer = () => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
 
     // Effect to handle sidebar state based on window size
     useEffect(() => {
@@ -39,7 +40,7 @@ const SalesProductImageViewer = () => {
                 });
                 setProducts(productsWithStock);
                 setLoading(false);
-                
+
                 if (productsWithStock.length === 0) {
                     setError("No products with stock found.");
                 }
@@ -97,12 +98,18 @@ const SalesProductImageViewer = () => {
             ) : (
                 products.map((product, index) => (
                     <Col key={product.id} xs={6} sm={4} md={3} lg={2} className="mb-4">
-                        <Card 
-                            className="product-image-card h-100 border-0 shadow-sm" 
+                        <Card
+                            className="product-image-card h-100 border-0 shadow-sm"
                             onClick={() => openProductModal(product, index)}
                         >
                             <div className="image-container">
-                                {product.product_image ? (
+                                {product.product_images && product.product_images.length > 0 ? (
+                                    <Image
+                                        src={product.product_images[0]}
+                                        alt={product.product_name}
+                                        className="card-img-top"
+                                    />
+                                ) : product.product_image ? (
                                     <Image
                                         src={product.product_image}
                                         alt={product.product_name}
@@ -114,8 +121,8 @@ const SalesProductImageViewer = () => {
                                         <p>No Image</p>
                                     </div>
                                 )}
-                                <Badge 
-                                    bg="success" 
+                                <Badge
+                                    bg="success"
                                     className="stock-badge"
                                 >
                                     {product.packing_inventory?.total_quantity || product.available_quantity} in stock
@@ -138,14 +145,14 @@ const SalesProductImageViewer = () => {
     // Product detail modal
     const renderProductModal = () => {
         if (!selectedProduct) return null;
-        
+
         const stockLevel = selectedProduct.packing_inventory?.total_quantity || selectedProduct.available_quantity;
-        
+
         return (
-            <Modal 
-                show={showModal} 
-                onHide={() => setShowModal(false)} 
-                size="lg" 
+            <Modal
+                show={showModal}
+                onHide={() => setShowModal(false)}
+                size="lg"
                 centered
                 className="product-detail-modal"
             >
@@ -155,7 +162,31 @@ const SalesProductImageViewer = () => {
                 <Modal.Body>
                     <Row>
                         <Col md={6} className="image-section">
-                            {selectedProduct.product_image ? (
+                            {selectedProduct.product_images && selectedProduct.product_images.length > 0 ? (
+                                <div className="modal-image-container">
+                                    <Carousel
+                                        activeIndex={activeImageIndex}
+                                        onSelect={(index) => setActiveImageIndex(index)}
+                                        interval={null}
+                                    >
+                                        {selectedProduct.product_images.map((imageUrl, idx) => (
+                                            <Carousel.Item key={idx}>
+                                                <div className="carousel-image-container">
+                                                    <Image
+                                                        src={imageUrl}
+                                                        alt={`${selectedProduct.product_name} - Image ${idx + 1}`}
+                                                        fluid
+                                                        className="product-detail-image"
+                                                    />
+                                                </div>
+                                                <Carousel.Caption>
+                                                    <p className="image-counter">Image {idx + 1} of {selectedProduct.product_images.length}</p>
+                                                </Carousel.Caption>
+                                            </Carousel.Item>
+                                        ))}
+                                    </Carousel>
+                                </div>
+                            ) : selectedProduct.product_image ? (
                                 <div className="modal-image-container">
                                     <Image
                                         src={selectedProduct.product_image}
@@ -177,14 +208,14 @@ const SalesProductImageViewer = () => {
                                 <p className="product-description">
                                     {selectedProduct.product_name} - High quality garment available for order.
                                 </p>
-                                
+
                                 <div className="price-section">
                                     <h5><FaMoneyBillWave className="me-2" />Pricing</h5>
                                     <div className="price-tag-large">
                                         {formatCurrency(selectedProduct.selling_price)}
                                     </div>
                                 </div>
-                                
+
                                 <div className="inventory-section">
                                     <h5><FaBoxes className="me-2" />Inventory</h5>
                                     <div className="stock-info">
@@ -253,7 +284,7 @@ const SalesProductImageViewer = () => {
                     <div className="product-gallery">
                         {renderProductGrid()}
                     </div>
-                    
+
                     {renderProductModal()}
                 </Container>
             </div>

@@ -11,6 +11,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import RoleBasedNavBar from '../components/RoleBasedNavBar';
 import './ApproveFinishedProduct.css';
+// No need to import uploadMultipleImages as we're using FormData directly
 
 const ApproveFinishedProduct = () => {
   const { id } = useParams();
@@ -27,10 +28,13 @@ const ApproveFinishedProduct = () => {
   const [loading, setLoading] = useState(true);
 
   // Image handling state
-  const [productImage, setProductImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [existingImageUrl, setExistingImageUrl] = useState(null);
+  const [productImages, setProductImages] = useState([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
+  const [existingImageUrls, setExistingImageUrls] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Product details state
   const [productDetails, setProductDetails] = useState(null);
@@ -79,9 +83,12 @@ const ApproveFinishedProduct = () => {
         setManufacturePrice(approvalRes.data.manufacture_price);
         setSellingPrice(approvalRes.data.selling_price);
 
-        // Set existing image URL if available
-        if (approvalRes.data.product_image) {
-          setExistingImageUrl(approvalRes.data.product_image);
+        // Set existing image URLs if available
+        if (approvalRes.data.product_images && Array.isArray(approvalRes.data.product_images)) {
+          setExistingImageUrls(approvalRes.data.product_images);
+        } else if (approvalRes.data.product_image) {
+          // For backward compatibility with single image
+          setExistingImageUrls([approvalRes.data.product_image]);
         }
 
         if (approvalRes.data.notes) {
@@ -142,35 +149,49 @@ const ApproveFinishedProduct = () => {
 
   // Handle image selection from file input
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      processImageFile(file);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      processImageFiles(files);
     }
   };
 
-  // Process the selected image file
-  const processImageFile = (file) => {
-    // Validate file type
-    if (!file.type.match('image.*')) {
-      setError('Please select an image file (JPEG, PNG, etc.)');
+  // Process the selected image files
+  const processImageFiles = useCallback((files) => {
+    // Check if adding these files would exceed the limit
+    if (productImages.length + files.length > 10) {
+      setError(`You can only upload up to 10 images. You already have ${productImages.length} images.`);
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image size should be less than 5MB');
-      return;
-    }
+    const newImages = [];
+    const newPreviewUrls = [...imagePreviewUrls];
 
-    setProductImage(file);
+    files.forEach(file => {
+      // Validate file type
+      if (!file.type.match('image.*')) {
+        setError('Please select image files only (JPEG, PNG, etc.)');
+        return;
+      }
 
-    // Create a preview URL
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result);
-    };
-    reader.readAsDataURL(file);
-  };
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Each image size should be less than 5MB');
+        return;
+      }
+
+      newImages.push(file);
+
+      // Create a preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        newPreviewUrls.push(reader.result);
+        setImagePreviewUrls([...newPreviewUrls]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    setProductImages([...productImages, ...newImages]);
+  }, [productImages, imagePreviewUrls]);
 
   // Trigger file input click
   const triggerFileInput = () => {
@@ -180,22 +201,40 @@ const ApproveFinishedProduct = () => {
   // Handle drag and drop functionality
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles && acceptedFiles.length > 0) {
-      processImageFile(acceptedFiles[0]);
+      processImageFiles(acceptedFiles);
     }
-  }, []);
+  }, [processImageFiles]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'image/*': ['.jpeg', '.jpg', '.png', '.gif']
     },
-    maxFiles: 1
+    maxFiles: 10
   });
 
-  // Remove the uploaded image
-  const removeImage = () => {
-    setProductImage(null);
-    setImagePreview(null);
+  // Remove an uploaded image
+  const removeImage = (index) => {
+    const newImages = [...productImages];
+    const newPreviewUrls = [...imagePreviewUrls];
+
+    newImages.splice(index, 1);
+    newPreviewUrls.splice(index, 1);
+
+    setProductImages(newImages);
+    setImagePreviewUrls(newPreviewUrls);
+
+    // Adjust active index if needed
+    if (index === activeImageIndex) {
+      setActiveImageIndex(Math.max(0, index - 1));
+    } else if (index < activeImageIndex) {
+      setActiveImageIndex(activeImageIndex - 1);
+    }
+  };
+
+  // Set active image
+  const setActiveImage = (index) => {
+    setActiveImageIndex(index);
   };
 
   // Validate form inputs
@@ -250,35 +289,50 @@ const ApproveFinishedProduct = () => {
     setSuccessMsg('');
     setShowConfirmModal(false);
 
-    // Create FormData for file upload
-    const formData = new FormData();
-    formData.append('cutting_record', id);
-    formData.append('manufacture_price', parseFloat(manufacturePrice));
-    formData.append('selling_price', parseFloat(sellingPrice));
-
-    if (productNotes) {
-      formData.append('notes', productNotes);
-    }
-
-    if (productImage) {
-      formData.append('product_image', productImage);
-    }
-
     try {
       // Show loading state
       setLoading(true);
+      setIsUploading(true);
 
+      // Create FormData object for API request
+      const formData = new FormData();
+      formData.append('cutting_record', id);
+      formData.append('manufacture_price', parseFloat(manufacturePrice));
+      formData.append('selling_price', parseFloat(sellingPrice));
+
+      if (productNotes) {
+        formData.append('notes', productNotes);
+      }
+
+      // Add images directly to the FormData if there are any
+      if (productImages && productImages.length > 0) {
+        setUploadProgress(0);
+
+        // Append each image to the FormData
+        productImages.forEach(image => {
+          formData.append('product_images', image);
+        });
+      }
+
+      // Make the API request with progress tracking
       const response = await axios.post(
         'http://localhost:8000/api/finished_product/approve/',
         formData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'multipart/form-data',
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setUploadProgress(percentCompleted);
           }
         }
       );
 
       setSuccessMsg(response.data.message || 'Product approved successfully!');
+      setIsUploading(false);
 
       // Redirect after a delay
       setTimeout(() => {
@@ -292,6 +346,7 @@ const ApproveFinishedProduct = () => {
           : err.response.data
         : "Failed to approve finished product. Please try again.";
       setError(errMsg);
+      setIsUploading(false);
     } finally {
       setLoading(false);
     }
@@ -397,11 +452,11 @@ const ApproveFinishedProduct = () => {
             )}
           </tbody>
         </Table>
-        {imagePreview && (
+        {imagePreviewUrls.length > 0 && (
           <div className="text-center mt-3">
             <p><strong>Product Image:</strong></p>
             <Image
-              src={imagePreview}
+              src={imagePreviewUrls[0]}
               alt="Product"
               thumbnail
               style={{ maxHeight: "100px" }}
@@ -500,18 +555,40 @@ const ApproveFinishedProduct = () => {
                           </Col>
 
                           <Col md={6} className="text-center">
-                            <h5 className="mb-3"><FaImage className="me-2" />Product Image</h5>
-                            {existingImageUrl ? (
-                              <Image
-                                src={existingImageUrl}
-                                alt="Product"
-                                thumbnail
-                                className="image-preview"
-                              />
+                            <h5 className="mb-3"><FaImage className="me-2" />Product Images</h5>
+                            {existingImageUrls && existingImageUrls.length > 0 ? (
+                              <div className="product-images-container">
+                                <div className="product-images-grid">
+                                  {existingImageUrls.map((imageUrl, index) => (
+                                    <div
+                                      key={index}
+                                      className={`product-image-item ${index === activeImageIndex ? 'active' : ''}`}
+                                      onClick={() => setActiveImageIndex(index)}
+                                    >
+                                      <Image
+                                        src={imageUrl}
+                                        alt={`Product ${index + 1}`}
+                                        thumbnail
+                                        className="image-preview"
+                                      />
+                                      <span className="image-number">{index + 1}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="main-image-container mt-3">
+                                  <Image
+                                    src={existingImageUrls[activeImageIndex]}
+                                    alt="Product"
+                                    thumbnail
+                                    className="main-image-preview"
+                                    style={{ maxHeight: "250px" }}
+                                  />
+                                </div>
+                              </div>
                             ) : (
                               <div className="p-5 bg-light rounded">
                                 <FaImage size={60} className="text-secondary" />
-                                <p className="mt-3 text-muted">No image available</p>
+                                <p className="mt-3 text-muted">No images available</p>
                               </div>
                             )}
                           </Col>
@@ -574,40 +651,86 @@ const ApproveFinishedProduct = () => {
                           </Col>
 
                           <Col md={6}>
-                            <div {...getRootProps()} className={`image-upload-container mb-4 ${isDragActive ? 'active' : ''}`}>
-                              <input {...getInputProps()} />
+                            <div className="mb-3">
+                              <h5 className="mb-3"><FaImage className="me-2" />Product Images</h5>
+                              <p className="text-muted mb-3">Upload up to 10 images of the product (Current: {productImages.length}/10)</p>
 
-                              {imagePreview ? (
-                                <div className="text-center">
-                                  <Image
-                                    src={imagePreview}
-                                    alt="Preview"
-                                    className="image-preview mb-3"
-                                  />
-                                  <div>
-                                    <Button
-                                      variant="outline-danger"
-                                      size="sm"
-                                      onClick={removeImage}
-                                      className="me-2"
-                                    >
-                                      <FaTrash className="me-1" /> Remove
-                                    </Button>
-                                    <Button
-                                      variant="outline-primary"
-                                      size="sm"
-                                      onClick={triggerFileInput}
-                                    >
-                                      <FaUndo className="me-1" /> Change
-                                    </Button>
+                              {/* Image preview grid */}
+                              {imagePreviewUrls.length > 0 && (
+                                <div className="product-images-container mb-4">
+                                  <div className="product-images-grid">
+                                    {imagePreviewUrls.map((previewUrl, index) => (
+                                      <div
+                                        key={index}
+                                        className={`product-image-item ${index === activeImageIndex ? 'active' : ''}`}
+                                        onClick={() => setActiveImageIndex(index)}
+                                      >
+                                        <div className="image-actions">
+                                          <Button
+                                            variant="danger"
+                                            size="sm"
+                                            className="btn-remove-image"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              removeImage(index);
+                                            }}
+                                          >
+                                            <FaTrash />
+                                          </Button>
+                                        </div>
+                                        <Image
+                                          src={previewUrl}
+                                          alt={`Preview ${index + 1}`}
+                                          thumbnail
+                                          className="image-preview"
+                                        />
+                                        <span className="image-number">{index + 1}</span>
+                                      </div>
+                                    ))}
                                   </div>
+
+                                  {imagePreviewUrls.length > 0 && (
+                                    <div className="main-image-container mt-3">
+                                      <Image
+                                        src={imagePreviewUrls[activeImageIndex]}
+                                        alt="Product Preview"
+                                        thumbnail
+                                        className="main-image-preview"
+                                        style={{ maxHeight: "250px" }}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Upload area */}
+                              {isUploading ? (
+                                <div className="p-4 bg-light rounded text-center">
+                                  <h5 className="mb-3">Uploading Images</h5>
+                                  <ProgressBar
+                                    now={uploadProgress}
+                                    label={`${Math.round(uploadProgress)}%`}
+                                    variant="info"
+                                    animated
+                                    className="mb-3"
+                                  />
+                                  <p className="text-muted">
+                                    <FaUpload className="me-2 text-primary" />
+                                    Uploading {productImages.length} images...
+                                  </p>
                                 </div>
                               ) : (
-                                <div className="text-center">
-                                  <FaUpload size={40} className="mb-3 text-primary" />
-                                  <p>Drag & drop a product image here, or click to select</p>
-                                  <p className="text-muted small">Supported formats: JPEG, PNG, GIF (Max: 5MB)</p>
-                                </div>
+                                productImages.length < 10 && (
+                                  <div {...getRootProps()} className={`image-upload-container ${isDragActive ? 'active' : ''}`}>
+                                    <input {...getInputProps()} multiple />
+                                    <div className="text-center">
+                                      <FaUpload size={40} className="mb-3 text-primary" />
+                                      <p>Drag & drop product images here, or click to select</p>
+                                      <p className="text-muted small">Supported formats: JPEG, PNG, GIF (Max: 5MB each)</p>
+                                      <p className="text-muted small">You can select multiple images at once (Max: 10)</p>
+                                    </div>
+                                  </div>
+                                )
                               )}
 
                               <Form.Control
@@ -615,6 +738,7 @@ const ApproveFinishedProduct = () => {
                                 ref={fileInputRef}
                                 onChange={handleImageChange}
                                 accept="image/*"
+                                multiple
                                 style={{ display: 'none' }}
                               />
                             </div>

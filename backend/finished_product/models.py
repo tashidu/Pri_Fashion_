@@ -31,11 +31,25 @@ class FinishedProduct(models.Model):
     # Available quantity (stored field)
     available_quantity = models.IntegerField(default=0)
 
-    # Product image
+    # Product image (legacy field, kept for backward compatibility)
     product_image = models.ImageField(upload_to='product_images/', null=True, blank=True)
+
+    # Notes about the product
+    notes = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"Finished Product for {self.cutting_record}"
+
+    @property
+    def product_images(self):
+        """
+        Returns a list of all image URLs for this product.
+        If no ProductImage instances exist, falls back to the legacy product_image field.
+        """
+        images = list(self.images.all().values_list('image', flat=True))
+        if not images and self.product_image:
+            images = [self.product_image]
+        return images
 
     def update_totals(self):
         """
@@ -83,3 +97,31 @@ class FinishedProduct(models.Model):
 
         self.available_quantity = total_sewn - total_packed
         self.save()
+
+
+class ProductImage(models.Model):
+    """
+    Model to store multiple images for a finished product.
+    Images can be stored either as uploaded files or as external URLs (e.g., from Firebase).
+    """
+    finished_product = models.ForeignKey(FinishedProduct, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='product_images/', null=True, blank=True)
+    external_url = models.URLField(max_length=500, null=True, blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"Image {self.order} for {self.finished_product}"
+
+    @property
+    def url(self):
+        """
+        Returns the URL of the image, whether it's an uploaded file or an external URL.
+        """
+        if self.external_url:
+            return self.external_url
+        elif self.image:
+            return self.image.url
+        return None

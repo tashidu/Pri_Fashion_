@@ -5,7 +5,9 @@ from .views import (
     FinishedProductStatusView,
     UpdateFinishedProductView,
     UpdateProductImageView,
-    SalesProductListView
+    SalesProductListView,
+    UploadProductImageView,
+    UploadMultipleProductImagesView
 )
 
 urlpatterns = [
@@ -15,4 +17,6 @@ urlpatterns = [
     path('update/<int:pk>/', UpdateFinishedProductView.as_view(), name='update-finished-product'),
     path('update-image/<int:pk>/', UpdateProductImageView.as_view(), name='update-product-image'),
     path('sales-products/', SalesProductListView.as_view(), name='sales-products'),
+    path('upload-image/<int:pk>/', UploadProductImageView.as_view(), name='upload-product-image'),
+    path('upload-multiple-images/<int:pk>/', UploadMultipleProductImagesView.as_view(), name='upload-multiple-product-images'),
 ]

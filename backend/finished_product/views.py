@@ -3,15 +3,17 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
 from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from finished_product.serializers import (
     FinishedProductApprovalSerializer,
     FinishedProductImageSerializer,
     FinishedProductReportSerializer,
-    SalesProductSerializer
+    SalesProductSerializer,
+    ProductImageSerializer
 )
-from finished_product.models import FinishedProduct
+from finished_product.models import FinishedProduct, ProductImage
 from packing_app.models import PackingInventory
+from django.shortcuts import get_object_or_404
 
 class ApproveFinishedProductView(APIView):
     """
@@ -135,3 +137,85 @@ class SalesProductListView(ListAPIView):
         context = super().get_serializer_context()
         context.update({"request": self.request})
         return context
+
+
+class UploadProductImageView(APIView):
+    """
+    API endpoint for uploading a single product image.
+    """
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, pk, format=None):
+        try:
+            # Get the finished product
+            finished_product = get_object_or_404(FinishedProduct, pk=pk)
+
+            # Check if image is in the request data
+            if 'image' not in request.FILES:
+                return Response({"error": "No image provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get the image file
+            image_file = request.FILES['image']
+
+            # Create a new ProductImage instance
+            order = ProductImage.objects.filter(finished_product=finished_product).count()
+            product_image = ProductImage.objects.create(
+                finished_product=finished_product,
+                image=image_file,
+                order=order
+            )
+
+            # Return the image URL
+            return Response({
+                "message": "Image uploaded successfully.",
+                "image_url": request.build_absolute_uri(product_image.image.url)
+            }, status=status.HTTP_201_CREATED)
+
+        except FinishedProduct.DoesNotExist:
+            return Response({"error": "Finished product not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UploadMultipleProductImagesView(APIView):
+    """
+    API endpoint for uploading multiple product images at once.
+    """
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, pk, format=None):
+        try:
+            # Get the finished product
+            finished_product = get_object_or_404(FinishedProduct, pk=pk)
+
+            # Check if images are in the request data
+            if not request.FILES:
+                return Response({"error": "No images provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get the current highest order value
+            current_order = ProductImage.objects.filter(finished_product=finished_product).count()
+
+            # Process each image file
+            image_urls = []
+            for key, image_file in request.FILES.items():
+                # Create a new ProductImage instance
+                product_image = ProductImage.objects.create(
+                    finished_product=finished_product,
+                    image=image_file,
+                    order=current_order
+                )
+                current_order += 1
+
+                # Add the image URL to the list
+                image_urls.append(request.build_absolute_uri(product_image.image.url))
+
+            # Return the image URLs
+            return Response({
+                "message": f"{len(image_urls)} images uploaded successfully.",
+                "image_urls": image_urls
+            }, status=status.HTTP_201_CREATED)
+
+        except FinishedProduct.DoesNotExist:
+            return Response({"error": "Finished product not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

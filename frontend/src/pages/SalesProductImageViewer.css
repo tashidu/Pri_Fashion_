@@ -108,6 +108,44 @@
     object-fit: contain;
 }
 
+.carousel-image-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 350px;
+    background-color: #f8f9fa;
+}
+
+.image-counter {
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    margin-bottom: 10px;
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+    width: 10%;
+    opacity: 0.7;
+}
+
+.carousel-control-prev:hover,
+.carousel-control-next:hover {
+    opacity: 1;
+}
+
+.carousel-indicators {
+    margin-bottom: 0;
+}
+
+.carousel-indicators button {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin: 0 5px;
+}
+
 .no-image-placeholder.large {
     height: 350px;
     border-radius: 10px;
@@ -182,21 +220,21 @@
     .image-container {
         height: 150px;
     }
-    
+
     .modal-image-container {
         height: 250px;
     }
-    
+
     .navigation-buttons {
         width: 100%;
         justify-content: space-between;
         margin-bottom: 1rem;
     }
-    
+
     .product-detail-modal .modal-footer {
         flex-direction: column;
     }
-    
+
     .product-detail-modal .modal-footer button {
         width: 100%;
     }
