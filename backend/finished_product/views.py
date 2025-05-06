@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 from finished_product.serializers import FinishedProductApprovalSerializer
 from finished_product.models import FinishedProduct
 from finished_product.serializers import FinishedProductReportSerializer
@@ -11,6 +12,8 @@ class ApproveFinishedProductView(APIView):
     """
     Owner approval endpoint: Allows provisional approval of a finished product.
     """
+    parser_classes = (MultiPartParser, FormParser)
+
     def post(self, request, format=None):
         serializer = FinishedProductApprovalSerializer(data=request.data)
         if serializer.is_valid():
@@ -36,21 +39,21 @@ class UpdateFinishedProductView(APIView):
             finished_product = FinishedProduct.objects.get(pk=pk)
         except FinishedProduct.DoesNotExist:
             return Response({"error": "Finished product not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+
         # Update prices only if provided in the request data.
         if "manufacture_price" in request.data:
             finished_product.manufacture_price = request.data["manufacture_price"]
         if "selling_price" in request.data:
             finished_product.selling_price = request.data["selling_price"]
-        
+
         # Re-aggregate totals from the current sewing records.
         finished_product.update_totals()
-        
+
         finished_product.save()
         return Response({"message": "Finished product updated successfully."}, status=status.HTTP_200_OK)
-    
-    
-    
+
+
+
 class FinishedProductStatusView(APIView):
     """
     Returns whether a cutting record has already been approved,
@@ -59,11 +62,16 @@ class FinishedProductStatusView(APIView):
     def get(self, request, cutting_record_id, format=None):
         try:
             product = FinishedProduct.objects.get(cutting_record__id=cutting_record_id)
-            return Response({
+            response_data = {
                 "is_approved": True,
                 "manufacture_price": product.manufacture_price,
                 "selling_price": product.selling_price
-            }, status=status.HTTP_200_OK)
+            }
+
+            # Add product image URL if available
+            if product.product_image:
+                response_data["product_image"] = request.build_absolute_uri(product.product_image.url)
+
+            return Response(response_data, status=status.HTTP_200_OK)
         except FinishedProduct.DoesNotExist:
             return Response({"is_approved": False}, status=status.HTTP_200_OK)
-    

@@ -9,7 +9,7 @@ class FinishedProductApprovalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FinishedProduct
-        fields = ['cutting_record', 'manufacture_price', 'selling_price']
+        fields = ['cutting_record', 'manufacture_price', 'selling_price', 'product_image']
 
     def create(self, validated_data):
         cutting_record_id = validated_data.pop('cutting_record')
@@ -21,10 +21,14 @@ class FinishedProductApprovalSerializer(serializers.ModelSerializer):
         if hasattr(cutting_record, 'finished_product'):
             raise serializers.ValidationError("This batch has already been approved.")
 
+        # Extract product image if provided
+        product_image = validated_data.pop('product_image', None)
+
         finished_product = FinishedProduct.objects.create(
             cutting_record=cutting_record,
             manufacture_price=validated_data['manufacture_price'],
             selling_price=validated_data['selling_price'],
+            product_image=product_image,
             is_provisional=True  # Mark as provisional.
         )
         finished_product.update_totals()  # Aggregate the sewing totals.
@@ -39,7 +43,7 @@ class FinishedProductReportSerializer(serializers.ModelSerializer):
         model = FinishedProduct
         fields = [
             'id',
-            'product_name', 
+            'product_name',
             'manufacture_price',
             'selling_price',
             'total_sewn_xs',
@@ -59,13 +63,12 @@ class FinishedProductReportSerializer(serializers.ModelSerializer):
             (obj.total_sewn_l or 0) +
             (obj.total_sewn_xl or 0)
         )
-    
+
     def get_product_name(self, obj):
         # Derive the product name from the linked cutting record.
         if obj.cutting_record.product_name:
             return obj.cutting_record.product_name
         else:
             return f"{obj.cutting_record.fabric_definition.fabric_name} cut on {obj.cutting_record.cutting_date}"
-        
-        
-        
+
+

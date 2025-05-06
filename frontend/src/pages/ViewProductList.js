@@ -114,21 +114,43 @@ const ViewProductList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [viewMode, setViewMode] = useState(window.innerWidth < 768 ? "card" : "table");
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Fetch products data
-  useEffect(() => {
+  // Function to fetch products data
+  const fetchProducts = async () => {
     setLoading(true);
-    axios
-      .get("http://localhost:8000/api/sewing/product-list/")
-      .then((res) => {
-        setProducts(res.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching product list:", err);
-        setError("Failed to fetch product list. Please try again later.");
-        setLoading(false);
-      });
+    try {
+      const res = await axios.get("http://localhost:8000/api/sewing/product-list/");
+      console.log("API Response:", res.data);
+      setProducts(res.data);
+      setError("");
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching product list:", err);
+      // Provide more detailed error information
+      const errorMessage = err.response
+        ? `Error: ${err.response.status} - ${err.response.statusText}`
+        : err.request
+          ? "No response received from server. Check if the backend is running."
+          : "Failed to make request. Check your network connection.";
+
+      setError(`Failed to fetch product list. ${errorMessage}`);
+      setLoading(false);
+
+      // If we haven't retried too many times, try again
+      if (retryCount < 3) {
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => {
+          fetchProducts();
+        }, 2000); // Wait 2 seconds before retrying
+      }
+    }
+  };
+
+  // Fetch products data on component mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchProducts();
   }, []);
 
   // Handle responsive view mode
@@ -557,13 +579,26 @@ const ViewProductList = () => {
           {/* Error message */}
           {error && (
             <div className="alert alert-danger alert-dismissible fade show" role="alert">
-              <FaExclamationTriangle className="me-2" /> {error}
-              <button
-                type="button"
-                className="btn-close"
-                onClick={() => setError("")}
-                aria-label="Close"
-              ></button>
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <FaExclamationTriangle className="me-2" /> {error}
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger me-2"
+                    onClick={() => fetchProducts()}
+                  >
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setError("")}
+                    aria-label="Close"
+                  ></button>
+                </div>
+              </div>
             </div>
           )}
 

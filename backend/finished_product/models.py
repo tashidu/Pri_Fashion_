@@ -31,6 +31,9 @@ class FinishedProduct(models.Model):
     # Available quantity (stored field)
     available_quantity = models.IntegerField(default=0)
 
+    # Product image
+    product_image = models.ImageField(upload_to='product_images/', null=True, blank=True)
+
     def __str__(self):
         return f"Finished Product for {self.cutting_record}"
 
@@ -52,9 +55,9 @@ class FinishedProduct(models.Model):
         self.total_sewn_m = aggregates.get('m_sum') or 0
         self.total_sewn_l = aggregates.get('l_sum') or 0
         self.total_sewn_xl = aggregates.get('xl_sum') or 0
-        
+
         self.recalculate_available_quantity()  # ➕ CALL THIS HERE!
-    
+
         self.save()
 
     def recalculate_available_quantity(self):
