@@ -53,7 +53,11 @@ function SalesTeamNavBar() {
     {
       title: "Products",
       icon: <FaTshirt />,
-      path: "/sales-products"
+      path: "/sales-products",
+      subItems: [
+        { title: "Product List", path: "/sales-products" },
+        { title: "Product Gallery", path: "/sales-product-gallery" }
+      ]
     },
     {
       title: "Shops",

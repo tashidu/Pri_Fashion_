@@ -6,6 +6,7 @@ import InventoryDashboard from "./pages/InventoryDashboard";
 import OrdersDashboard from "./pages/OrdersDashboard";
 import SalesDashboard from "./pages/SalesDashboard";
 import SalesProductView from "./pages/SalesProductView";
+import SalesProductImageViewer from "./pages/SalesProductImageViewer";
 import AddSupplier from "./pages/AddSupplier";
 import ViewSuppliers from "./pages/ViewSuppliers";
 import AddFabric from "./pages/AddFabric";
@@ -40,6 +41,7 @@ function App() {
         <Route path="/orders-dashboard" element={<OrdersDashboard />} />
         <Route path="/sales-dashboard" element={<SalesDashboard />} />
         <Route path="/sales-products" element={<SalesProductView />} />
+        <Route path="/sales-product-gallery" element={<SalesProductImageViewer />} />
         <Route path="/addsupplier" element={<AddSupplier />} />
         <Route path="/viewsuppliers" element={<ViewSuppliers />} />
         <Route path="/addfabric" element={<AddFabric />} />

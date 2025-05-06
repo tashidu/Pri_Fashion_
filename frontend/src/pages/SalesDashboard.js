@@ -41,8 +41,9 @@ function SalesDashboard() {
                                         <h5 className="mb-0">Products</h5>
                                     </div>
                                     <p className="text-muted">View product catalog with real-time stock levels and pricing information.</p>
-                                    <div className="mt-auto">
-                                        <a href="/sales-products" className="btn btn-outline-primary">View Products</a>
+                                    <div className="mt-auto d-flex gap-2">
+                                        <a href="/sales-products" className="btn btn-outline-primary flex-grow-1">List View</a>
+                                        <a href="/sales-product-gallery" className="btn btn-primary flex-grow-1">Gallery</a>
                                     </div>
                                 </Card.Body>
                             </Card>
