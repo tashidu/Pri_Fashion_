@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaPrint } from "react-icons/fa";
-import RoleBasedNavBar from "../components/RoleBasedNavBar";
+import { FaSearch, FaFilter, FaEye, FaTruck, FaSync } from "react-icons/fa";
+import SalesTeamNavBar from "../components/SalesTeamNavBar";
 import "bootstrap/dist/css/bootstrap.min.css";
-// Import custom modal components
-import PaymentModal from "../components/PaymentModal";
 import DeliveryModal from "../components/DeliveryModal";
-import InvoicePreviewModal from "../components/InvoicePreviewModal";
 
-const OwnerOrdersPage = () => {
+const SalesTeamOrdersPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
@@ -25,9 +22,7 @@ const OwnerOrdersPage = () => {
   const [itemsPerPage] = useState(10);
 
   // Modal states
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
-  const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
   const [orderForModal, setOrderForModal] = useState(null);
 
   useEffect(() => {
@@ -107,96 +102,6 @@ const OwnerOrdersPage = () => {
     }
   };
 
-  const handleApproveOrder = async (orderId) => {
-    const confirm = window.confirm("Are you sure you want to approve this order?");
-    if (!confirm) return;
-
-    setProcessing(true);
-    try {
-      const response = await fetch(`http://localhost:8000/api/orders/orders/${orderId}/approve/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        // Update the order status locally to avoid refetching
-        const updatedOrders = orders.map(order =>
-          order.id === orderId ? { ...order, status: 'approved' } : order
-        );
-        setOrders(updatedOrders);
-
-        // Show success message
-        setSuccessMessage("Order approved successfully!");
-
-        // Hide success message after 3 seconds
-        setTimeout(() => {
-          setSuccessMessage("");
-        }, 3000);
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to approve order");
-      }
-    } catch (error) {
-      console.error("Approval failed:", error);
-      setError("Error approving the order. Please try again.");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleGenerateInvoice = async (orderId) => {
-    const confirm = window.confirm("Are you sure you want to generate an invoice for this order?");
-    if (!confirm) return;
-
-    setProcessing(true);
-    try {
-      const response = await fetch(`http://localhost:8000/api/orders/orders/${orderId}/generate-invoice/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Update the order status locally to avoid refetching
-        const updatedOrders = orders.map(order =>
-          order.id === orderId ? {
-            ...order,
-            status: 'invoiced',
-            invoice_number: data.invoice_number
-          } : order
-        );
-        setOrders(updatedOrders);
-
-        // Show success message
-        setSuccessMessage(`Invoice ${data.invoice_number} generated successfully!`);
-
-        // Hide success message after 3 seconds
-        setTimeout(() => {
-          setSuccessMessage("");
-        }, 3000);
-
-        // Refresh order details
-        viewOrderItems(orderId);
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to generate invoice");
-      }
-    } catch (error) {
-      console.error("Invoice generation failed:", error);
-      setError("Error generating invoice. Please try again.");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // These functions are kept for the DeliveryModal component which might be used by other roles
-  // Owners should not have access to delivery functionality as per requirements
-  /* eslint-disable no-unused-vars */
   const handleMarkDelivered = async (orderId) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) {
@@ -210,7 +115,6 @@ const OwnerOrdersPage = () => {
   };
 
   const handleDeliverySubmit = async (deliveryData) => {
-  /* eslint-enable no-unused-vars */
     if (!orderForModal) return;
 
     setProcessing(true);
@@ -265,100 +169,6 @@ const OwnerOrdersPage = () => {
     }
   };
 
-  const handleRecordPayment = async (orderId) => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) {
-      setError("Order not found");
-      return;
-    }
-
-    // Set the order for the modal and show the modal
-    setOrderForModal(order);
-    setShowPaymentModal(true);
-  };
-
-  const handlePaymentSubmit = async (paymentData) => {
-    if (!orderForModal) return;
-
-    setProcessing(true);
-    try {
-      const response = await fetch(`http://localhost:8000/api/orders/orders/${orderForModal.id}/record-payment/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(paymentData)
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Update the order status locally to avoid refetching
-        const updatedOrders = orders.map(order =>
-          order.id === orderForModal.id ? {
-            ...order,
-            status: data.status,
-            payment_status: data.payment_status,
-            amount_paid: data.amount_paid,
-            payment_method: paymentData.payment_method,
-            payment_date: paymentData.payment_date,
-            check_number: paymentData.check_number,
-            check_date: paymentData.check_date,
-            bank_name: paymentData.bank_name,
-            credit_term_months: paymentData.credit_term_months,
-            owner_notes: paymentData.owner_notes
-          } : order
-        );
-        setOrders(updatedOrders);
-
-        // Show success message
-        setSuccessMessage(data.message || "Payment recorded successfully!");
-
-        // Hide success message after 3 seconds
-        setTimeout(() => {
-          setSuccessMessage("");
-        }, 3000);
-
-        // Refresh order details if this is the selected order
-        if (selectedOrderId === orderForModal.id) {
-          viewOrderItems(orderForModal.id);
-        }
-
-        // Close the modal
-        setShowPaymentModal(false);
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to record payment");
-      }
-    } catch (error) {
-      console.error("Record payment failed:", error);
-      setError("Error recording payment. Please try again.");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleViewInvoice = (order) => {
-    if (!order || !order.items) {
-      setError("Cannot generate invoice: Order data is missing.");
-      return;
-    }
-
-    if (!order.items.length) {
-      setError("Cannot generate invoice: No order items found.");
-      return;
-    }
-
-    if (!order.invoice_number) {
-      setError("Cannot generate invoice: Invoice number is missing.");
-      return;
-    }
-
-    // Set the order for the modal and show the modal
-    setOrderForModal(order);
-    setShowInvoicePreviewModal(true);
-  };
-
   // Get current orders for pagination
   const indexOfLastOrder = currentPage * itemsPerPage;
   const indexOfFirstOrder = indexOfLastOrder - itemsPerPage;
@@ -387,7 +197,7 @@ const OwnerOrdersPage = () => {
 
   return (
     <>
-      <RoleBasedNavBar />
+      <SalesTeamNavBar />
       <div
         className="main-content"
         style={{
@@ -400,7 +210,7 @@ const OwnerOrdersPage = () => {
           <div className="row mb-4">
             <div className="col-12">
               <h2 className="text-center fw-bold text-primary">Order Management</h2>
-              <p className="text-center text-muted">Approve orders, generate invoices, and track payments</p>
+              <p className="text-center text-muted">View orders and mark them as delivered</p>
             </div>
           </div>
 
@@ -466,7 +276,6 @@ const OwnerOrdersPage = () => {
               </button>
             </div>
           </div>
-
           {/* Orders table */}
           {loading && !processing && (
             <div className="d-flex justify-content-center py-5">
@@ -494,10 +303,8 @@ const OwnerOrdersPage = () => {
                         <th>Order ID</th>
                         <th>Shop</th>
                         <th>Status</th>
-                        <th>Payment</th>
                         <th>Created Date</th>
                         <th>Invoice #</th>
-                        <th>Total Amount</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -511,33 +318,8 @@ const OwnerOrdersPage = () => {
                               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                             </span>
                           </td>
-                          <td>
-                            {order.payment_status ? (
-                              <span className={`badge ${
-                                order.payment_status === 'paid' ? 'bg-success' :
-                                order.payment_status === 'partially_paid' ? 'bg-warning text-dark' :
-                                'bg-danger'
-                              }`}>
-                                {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1).replace('_', ' ')}
-                              </span>
-                            ) : (
-                              order.status === 'delivered' ? (
-                                <span className="badge bg-danger">Unpaid</span>
-                              ) : (
-                                <span className="badge bg-secondary">N/A</span>
-                              )
-                            )}
-                          </td>
                           <td>{new Date(order.created_at).toLocaleDateString()}</td>
                           <td>{order.invoice_number || "-"}</td>
-                          <td>
-                            <div>LKR {parseFloat(order.total_amount || 0).toFixed(2)}</div>
-                            {order.amount_paid > 0 && (
-                              <small className="text-muted">
-                                Paid: LKR {parseFloat(order.amount_paid || 0).toFixed(2)}
-                              </small>
-                            )}
-                          </td>
                           <td>
                             <div className="d-flex gap-2">
                               <button
@@ -548,50 +330,14 @@ const OwnerOrdersPage = () => {
                                 <FaEye className="me-1" /> View
                               </button>
 
-                              {order.status === "submitted" && (
+                              {order.status === "invoiced" && (
                                 <button
-                                  onClick={() => handleApproveOrder(order.id)}
+                                  onClick={() => handleMarkDelivered(order.id)}
                                   disabled={processing}
                                   className="btn btn-sm btn-success d-flex align-items-center"
-                                  title="Approve Order"
+                                  title="Mark as Delivered"
                                 >
-                                  <FaCheck className="me-1" /> Approve
-                                </button>
-                              )}
-
-                              {order.status === "approved" && (
-                                <button
-                                  onClick={() => handleGenerateInvoice(order.id)}
-                                  disabled={processing}
-                                  className="btn btn-sm btn-primary d-flex align-items-center"
-                                  title="Generate Invoice"
-                                >
-                                  <FaFileInvoice className="me-1" /> Invoice
-                                </button>
-                              )}
-
-                              {order.status === "invoiced" && (
-                                <>
-                                  <button
-                                    onClick={() => handleViewInvoice(order)}
-                                    className="btn btn-sm btn-info d-flex align-items-center"
-                                    title="View Invoice"
-                                  >
-                                    <FaPrint className="me-1" /> Invoice
-                                  </button>
-
-
-                                </>
-                              )}
-
-                              {(order.status === "delivered" || order.status === "partially_paid" || order.status === "payment_due") && (
-                                <button
-                                  onClick={() => handleRecordPayment(order.id)}
-                                  disabled={processing}
-                                  className="btn btn-sm btn-warning d-flex align-items-center"
-                                  title="Record Payment"
-                                >
-                                  <FaMoneyBillWave className="me-1" /> Payment
+                                  <FaTruck className="me-1" /> Deliver
                                 </button>
                               )}
                             </div>
@@ -696,80 +442,8 @@ const OwnerOrdersPage = () => {
                       <div className="col-md-6">
                         <p className="mb-1"><strong>Invoice Number:</strong> {selectedOrder.invoice_number || "Not invoiced yet"}</p>
                         <p className="mb-1"><strong>Total Amount:</strong> LKR {parseFloat(selectedOrder.total_amount || 0).toFixed(2)}</p>
-
-                        {/* Payment Information */}
-                        {selectedOrder.payment_status && (
-                          <p className="mb-1">
-                            <strong>Payment Status:</strong>
-                            <span className={`badge ms-1 ${
-                              selectedOrder.payment_status === 'paid' ? 'bg-success' :
-                              selectedOrder.payment_status === 'partially_paid' ? 'bg-warning text-dark' :
-                              'bg-danger'
-                            }`}>
-                              {selectedOrder.payment_status.charAt(0).toUpperCase() + selectedOrder.payment_status.slice(1).replace('_', ' ')}
-                            </span>
-                          </p>
-                        )}
-
-                        {selectedOrder.amount_paid > 0 && (
-                          <p className="mb-1"><strong>Amount Paid:</strong> LKR {parseFloat(selectedOrder.amount_paid || 0).toFixed(2)}</p>
-                        )}
-
-                        {selectedOrder.balance_due > 0 && (
-                          <p className="mb-1"><strong>Balance Due:</strong> LKR {parseFloat(selectedOrder.balance_due || 0).toFixed(2)}</p>
-                        )}
-
-                        {selectedOrder.payment_method && (
-                          <p className="mb-1"><strong>Payment Method:</strong> {selectedOrder.payment_method.charAt(0).toUpperCase() + selectedOrder.payment_method.slice(1)}</p>
-                        )}
-
-                        {selectedOrder.payment_date && (
-                          <p className="mb-1"><strong>Last Payment Date:</strong> {new Date(selectedOrder.payment_date).toLocaleDateString()}</p>
-                        )}
-
-                        {/* Check Payment Details */}
-                        {selectedOrder.payment_method === 'check' && (
-                          <>
-                            {selectedOrder.check_number && (
-                              <p className="mb-1"><strong>Check Number:</strong> {selectedOrder.check_number}</p>
-                            )}
-                            {selectedOrder.check_date && (
-                              <p className="mb-1"><strong>Check Date:</strong> {new Date(selectedOrder.check_date).toLocaleDateString()}</p>
-                            )}
-                            {selectedOrder.bank_name && (
-                              <p className="mb-1"><strong>Bank:</strong> {selectedOrder.bank_name}</p>
-                            )}
-                          </>
-                        )}
-
-                        {/* Credit Payment Details */}
-                        {selectedOrder.payment_method === 'credit' && (
-                          <>
-                            {selectedOrder.credit_term_months > 0 && (
-                              <p className="mb-1"><strong>Credit Term:</strong> {selectedOrder.credit_term_months} months</p>
-                            )}
-                            {selectedOrder.payment_due_date && (
-                              <p className="mb-1">
-                                <strong>Payment Due Date:</strong> {new Date(selectedOrder.payment_due_date).toLocaleDateString()}
-                                {selectedOrder.is_payment_overdue && (
-                                  <span className="badge bg-danger ms-2">Overdue</span>
-                                )}
-                              </p>
-                            )}
-                          </>
-                        )}
                       </div>
                     </div>
-
-                    {/* Owner Notes */}
-                    {selectedOrder.owner_notes && (
-                      <div className="mb-3">
-                        <h6 className="fw-bold">Owner Notes:</h6>
-                        <div className="p-2 bg-light rounded">
-                          {selectedOrder.owner_notes}
-                        </div>
-                      </div>
-                    )}
 
                     <h6 className="fw-bold mb-3">Order Items</h6>
                     {selectedOrderItems.length > 0 ? (
@@ -806,52 +480,17 @@ const OwnerOrdersPage = () => {
                     )}
 
                     {/* Action buttons based on order status */}
-                    <div className="mt-4 d-flex flex-wrap gap-2 justify-content-end">
-                      {selectedOrder.status === "submitted" && (
+                    {selectedOrder.status === "invoiced" && (
+                      <div className="mt-4 d-flex flex-wrap gap-2 justify-content-end">
                         <button
-                          onClick={() => handleApproveOrder(selectedOrder.id)}
+                          onClick={() => handleMarkDelivered(selectedOrder.id)}
                           disabled={processing}
                           className="btn btn-success"
                         >
-                          <FaCheck className="me-2" /> Approve Order
+                          <FaTruck className="me-2" /> Mark as Delivered
                         </button>
-                      )}
-
-                      {selectedOrder.status === "approved" && (
-                        <button
-                          onClick={() => handleGenerateInvoice(selectedOrder.id)}
-                          disabled={processing}
-                          className="btn btn-primary"
-                        >
-                          <FaFileInvoice className="me-2" /> Generate Invoice
-                        </button>
-                      )}
-
-                      {selectedOrder.invoice_number && (
-                        <button
-                          onClick={() => handleViewInvoice(selectedOrder)}
-                          className="btn btn-info text-white"
-                        >
-                          <FaPrint className="me-2" /> View Invoice
-                        </button>
-                      )}
-
-
-
-                      {(selectedOrder.status === "delivered" ||
-                        selectedOrder.status === "partially_paid" ||
-                        selectedOrder.status === "payment_due") && (
-                        <button
-                          onClick={() => handleRecordPayment(selectedOrder.id)}
-                          disabled={processing}
-                          className="btn btn-warning"
-                        >
-                          <FaMoneyBillWave className="me-2" /> Record Payment
-                        </button>
-                      )}
-
-                      {/* We've removed the separate download button since it's now part of the invoice preview modal */}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-5 bg-light rounded">
@@ -864,15 +503,7 @@ const OwnerOrdersPage = () => {
         </div>
       </div>
 
-      {/* Modal Components */}
-      <PaymentModal
-        show={showPaymentModal}
-        onHide={() => setShowPaymentModal(false)}
-        order={orderForModal}
-        onSubmit={handlePaymentSubmit}
-        processing={processing}
-      />
-
+      {/* DeliveryModal component */}
       <DeliveryModal
         show={showDeliveryModal}
         onHide={() => setShowDeliveryModal(false)}
@@ -880,19 +511,8 @@ const OwnerOrdersPage = () => {
         onSubmit={handleDeliverySubmit}
         processing={processing}
       />
-
-      <InvoicePreviewModal
-        show={showInvoicePreviewModal}
-        onHide={() => setShowInvoicePreviewModal(false)}
-        order={orderForModal}
-        onSuccess={(message) => {
-          setSuccessMessage(message);
-          setTimeout(() => setSuccessMessage(""), 3000);
-        }}
-        onError={(message) => setError(message)}
-      />
     </>
   );
 };
 
-export default OwnerOrdersPage;
+export default SalesTeamOrdersPage;

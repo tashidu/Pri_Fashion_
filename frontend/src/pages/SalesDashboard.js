@@ -60,7 +60,7 @@ function SalesDashboard() {
                                     </div>
                                     <p className="text-muted">Create and manage customer orders with real-time inventory tracking.</p>
                                     <div className="mt-auto">
-                                        <a href="/order-list" className="btn btn-outline-success">Manage Orders</a>
+                                        <a href="/sales-team-orders" className="btn btn-outline-success">Manage Orders</a>
                                     </div>
                                 </Card.Body>
                             </Card>

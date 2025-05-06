@@ -71,9 +71,9 @@ function SalesTeamNavBar() {
     {
       title: "Orders",
       icon: <FaShoppingCart />,
-      path: "/order-list",
+      path: "/sales-team-orders",
       subItems: [
-        { title: "View Orders", path: "/order-list" },
+        { title: "View Orders", path: "/sales-team-orders" },
         { title: "Create Order", path: "/createorder" }
       ]
     },

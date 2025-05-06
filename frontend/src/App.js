@@ -28,6 +28,7 @@ import AddShop from "./pages/AddShop.js";
 import CreateOrder from "./pages/CreateOrder.js";
 import OrderListPage from "./pages/OrderListPage.js.js";
 import OwnerOrdersPage from "./pages/OwnerOrdersPage.js";
+import SalesTeamOrdersPage from "./pages/SalesTeamOrdersPage.js";
 
 
 function App() {
@@ -66,6 +67,7 @@ function App() {
         <Route path="/addorder" element={<CreateOrder />} />
         <Route path="/order-list" element={<OrderListPage />} />
         <Route path="/owner-orders" element={<OwnerOrdersPage />} />
+        <Route path="/sales-team-orders" element={<SalesTeamOrdersPage />} />
       </Routes>
     </Router>
   );
