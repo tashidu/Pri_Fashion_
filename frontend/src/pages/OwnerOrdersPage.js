@@ -15,6 +15,7 @@ const OwnerOrdersPage = () => {
   const [selectedOrderItems, setSelectedOrderItems] = useState([]);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderPayments, setOrderPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
@@ -88,19 +89,29 @@ const OwnerOrdersPage = () => {
       setSelectedOrderId(null);
       setSelectedOrderItems([]);
       setSelectedOrder(null);
+      setOrderPayments([]);
       return;
     }
 
     try {
       setLoading(true);
-      const response = await axios.get(
+
+      // Fetch order details
+      const orderResponse = await axios.get(
         `http://localhost:8000/api/orders/orders/${orderId}/`
       );
-      setSelectedOrderItems(response.data.items);
+
+      // Fetch payment history
+      const paymentsResponse = await axios.get(
+        `http://localhost:8000/api/orders/orders/${orderId}/payments/`
+      );
+
+      setSelectedOrderItems(orderResponse.data.items);
       setSelectedOrderId(orderId);
-      setSelectedOrder(response.data);
+      setSelectedOrder(orderResponse.data);
+      setOrderPayments(paymentsResponse.data);
     } catch (error) {
-      console.error("Failed to fetch order items:", error);
+      console.error("Failed to fetch order details:", error);
       setError("Failed to load order details. Please try again.");
     } finally {
       setLoading(false);
@@ -319,9 +330,20 @@ const OwnerOrdersPage = () => {
           setSuccessMessage("");
         }, 3000);
 
-        // Refresh order details if this is the selected order
+        // Refresh order details and payment history if this is the selected order
         if (selectedOrderId === orderForModal.id) {
-          viewOrderItems(orderForModal.id);
+          // Fetch updated payment history
+          try {
+            const paymentsResponse = await axios.get(
+              `http://localhost:8000/api/orders/orders/${orderForModal.id}/payments/`
+            );
+            setOrderPayments(paymentsResponse.data);
+
+            // Also refresh the order details
+            viewOrderItems(orderForModal.id);
+          } catch (err) {
+            console.error("Failed to refresh payment history:", err);
+          }
         }
 
         // Close the modal
@@ -770,6 +792,65 @@ const OwnerOrdersPage = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* Payment History */}
+                    <div className="mb-4">
+                      <h6 className="fw-bold mb-3">Payment History</h6>
+                      {orderPayments && orderPayments.length > 0 ? (
+                        <div className="table-responsive">
+                          <table className="table table-hover">
+                            <thead className="table-light">
+                              <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Details</th>
+                                <th>Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {orderPayments.map((payment) => (
+                                <tr key={payment.id}>
+                                  <td>{new Date(payment.payment_date).toLocaleString()}</td>
+                                  <td className="fw-medium">LKR {parseFloat(payment.amount).toFixed(2)}</td>
+                                  <td>
+                                    <span className={`badge ${
+                                      payment.payment_method === 'cash' ? 'bg-success' :
+                                      payment.payment_method === 'check' ? 'bg-warning text-dark' :
+                                      payment.payment_method === 'bank_transfer' ? 'bg-info text-dark' :
+                                      payment.payment_method === 'credit' ? 'bg-danger' :
+                                      'bg-secondary'
+                                    }`}>
+                                      {payment.payment_method.charAt(0).toUpperCase() + payment.payment_method.slice(1).replace('_', ' ')}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {payment.payment_method === 'check' && (
+                                      <>
+                                        Check #{payment.check_number}<br />
+                                        {payment.check_date && <small>Date: {new Date(payment.check_date).toLocaleDateString()}</small>}
+                                        {payment.bank_name && <small><br />Bank: {payment.bank_name}</small>}
+                                      </>
+                                    )}
+                                    {payment.payment_method === 'credit' && payment.payment_due_date && (
+                                      <>
+                                        Due: {new Date(payment.payment_due_date).toLocaleDateString()}<br />
+                                        <small>Term: {payment.credit_term_months} months</small>
+                                      </>
+                                    )}
+                                  </td>
+                                  <td>{payment.notes}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="text-center py-3 bg-light rounded">
+                          <p className="text-muted mb-0">No payment records found.</p>
+                        </div>
+                      )}
+                    </div>
 
                     <h6 className="fw-bold mb-3">Order Items</h6>
                     {selectedOrderItems.length > 0 ? (

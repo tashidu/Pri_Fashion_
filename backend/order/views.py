@@ -2,8 +2,8 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Shop, Order, OrderItem
-from .serializers import ShopSerializer, OrderSerializer, OrderItemSerializer
+from .models import Shop, Order, OrderItem, Payment
+from .serializers import ShopSerializer, OrderSerializer, OrderItemSerializer, PaymentSerializer
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from packing_app.models import PackingInventory
@@ -208,6 +208,7 @@ class RecordPaymentView(APIView):
             from decimal import Decimal
             amount_paid = Decimal(str(request.data.get('amount_paid', 0)))
             payment_date = request.data.get('payment_date', timezone.now())
+            notes = request.data.get('owner_notes', '')
 
             # Check payment details
             check_number = request.data.get('check_number', '')
@@ -216,46 +217,42 @@ class RecordPaymentView(APIView):
 
             # Credit payment details
             credit_term_months = int(request.data.get('credit_term_months', 0))
+            payment_due_date = None
 
-            # Owner notes
-            owner_notes = request.data.get('owner_notes', '')
+            # Calculate payment due date for credit payments
+            if payment_method == 'credit' and credit_term_months > 0:
+                from datetime import datetime, timedelta
+                if isinstance(payment_date, str):
+                    payment_date = datetime.strptime(payment_date, '%Y-%m-%d')
+                payment_due_date = payment_date + timedelta(days=30 * credit_term_months)
 
-            # Update order
-            order.payment_method = payment_method
-
-            # Add to existing amount paid
-            order.amount_paid += amount_paid
-
-            # Set payment date
-            if payment_date:
-                order.payment_date = payment_date
-
-            # Update check details if payment method is check
-            if payment_method == 'check':
-                order.check_number = check_number
-                order.check_date = check_date
-                order.bank_name = bank_name
-
-            # Update credit details if payment method is credit
-            if payment_method == 'credit':
-                order.credit_term_months = credit_term_months
-                # Calculate payment due date
-                if credit_term_months > 0:
-                    from datetime import datetime, timedelta
-                    if isinstance(payment_date, str):
-                        payment_date = datetime.strptime(payment_date, '%Y-%m-%d')
-                    due_date = payment_date + timedelta(days=30 * credit_term_months)
-                    order.payment_due_date = due_date
+            # Create a new Payment record
+            payment = Payment.objects.create(
+                order=order,
+                amount=amount_paid,
+                payment_method=payment_method,
+                payment_date=payment_date,
+                notes=notes,
+                check_number=check_number if payment_method == 'check' else '',
+                check_date=check_date if payment_method == 'check' else None,
+                bank_name=bank_name if payment_method == 'check' else '',
+                credit_term_months=credit_term_months if payment_method == 'credit' else 0,
+                payment_due_date=payment_due_date
+            )
 
             # Update owner notes
-            if owner_notes:
-                order.owner_notes = owner_notes
+            if notes:
+                order.owner_notes = notes
+
+            # Calculate total paid amount from all payments
+            total_paid = order.total_paid
+            total_amount = order.total_amount
 
             # Update payment status based on amount paid vs total
-            if order.amount_paid >= order.total_amount:
+            if total_paid >= total_amount:
                 order.payment_status = 'paid'
                 order.status = 'paid'
-            elif order.amount_paid > 0:
+            elif total_paid > 0:
                 order.payment_status = 'partially_paid'
                 order.status = 'partially_paid'
             else:
@@ -263,12 +260,16 @@ class RecordPaymentView(APIView):
 
             order.save()
 
+            # Serialize the payment for the response
+            payment_data = PaymentSerializer(payment).data
+
             return Response({
                 "status": order.status,
                 "order_id": order.id,
                 "payment_status": order.payment_status,
-                "amount_paid": order.amount_paid,
-                "balance_due": order.balance_due,
+                "amount_paid": float(order.total_paid),  # Convert Decimal to float for JSON
+                "balance_due": float(order.balance_due),  # Convert Decimal to float for JSON
+                "payment": payment_data,
                 "message": f"Payment of LKR {amount_paid} has been recorded."
             }, status=status.HTTP_200_OK)
 
@@ -276,3 +277,14 @@ class RecordPaymentView(APIView):
             return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class OrderPaymentsListView(generics.ListAPIView):
+    """
+    Returns a list of all payments for a specific order.
+    """
+    serializer_class = PaymentSerializer
+
+    def get_queryset(self):
+        order_id = self.kwargs.get('pk')
+        return Payment.objects.filter(order_id=order_id).order_by('-payment_date')

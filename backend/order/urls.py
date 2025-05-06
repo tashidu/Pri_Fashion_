@@ -9,7 +9,8 @@ from .views import (
     OrderSubmitView,
     GenerateInvoiceView,
     MarkOrderDeliveredView,
-    RecordPaymentView
+    RecordPaymentView,
+    OrderPaymentsListView
 )
 
 urlpatterns = [
@@ -24,6 +25,7 @@ urlpatterns = [
     path('orders/<int:pk>/generate-invoice/', GenerateInvoiceView.as_view(), name='generate-invoice'),
     path('orders/<int:pk>/mark-delivered/', MarkOrderDeliveredView.as_view(), name='mark-delivered'),
     path('orders/<int:pk>/record-payment/', RecordPaymentView.as_view(), name='record-payment'),
+    path('orders/<int:pk>/payments/', OrderPaymentsListView.as_view(), name='order-payments-list'),
 
     # Duplicate paths to match frontend expectations
     path('orders/orders/create/', OrderListCreateView.as_view(), name='order-list-create-alt'),
@@ -33,4 +35,5 @@ urlpatterns = [
     path('orders/orders/<int:pk>/generate-invoice/', GenerateInvoiceView.as_view(), name='generate-invoice-alt'),
     path('orders/orders/<int:pk>/mark-delivered/', MarkOrderDeliveredView.as_view(), name='mark-delivered-alt'),
     path('orders/orders/<int:pk>/record-payment/', RecordPaymentView.as_view(), name='record-payment-alt'),
+    path('orders/orders/<int:pk>/payments/', OrderPaymentsListView.as_view(), name='order-payments-list-alt'),
 ]

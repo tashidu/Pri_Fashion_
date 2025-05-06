@@ -1,6 +1,6 @@
 # order/serializers.py
 from rest_framework import serializers
-from .models import Shop, Order, OrderItem
+from .models import Shop, Order, OrderItem, Payment
 from finished_product.models import FinishedProduct
 
 class ShopSerializer(serializers.ModelSerializer):
@@ -19,12 +19,27 @@ class OrderItemSerializer(serializers.ModelSerializer):
                   'quantity_6_packs', 'quantity_12_packs', 'quantity_extra_items',
                   'total_units', 'subtotal']
 
+
+class PaymentSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Payment model.
+    """
+    class Meta:
+        model = Payment
+        fields = [
+            'id', 'order', 'amount', 'payment_method', 'payment_date', 'notes',
+            'check_number', 'check_date', 'bank_name',
+            'credit_term_months', 'payment_due_date'
+        ]
+        read_only_fields = ['id']
+
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     total_amount = serializers.ReadOnlyField()
     balance_due = serializers.ReadOnlyField()
     is_payment_overdue = serializers.ReadOnlyField()
     shop_name = serializers.ReadOnlyField(source='shop.name')
+    payments = PaymentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Order
@@ -43,5 +58,7 @@ class OrderSerializer(serializers.ModelSerializer):
             # Owner notes
             'owner_notes',
             # Items
-            'items'
+            'items',
+            # Payments
+            'payments'
         ]
