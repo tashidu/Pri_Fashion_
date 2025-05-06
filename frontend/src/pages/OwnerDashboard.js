@@ -19,7 +19,8 @@ import {
   FaStore,
   FaShoppingBag,
   FaCalendarAlt,
-  FaPercentage
+  FaPercentage,
+  FaArrowUp
 } from 'react-icons/fa';
 import {
   BarChart,
@@ -30,10 +31,7 @@ import {
   Bar,
   ResponsiveContainer,
   LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell
+  Line
 } from 'recharts';
 
 // Import DashboardCard component if available, otherwise define it inline
@@ -314,6 +312,230 @@ function OwnerDashboard() {
                   </Button>
                 </div>
               </div>
+            </Col>
+          </Row>
+
+          {/* Key Metrics Dashboard */}
+          <Row className="mb-4">
+            <Col lg={12}>
+              <Card className="shadow-sm">
+                <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+                  <h5 className="mb-0">
+                    <FaChartLine className="text-primary me-2" />
+                    Key Metrics Dashboard
+                  </h5>
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={() => {
+                      setLoading(true);
+                      setSalesLoading(true);
+                      Promise.all([
+                        axios.get('http://localhost:8000/api/reports/product-packing-report/'),
+                        axios.get('http://localhost:8000/api/reports/dashboard/fabric-stock/'),
+                        axios.get('http://localhost:8000/api/orders/orders/create/'),
+                        axios.get(`http://localhost:8000/api/reports/sales/performance/?months=${timeFrame}`)
+                      ]).then(([packingResponse, fabricResponse, ordersResponse, salesResponse]) => {
+                        setPackingData(packingResponse.data);
+                        setRemainingFabrics(fabricResponse.data);
+
+                        // Process orders data
+                        const pendingApproval = ordersResponse.data.filter(order => order.status === 'submitted').length;
+                        const pendingInvoice = ordersResponse.data.filter(order => order.status === 'approved').length;
+                        const paymentsOverdue = ordersResponse.data.filter(order => order.is_payment_overdue).length;
+                        const totalSales = ordersResponse.data.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+
+                        setStats({
+                          pendingApprovalCount: pendingApproval,
+                          pendingInvoiceCount: pendingInvoice,
+                          paymentsOverdueCount: paymentsOverdue,
+                          totalSalesValue: totalSales,
+                          fabricStockValue: fabricResponse.data.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0)
+                        });
+
+                        setRecentOrders(ordersResponse.data.slice(0, 5));
+                        setSalesPerformance(salesResponse.data);
+                      }).catch(error => {
+                        console.error('Error refreshing dashboard data:', error);
+                      }).finally(() => {
+                        setLoading(false);
+                        setSalesLoading(false);
+                      });
+                    }}
+                  >
+                    <FaHistory className="me-1" /> Refresh Data
+                  </Button>
+                </Card.Header>
+                <Card.Body>
+                  <Row>
+                    {/* Total Revenue */}
+                    <Col md={4} className="mb-3">
+                      <Card style={{ backgroundColor: '#D9EDFB', border: 'none' }}>
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 className="text-muted mb-1">Total Revenue</h6>
+                              <h3 className="mb-0">
+                                {loading ? (
+                                  <Spinner animation="border" size="sm" />
+                                ) : (
+                                  `Rs. ${stats.totalSalesValue.toLocaleString()}`
+                                )}
+                              </h3>
+                              <small className="text-success">
+                                <FaArrowUp className="me-1" />
+                                {salesPerformance.monthly_sales.length > 1 ?
+                                  `${Math.round((salesPerformance.monthly_sales[salesPerformance.monthly_sales.length - 1].total_sales /
+                                  salesPerformance.monthly_sales[salesPerformance.monthly_sales.length - 2].total_sales - 1) * 100)}% from last month` :
+                                  'Calculating...'}
+                              </small>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', opacity: 0.7, color: '#0d6efd' }}>
+                              <FaMoneyBillWave />
+                            </div>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+
+                    {/* Low Stock Fabrics */}
+                    <Col md={4} className="mb-3">
+                      <Card style={{ backgroundColor: '#D9EDFB', border: 'none' }}>
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 className="text-muted mb-1">Low Stock Fabrics</h6>
+                              <h3 className="mb-0">
+                                {loading ? (
+                                  <Spinner animation="border" size="sm" />
+                                ) : (
+                                  remainingFabrics.filter(f => f.availableYards < 50).length
+                                )}
+                              </h3>
+                              <small className="text-warning">
+                                <FaExclamationTriangle className="me-1" />
+                                Requires attention
+                              </small>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', opacity: 0.7, color: '#ffc107' }}>
+                              <FaTshirt />
+                            </div>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+
+                    {/* Daily Sewing */}
+                    <Col md={4} className="mb-3">
+                      <Card style={{ backgroundColor: '#D9EDFB', border: 'none' }}>
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 className="text-muted mb-1">Daily Sewing</h6>
+                              <h3 className="mb-0">
+                                {loading ? (
+                                  <Spinner animation="border" size="sm" />
+                                ) : (
+                                  `${packingData.reduce((acc, item) => acc + item.total_sewn, 0)} units`
+                                )}
+                              </h3>
+                              <small className="text-primary">
+                                <FaCalendarAlt className="me-1" />
+                                Production today
+                              </small>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', opacity: 0.7, color: '#0d6efd' }}>
+                              <FaClipboardCheck />
+                            </div>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+
+                    {/* Fabric Stock Value */}
+                    <Col md={4} className="mb-3">
+                      <Card style={{ backgroundColor: '#D9EDFB', border: 'none' }}>
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 className="text-muted mb-1">Fabric Stock Value</h6>
+                              <h3 className="mb-0">
+                                {loading ? (
+                                  <Spinner animation="border" size="sm" />
+                                ) : (
+                                  `Rs. ${remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toLocaleString()}`
+                                )}
+                              </h3>
+                              <small className="text-info">
+                                <FaStore className="me-1" />
+                                Total inventory value
+                              </small>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', opacity: 0.7, color: '#17a2b8' }}>
+                              <FaBuilding />
+                            </div>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+
+                    {/* Production Efficiency */}
+                    <Col md={4} className="mb-3">
+                      <Card style={{ backgroundColor: '#D9EDFB', border: 'none' }}>
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 className="text-muted mb-1">Production Efficiency</h6>
+                              <h3 className="mb-0">
+                                {loading ? (
+                                  <Spinner animation="border" size="sm" />
+                                ) : (
+                                  `${Math.round((packingData.reduce((acc, item) => acc + item.total_packed, 0) /
+                                    Math.max(1, packingData.reduce((acc, item) => acc + item.total_sewn, 0))) * 100)}%`
+                                )}
+                              </h3>
+                              <small className="text-success">
+                                <FaPercentage className="me-1" />
+                                Packed vs Sewn
+                              </small>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', opacity: 0.7, color: '#28a745' }}>
+                              <FaBoxes />
+                            </div>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+
+                    {/* Payment Collection Rate */}
+                    <Col md={4} className="mb-3">
+                      <Card style={{ backgroundColor: '#D9EDFB', border: 'none' }}>
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 className="text-muted mb-1">Payment Collection</h6>
+                              <h3 className="mb-0">
+                                {salesLoading ? (
+                                  <Spinner animation="border" size="sm" />
+                                ) : (
+                                  `${salesPerformance.payment_status.payment_rate}%`
+                                )}
+                              </h3>
+                              <small className={salesPerformance.payment_status.payment_rate > 80 ? "text-success" : "text-warning"}>
+                                <FaShoppingBag className="me-1" />
+                                Collection rate
+                              </small>
+                            </div>
+                            <div style={{ fontSize: '2.5rem', opacity: 0.7, color: '#dc3545' }}>
+                              <FaFileInvoice />
+                            </div>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
             </Col>
           </Row>
 
