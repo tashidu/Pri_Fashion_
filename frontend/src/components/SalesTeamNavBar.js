@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { FaStore, FaShoppingCart, FaChartLine, FaTachometerAlt, FaSignOutAlt, FaBars, FaAngleRight } from "react-icons/fa";
+import { FaStore, FaShoppingCart, FaChartLine, FaTachometerAlt, FaSignOutAlt, FaBars, FaAngleRight, FaTshirt } from "react-icons/fa";
 import { logout } from "../utils/auth";
 
 function SalesTeamNavBar() {
@@ -49,6 +49,11 @@ function SalesTeamNavBar() {
       title: "Dashboard",
       icon: <FaTachometerAlt />,
       path: "/sales-dashboard"
+    },
+    {
+      title: "Products",
+      icon: <FaTshirt />,
+      path: "/sales-products"
     },
     {
       title: "Shops",

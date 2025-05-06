@@ -4,9 +4,14 @@ from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
-from finished_product.serializers import FinishedProductApprovalSerializer, FinishedProductImageSerializer
+from finished_product.serializers import (
+    FinishedProductApprovalSerializer,
+    FinishedProductImageSerializer,
+    FinishedProductReportSerializer,
+    SalesProductSerializer
+)
 from finished_product.models import FinishedProduct
-from finished_product.serializers import FinishedProductReportSerializer
+from packing_app.models import PackingInventory
 
 class ApproveFinishedProductView(APIView):
     """
@@ -112,3 +117,21 @@ class UpdateProductImageView(APIView):
             "message": "Product image updated successfully.",
             "product_image": image_url
         }, status=status.HTTP_200_OK)
+
+
+class SalesProductListView(ListAPIView):
+    """
+    API endpoint for the sales team to view products with images, stock levels, and prices.
+    """
+    serializer_class = SalesProductSerializer
+
+    def get_queryset(self):
+        # Return all products that have a selling price, regardless of provisional status
+        return FinishedProduct.objects.filter(
+            selling_price__isnull=False
+        ).order_by('-approval_date')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context

@@ -4,7 +4,8 @@ from .views import (
     FinishedProductReportView,
     FinishedProductStatusView,
     UpdateFinishedProductView,
-    UpdateProductImageView
+    UpdateProductImageView,
+    SalesProductListView
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path('status/<int:cutting_record_id>/', FinishedProductStatusView.as_view(), name='finished-product-status'),
     path('update/<int:pk>/', UpdateFinishedProductView.as_view(), name='update-finished-product'),
     path('update-image/<int:pk>/', UpdateProductImageView.as_view(), name='update-product-image'),
+    path('sales-products/', SalesProductListView.as_view(), name='sales-products'),
 ]

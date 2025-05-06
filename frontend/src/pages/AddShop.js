@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Container, Row, Col, Card, Form, Button, InputGroup, Alert, Spinner } from 'react-bootstrap';
-import { FaStore, FaMapMarkerAlt, FaPhone, FaSave, FaUndo } from 'react-icons/fa';
+import { FaStore, FaMapMarkerAlt, FaPhone, FaSave, FaUndo, FaMapMarked } from 'react-icons/fa';
 import RoleBasedNavBar from '../components/RoleBasedNavBar';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
@@ -9,12 +9,15 @@ const AddShop = () => {
     const [shopData, setShopData] = useState({
         name: '',
         address: '',
-        contact_number: ''
+        contact_number: '',
+        latitude: '',
+        longitude: ''
     });
 
     const [nameError, setNameError] = useState('');
     const [addressError, setAddressError] = useState('');
     const [contactNumberError, setContactNumberError] = useState('');
+    const [locationError, setLocationError] = useState('');
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,12 +85,38 @@ const AddShop = () => {
         }
     };
 
+    // Validate location
+    const validateLocation = () => {
+        // If we have both latitude and longitude, location is valid
+        if (shopData.latitude && shopData.longitude) {
+            setLocationError('');
+            return true;
+        }
+
+        // If we don't have coordinates but have an address, that's acceptable too
+        if (shopData.address && shopData.address.trim().length >= 5) {
+            setLocationError('');
+            return true;
+        }
+
+        // Otherwise, show an error
+        setLocationError('Please enter an address or coordinates for the shop location');
+        return false;
+    };
+
     // Reset form
     const resetForm = () => {
-        setShopData({ name: '', address: '', contact_number: '' });
+        setShopData({
+            name: '',
+            address: '',
+            contact_number: '',
+            latitude: '',
+            longitude: ''
+        });
         setNameError('');
         setAddressError('');
         setContactNumberError('');
+        setLocationError('');
         setValidated(false);
         // Don't clear message or error when resetting form fields
     };
@@ -104,8 +133,9 @@ const AddShop = () => {
         const isNameValid = validateName(shopData.name);
         const isAddressValid = validateAddress(shopData.address);
         const isContactNumberValid = validateContactNumber(shopData.contact_number);
+        const isLocationValid = validateLocation();
 
-        if (!isNameValid || !isAddressValid || !isContactNumberValid || !form.checkValidity()) {
+        if (!isNameValid || !isAddressValid || !isContactNumberValid || !isLocationValid || !form.checkValidity()) {
             e.stopPropagation();
             setValidated(true);
             return;
@@ -176,10 +206,13 @@ const AddShop = () => {
                                                     {nameError || 'Shop name is required'}
                                                 </Form.Control.Feedback>
                                             </InputGroup>
+                                            <Form.Text className="text-muted">
+                                                Please enter a name for the shop
+                                            </Form.Text>
                                         </Form.Group>
 
                                         <Form.Group className="mb-3">
-                                            <Form.Label><strong>Address</strong></Form.Label>
+                                            <Form.Label><strong>Shop Address</strong></Form.Label>
                                             <InputGroup>
                                                 <InputGroup.Text className="bg-light">
                                                     <FaMapMarkerAlt className="text-primary" />
@@ -190,7 +223,7 @@ const AddShop = () => {
                                                     name="address"
                                                     value={shopData.address}
                                                     onChange={handleChange}
-                                                    placeholder="Enter shop address"
+                                                    placeholder="Enter complete shop address (e.g., 123 Main St, Colombo 03, Sri Lanka)"
                                                     required
                                                     isInvalid={!!addressError}
                                                 />
@@ -198,7 +231,12 @@ const AddShop = () => {
                                                     {addressError || 'Address is required'}
                                                 </Form.Control.Feedback>
                                             </InputGroup>
+                                            <Form.Text className="text-muted">
+                                                Please enter a detailed address for the shop location
+                                            </Form.Text>
                                         </Form.Group>
+
+
 
                                         <Form.Group className="mb-4">
                                             <Form.Label><strong>Contact Number</strong></Form.Label>

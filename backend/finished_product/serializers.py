@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from finished_product.models import FinishedProduct
 from cutting.models import CuttingRecord
+from packing_app.models import PackingInventory
 
 class FinishedProductApprovalSerializer(serializers.ModelSerializer):
     # Allow the owner to provide a cutting record ID.
@@ -88,3 +89,54 @@ class FinishedProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = FinishedProduct
         fields = ['product_image']
+
+
+class SalesProductSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the sales team product view.
+    Includes product image, stock levels, and selling price.
+    """
+    product_name = serializers.SerializerMethodField()
+    product_image = serializers.SerializerMethodField()
+    packing_inventory = serializers.SerializerMethodField()
+    available_quantity = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = FinishedProduct
+        fields = [
+            'id',
+            'product_name',
+            'selling_price',
+            'product_image',
+            'available_quantity',
+            'packing_inventory'
+        ]
+
+    def get_product_name(self, obj):
+        if obj.cutting_record.product_name:
+            return obj.cutting_record.product_name
+        else:
+            return f"{obj.cutting_record.fabric_definition.fabric_name} cut on {obj.cutting_record.cutting_date}"
+
+    def get_product_image(self, obj):
+        request = self.context.get('request')
+        if obj.product_image and request:
+            return request.build_absolute_uri(obj.product_image.url)
+        return None
+
+    def get_packing_inventory(self, obj):
+        try:
+            inventory = PackingInventory.objects.get(finished_product=obj)
+            return {
+                'number_of_6_packs': inventory.number_of_6_packs,
+                'number_of_12_packs': inventory.number_of_12_packs,
+                'extra_items': inventory.extra_items,
+                'total_quantity': inventory.total_quantity
+            }
+        except PackingInventory.DoesNotExist:
+            return {
+                'number_of_6_packs': 0,
+                'number_of_12_packs': 0,
+                'extra_items': 0,
+                'total_quantity': 0
+            }
