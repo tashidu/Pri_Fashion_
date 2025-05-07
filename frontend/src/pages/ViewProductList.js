@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { Link } from "react-router-dom";
+import { getUserRole, hasRole } from "../utils/auth";
 import {
   FaSearch, FaFilter, FaEye, FaEyeSlash,
   FaCheckCircle, FaSpinner, FaExclamationTriangle,
@@ -116,6 +117,10 @@ const ViewProductList = () => {
   const [viewMode, setViewMode] = useState(window.innerWidth < 768 ? "card" : "table");
   const [retryCount, setRetryCount] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const [userRole, setUserRole] = useState(getUserRole());
+
+  // Check if user is owner
+  const isOwner = userRole === 'Owner';
 
   // Function to fetch products data
   const fetchProducts = async () => {
@@ -164,6 +169,21 @@ const ViewProductList = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Update user role if it changes in localStorage
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const newRole = getUserRole();
+      if (newRole !== userRole) {
+        setUserRole(newRole);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [userRole]);
 
   // Toggle expanded row
   const toggleRow = (productId) => {
@@ -335,11 +355,15 @@ const ViewProductList = () => {
                     </button>
                   </td>
                   <td>
-                    <Link to={`/approve-finished-product/${prod.id}`}>
-                      <button className="btn btn-sm btn-success d-flex align-items-center">
-                        <FaCheckCircle className="me-1" /> Approve
-                      </button>
-                    </Link>
+                    {isOwner ? (
+                      <Link to={`/approve-finished-product/${prod.id}`}>
+                        <button className="btn btn-sm btn-success d-flex align-items-center">
+                          <FaCheckCircle className="me-1" /> Approve
+                        </button>
+                      </Link>
+                    ) : (
+                      <span className="text-muted small">Approval restricted</span>
+                    )}
                   </td>
                 </tr>
 
@@ -539,11 +563,17 @@ const ViewProductList = () => {
                 )}
               </div>
               <div className="card-footer">
-                <Link to={`/approve-finished-product/${prod.id}`} className="w-100">
-                  <button className="btn btn-success btn-sm w-100">
-                    <FaCheckCircle className="me-1" /> Approve Product
-                  </button>
-                </Link>
+                {isOwner ? (
+                  <Link to={`/approve-finished-product/${prod.id}`} className="w-100">
+                    <button className="btn btn-success btn-sm w-100">
+                      <FaCheckCircle className="me-1" /> Approve Product
+                    </button>
+                  </Link>
+                ) : (
+                  <div className="text-center text-muted small py-2">
+                    Approval restricted to Owner role
+                  </div>
+                )}
               </div>
             </div>
           </div>
