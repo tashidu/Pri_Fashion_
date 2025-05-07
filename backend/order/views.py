@@ -10,6 +10,8 @@ from packing_app.models import PackingInventory
 from finished_product.models import FinishedProduct
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
+from authentication.permissions import IsOwner, IsOrderCoordinator, IsSalesTeam
+from rest_framework.permissions import OR
 
 class ShopListCreateView(generics.ListCreateAPIView):
     queryset = Shop.objects.all()
@@ -34,6 +36,7 @@ class ShopDistrictAnalysisView(generics.ListAPIView):
 class OrderListCreateView(generics.ListCreateAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated, OR(IsOrderCoordinator(), IsSalesTeam())]
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Order.objects.all()

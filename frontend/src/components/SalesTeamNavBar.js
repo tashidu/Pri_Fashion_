@@ -74,7 +74,7 @@ function SalesTeamNavBar() {
       path: "/sales-team-orders",
       subItems: [
         { title: "View Orders", path: "/sales-team-orders" },
-        { title: "Create Order", path: "/createorder" }
+        { title: "Create Order", path: "/addorder" }
       ]
     },
     {
