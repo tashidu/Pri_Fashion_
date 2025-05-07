@@ -115,6 +115,7 @@ const ViewProductList = () => {
   const [itemsPerPage] = useState(10);
   const [viewMode, setViewMode] = useState(window.innerWidth < 768 ? "card" : "table");
   const [retryCount, setRetryCount] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
 
   // Function to fetch products data
   const fetchProducts = async () => {
@@ -153,10 +154,11 @@ const ViewProductList = () => {
     fetchProducts();
   }, []);
 
-  // Handle responsive view mode
+  // Handle responsive view mode and sidebar state
   useEffect(() => {
     const handleResize = () => {
       setViewMode(window.innerWidth < 768 ? "card" : "table");
+      setIsSidebarOpen(window.innerWidth >= 768);
     };
 
     window.addEventListener("resize", handleResize);
@@ -553,7 +555,15 @@ const ViewProductList = () => {
   return (
     <>
       <RoleBasedNavBar />
-      <div className="main-content">
+      <div
+        className="main-content"
+        style={{
+          marginLeft: isSidebarOpen ? "240px" : "70px",
+          width: `calc(100% - ${isSidebarOpen ? "240px" : "70px"})`,
+          transition: "all 0.3s ease",
+          padding: "20px"
+        }}
+      >
         <div className="container-fluid px-0">
           {/* Header with title and view toggle */}
           <div className="d-flex justify-content-between align-items-center mb-4">
@@ -743,11 +753,6 @@ const ViewProductList = () => {
         }
         .table th {
           white-space: nowrap;
-        }
-        @media (max-width: 767px) {
-          .main-content {
-            padding: 1rem;
-          }
         }
       `}</style>
     </>
