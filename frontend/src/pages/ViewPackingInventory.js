@@ -29,7 +29,8 @@ import {
   BsArrowRepeat,
   BsCalendar,
   BsShop,
-  BsCurrencyDollar
+  BsCurrencyDollar,
+  BsGraphUp
 } from "react-icons/bs";
 import {
   FaBoxes,
@@ -39,7 +40,11 @@ import {
   FaShoppingCart,
   FaStore,
   FaCalendarAlt,
-  FaEye
+  FaEye,
+  FaChartLine,
+  FaChartPie,
+  FaChartBar,
+  FaPercentage
 } from "react-icons/fa";
 
 const ViewPackingInventory = () => {
@@ -431,7 +436,7 @@ const ViewPackingInventory = () => {
                             placement="top"
                             overlay={<Tooltip>View Product Details</Tooltip>}
                           >
-                            <Link to={`/view-product/${item.product_id}`}>
+                            <Link to={`/viewproductlist`}>
                               <Button variant="outline-info" size="sm" className="me-1">
                                 <BsInfoCircle />
                               </Button>
@@ -501,7 +506,7 @@ const ViewPackingInventory = () => {
               {modalError}
             </Alert>
           ) : (
-            <Tabs defaultActiveKey="packing" className="mb-3">
+            <Tabs defaultActiveKey="analysis" className="mb-3">
               {/* Packing Sessions Tab */}
               <Tab eventKey="packing" title={<span><FaBoxes className="me-2" />Packing History</span>}>
                 {packingSessions.length === 0 ? (
@@ -710,6 +715,221 @@ const ViewPackingInventory = () => {
                   </div>
                 )}
               </Tab>
+
+              {/* Analysis Tab */}
+              <Tab eventKey="analysis" title={<span><FaChartBar className="me-2" />Analysis</span>}>
+                {selectedProduct && (
+                  <div className="p-3 bg-light rounded">
+                    <h4 className="mb-4 text-primary">Product Performance Analysis</h4>
+
+                    {/* Packing Trends */}
+                    <div className="mb-4">
+                      <h5 className="mb-3"><FaChartLine className="me-2" />Packing Trends</h5>
+                      <div className="table-responsive">
+                        <Table bordered hover>
+                          <thead className="table-light">
+                            <tr>
+                              <th>Metric</th>
+                              <th>Value</th>
+                              <th>Analysis</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Total Packing Sessions</td>
+                              <td>{packingSessions.length}</td>
+                              <td>
+                                {packingSessions.length > 0
+                                  ? `Last session on ${formatDate(packingSessions[0]?.date)}`
+                                  : "No packing sessions recorded"}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>Average Items per Session</td>
+                              <td>
+                                {packingSessions.length > 0
+                                  ? (packingSessions.reduce((sum, session) => sum + session.total_packed_quantity, 0) / packingSessions.length).toFixed(1)
+                                  : "N/A"}
+                              </td>
+                              <td>
+                                {packingSessions.length > 0
+                                  ? (packingSessions.reduce((sum, session) => sum + session.total_packed_quantity, 0) / packingSessions.length) > 50
+                                    ? "High efficiency packing"
+                                    : "Standard packing efficiency"
+                                  : "No data available"}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>Preferred Pack Type</td>
+                              <td>
+                                {packingSessions.length > 0
+                                  ? packingSessions.reduce((sum, session) => sum + session.number_of_6_packs, 0) >
+                                    packingSessions.reduce((sum, session) => sum + session.number_of_12_packs, 0)
+                                    ? "6-Packs"
+                                    : "12-Packs"
+                                  : "N/A"}
+                              </td>
+                              <td>
+                                {packingSessions.length > 0
+                                  ? `${Math.round((packingSessions.reduce((sum, session) => sum + (session.number_of_6_packs > session.number_of_12_packs ? 1 : 0), 0) / packingSessions.length) * 100)}% of sessions favor this pack type`
+                                  : "No data available"}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </Table>
+                      </div>
+                    </div>
+
+                    {/* Sales Analysis */}
+                    <div className="mb-4">
+                      <h5 className="mb-3"><FaChartPie className="me-2" />Sales Analysis</h5>
+                      {Array.isArray(salesData) && salesData.length > 0 ? (
+                        <div className="table-responsive">
+                          <Table bordered hover>
+                            <thead className="table-light">
+                              <tr>
+                                <th>Metric</th>
+                                <th>Value</th>
+                                <th>Analysis</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td>Total Orders</td>
+                                <td>{salesData.length}</td>
+                                <td>
+                                  {salesData.length > 5
+                                    ? "High demand product"
+                                    : salesData.length > 0
+                                    ? "Regular demand product"
+                                    : "Low demand product"}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td>Total Revenue</td>
+                                <td>LKR {salesData.reduce((sum, sale) => sum + (sale.subtotal || 0), 0).toLocaleString()}</td>
+                                <td>
+                                  {salesData.reduce((sum, sale) => sum + (sale.subtotal || 0), 0) > 100000
+                                    ? "High revenue generator"
+                                    : "Standard revenue generator"}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td>Average Order Size</td>
+                                <td>
+                                  {salesData.length > 0
+                                    ? (salesData.reduce((sum, sale) => sum + (sale.total_units || 0), 0) / salesData.length).toFixed(1) + " units"
+                                    : "N/A"}
+                                </td>
+                                <td>
+                                  {salesData.length > 0 && (salesData.reduce((sum, sale) => sum + (sale.total_units || 0), 0) / salesData.length) > 20
+                                    ? "Bulk order preference"
+                                    : "Standard order size"}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td>Top Shop</td>
+                                <td>
+                                  {salesData.length > 0
+                                    ? (() => {
+                                        const shopCounts = {};
+                                        salesData.forEach(sale => {
+                                          shopCounts[sale.shop_name] = (shopCounts[sale.shop_name] || 0) + 1;
+                                        });
+                                        const topShop = Object.entries(shopCounts).sort((a, b) => b[1] - a[1])[0];
+                                        return topShop ? topShop[0] : "N/A";
+                                      })()
+                                    : "N/A"}
+                                </td>
+                                <td>
+                                  {salesData.length > 0
+                                    ? `${Math.round((salesData.filter(sale => sale.shop_name === (() => {
+                                        const shopCounts = {};
+                                        salesData.forEach(sale => {
+                                          shopCounts[sale.shop_name] = (shopCounts[sale.shop_name] || 0) + 1;
+                                        });
+                                        const topShop = Object.entries(shopCounts).sort((a, b) => b[1] - a[1])[0];
+                                        return topShop ? topShop[0] : "";
+                                      })()).length / salesData.length) * 100)}% of orders from this shop`
+                                    : "No data available"}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </Table>
+                        </div>
+                      ) : (
+                        <Alert variant="info">No sales data available for analysis.</Alert>
+                      )}
+                    </div>
+
+                    {/* Inventory Efficiency */}
+                    <div>
+                      <h5 className="mb-3"><FaPercentage className="me-2" />Inventory Efficiency</h5>
+                      <div className="table-responsive">
+                        <Table bordered hover>
+                          <thead className="table-light">
+                            <tr>
+                              <th>Metric</th>
+                              <th>Value</th>
+                              <th>Analysis</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Current Stock Level</td>
+                              <td>{selectedProduct.total_quantity} items</td>
+                              <td>
+                                {selectedProduct.total_quantity > 100
+                                  ? "High stock level"
+                                  : selectedProduct.total_quantity > 50
+                                  ? "Moderate stock level"
+                                  : selectedProduct.total_quantity > 10
+                                  ? "Low stock level"
+                                  : "Critical stock level"}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>Stock Turnover Rate</td>
+                              <td>
+                                {packingSessions.length > 0 && Array.isArray(salesData) && salesData.length > 0
+                                  ? `${((salesData.reduce((sum, sale) => sum + (sale.total_units || 0), 0) /
+                                      packingSessions.reduce((sum, session) => sum + session.total_packed_quantity, 0)) * 100).toFixed(1)}%`
+                                  : "N/A"}
+                              </td>
+                              <td>
+                                {packingSessions.length > 0 && Array.isArray(salesData) && salesData.length > 0
+                                  ? ((salesData.reduce((sum, sale) => sum + (sale.total_units || 0), 0) /
+                                      packingSessions.reduce((sum, session) => sum + session.total_packed_quantity, 0)) * 100) > 80
+                                    ? "Excellent turnover rate"
+                                    : ((salesData.reduce((sum, sale) => sum + (sale.total_units || 0), 0) /
+                                        packingSessions.reduce((sum, session) => sum + session.total_packed_quantity, 0)) * 100) > 50
+                                    ? "Good turnover rate"
+                                    : "Low turnover rate - consider production adjustment"
+                                  : "Insufficient data for analysis"}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>Restock Recommendation</td>
+                              <td>
+                                {selectedProduct.total_quantity < 20 && Array.isArray(salesData) && salesData.length > 0
+                                  ? "Restock Recommended"
+                                  : "No Restock Needed"}
+                              </td>
+                              <td>
+                                {selectedProduct.total_quantity < 20 && Array.isArray(salesData) && salesData.length > 0
+                                  ? `Based on average sales of ${salesData.length > 0
+                                      ? (salesData.reduce((sum, sale) => sum + (sale.total_units || 0), 0) / salesData.length).toFixed(1)
+                                      : 0} units per order`
+                                  : "Current stock levels are sufficient"}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </Table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Tab>
             </Tabs>
           )}
         </Modal.Body>
@@ -717,9 +937,9 @@ const ViewPackingInventory = () => {
           <Button variant="secondary" onClick={handleCloseModal}>
             Close
           </Button>
-          <Link to={selectedProduct ? `/view-product/${selectedProduct.product_id}` : '#'}>
+          <Link to="/viewproductlist">
             <Button variant="primary">
-              View Full Product Details
+              View All Products
             </Button>
           </Link>
         </Modal.Footer>
