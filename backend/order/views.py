@@ -298,3 +298,39 @@ class OrderPaymentsListView(generics.ListAPIView):
     def get_queryset(self):
         order_id = self.kwargs.get('pk')
         return Payment.objects.filter(order_id=order_id).order_by('-payment_date')
+
+
+class ProductSalesView(APIView):
+    """
+    Returns sales data for a specific product.
+    """
+    def get(self, request, product_id):
+        try:
+            # Get all order items for this product
+            order_items = OrderItem.objects.filter(
+                finished_product_id=product_id
+            ).select_related('order', 'order__shop')
+
+            if not order_items.exists():
+                return Response({"message": "No sales data found for this product"}, status=status.HTTP_200_OK)
+
+            # Format the response
+            sales_data = []
+            for item in order_items:
+                sales_data.append({
+                    'order_id': item.order.id,
+                    'shop_name': item.order.shop.name if item.order.shop else "Unknown Shop",
+                    'order_date': item.order.created_at,
+                    'order_status': item.order.status,
+                    'quantity_6_packs': item.quantity_6_packs,
+                    'quantity_12_packs': item.quantity_12_packs,
+                    'quantity_extra_items': item.quantity_extra_items,
+                    'total_units': item.total_units,
+                    'subtotal': float(item.subtotal) if item.subtotal else 0,
+                    'delivery_date': item.order.delivery_date
+                })
+
+            return Response(sales_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

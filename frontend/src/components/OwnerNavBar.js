@@ -13,7 +13,8 @@ import {
   FaClipboardCheck,
   FaBoxes,
   FaUserPlus,
-  FaBoxOpen
+  FaBoxOpen,
+  FaWarehouse
 } from "react-icons/fa";
 import { logout } from "../utils/auth";
 
@@ -76,6 +77,11 @@ function OwnerNavBar() {
       title: "Stock Level",
       icon: <FaBoxOpen />,
       path: "/approveproduct-list"
+    },
+    {
+      title: "Packing Inventory",
+      icon: <FaWarehouse />,
+      path: "/view-packing-inventory"
     },
     {
       title: "Packing History",
