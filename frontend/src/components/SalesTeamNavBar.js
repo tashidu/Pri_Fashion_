@@ -76,11 +76,6 @@ function SalesTeamNavBar() {
         { title: "View Orders", path: "/sales-team-orders" },
         { title: "Create Order", path: "/addorder" }
       ]
-    },
-    {
-      title: "Reports",
-      icon: <FaChartLine />,
-      path: "/sales-report"
     }
   ];
 

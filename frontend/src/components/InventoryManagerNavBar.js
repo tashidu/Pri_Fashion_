@@ -95,16 +95,7 @@ function InventoryManagerNavBar() {
         { title: "View Packing History", path: "/view-packing-sessions" }
       ]
     },
-    {
-      title: "Damaged Items",
-      icon: <FaExclamationTriangle />,
-      path: "/damaged-clothes"
-    },
-    {
-      title: "Reports",
-      icon: <FaChartLine />,
-      path: "/addshop"
-    }
+  
   ];
 
   // Check if a path is active
