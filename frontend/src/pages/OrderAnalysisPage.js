@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Container, Row, Col, Card, Form, Button, Spinner, Alert } from "react-bootstrap";
 import {
-  FaChartLine, FaChartBar, FaChartPie, FaCalendarAlt,
-  FaFilter, FaDownload, FaStore, FaMoneyBillWave, FaBoxes
+  FaChartLine, FaChartPie, FaMoneyBillWave, FaClipboardCheck
 } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
-import { Bar, Line, Pie } from "react-chartjs-2";
+import { Line, Pie } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
-import axios from "axios";
 import { authGet } from "../utils/api";
 
 // Register Chart.js components
@@ -32,7 +30,10 @@ const OrderAnalysisPage = () => {
   const [statusDistribution, setStatusDistribution] = useState(null);
   const [paymentMethodDistribution, setPaymentMethodDistribution] = useState(null);
   const [monthlySales, setMonthlySales] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState(null);
+  const [filteredOrders, setFilteredOrders] = useState([]);
 
+  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       setIsSidebarOpen(window.innerWidth >= 768);
@@ -42,11 +43,8 @@ const OrderAnalysisPage = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  useEffect(() => {
-    fetchOrderAnalysisData();
-  }, [timeRange]);
-
-  const fetchOrderAnalysisData = async () => {
+  // Define the data fetching function
+  const fetchOrderAnalysisData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -164,6 +162,84 @@ const OrderAnalysisPage = () => {
       // Get current year for sample data
       const currentYear = new Date().getFullYear();
 
+      // Create sample order data for interactive functionality
+      const sampleOrders = [
+        {
+          id: 1,
+          shop_name: "Fashion Store",
+          shop: "Fashion Store",
+          status: "paid",
+          created_at: `${currentYear}-01-15T10:30:00Z`,
+          total_amount: 45000,
+          payment_method: "cash"
+        },
+        {
+          id: 2,
+          shop_name: "Trendy Boutique",
+          shop: "Trendy Boutique",
+          status: "paid",
+          created_at: `${currentYear}-02-20T14:20:00Z`,
+          total_amount: 32000,
+          payment_method: "check"
+        },
+        {
+          id: 3,
+          shop_name: "Style Hub",
+          shop: "Style Hub",
+          status: "invoiced",
+          created_at: `${currentYear}-03-10T09:15:00Z`,
+          total_amount: 28500,
+          payment_method: "bank_transfer"
+        },
+        {
+          id: 4,
+          shop_name: "Fashion World",
+          shop: "Fashion World",
+          status: "approved",
+          created_at: `${currentYear}-03-25T11:45:00Z`,
+          total_amount: 36000,
+          payment_method: "cash"
+        },
+        {
+          id: 5,
+          shop_name: "Clothing Outlet",
+          shop: "Clothing Outlet",
+          status: "submitted",
+          created_at: `${currentYear}-04-05T13:30:00Z`,
+          total_amount: 22000,
+          payment_method: "credit"
+        },
+        {
+          id: 6,
+          shop_name: "Fashion Store",
+          shop: "Fashion Store",
+          status: "draft",
+          created_at: `${currentYear}-04-15T10:00:00Z`,
+          total_amount: 18000,
+          payment_method: "advance"
+        },
+        {
+          id: 7,
+          shop_name: "Trendy Boutique",
+          shop: "Trendy Boutique",
+          status: "delivered",
+          created_at: `${currentYear}-05-02T15:20:00Z`,
+          total_amount: 42000,
+          payment_method: "check"
+        },
+        {
+          id: 8,
+          shop_name: "Style Hub",
+          shop: "Style Hub",
+          status: "paid",
+          created_at: `${currentYear}-05-18T09:45:00Z`,
+          total_amount: 31500,
+          payment_method: "cash"
+        }
+      ];
+
+      setOrderData(sampleOrders);
+
       // Set fallback sample data with current year
       setMonthlySales({
         labels: [`Jan ${currentYear}`, `Feb ${currentYear}`, `Mar ${currentYear}`, `Apr ${currentYear}`, `May ${currentYear}`, `Jun ${currentYear}`],
@@ -245,10 +321,46 @@ const OrderAnalysisPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange]);
+
+  // Fetch data when component mounts or timeRange changes
+  useEffect(() => {
+    fetchOrderAnalysisData();
+  }, [fetchOrderAnalysisData]);
 
   const handleTimeRangeChange = (e) => {
     setTimeRange(e.target.value);
+  };
+
+  // Handle click on status chart segment
+  const handleStatusClick = (_, elements) => {
+    if (elements.length > 0) {
+      const clickedIndex = elements[0].index;
+      const clickedStatus = statusDistribution.labels[clickedIndex].toLowerCase();
+
+      // If clicking the same status, clear the selection
+      if (selectedStatus === clickedStatus) {
+        setSelectedStatus(null);
+        setFilteredOrders([]);
+        return;
+      }
+
+      setSelectedStatus(clickedStatus);
+
+      // Filter orders by the selected status
+      if (orderData) {
+        const filtered = orderData.filter(order =>
+          order.status.toLowerCase() === clickedStatus
+        );
+        setFilteredOrders(filtered);
+      }
+    }
+  };
+
+  // Clear selected status
+  const clearSelection = () => {
+    setSelectedStatus(null);
+    setFilteredOrders([]);
   };
 
   return (
@@ -357,12 +469,23 @@ const OrderAnalysisPage = () => {
 
               {/* Status and Payment Method Distribution */}
               <Row className="mb-4">
-                <Col md={6}>
+                <Col md={selectedStatus ? 6 : 12}>
                   <Card className="shadow-sm h-100" style={{ backgroundColor: "#D9EDFB" }}>
                     <Card.Body>
-                      <Card.Title className="d-flex align-items-center mb-4">
-                        <FaChartPie className="me-2 text-primary" />
-                        Order Status Distribution
+                      <Card.Title className="d-flex align-items-center justify-content-between mb-4">
+                        <div className="d-flex align-items-center">
+                          <FaChartPie className="me-2 text-primary" />
+                          Order Status Distribution
+                        </div>
+                        {selectedStatus && (
+                          <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            onClick={clearSelection}
+                          >
+                            Clear Selection
+                          </Button>
+                        )}
                       </Card.Title>
                       <div style={{ height: "250px" }}>
                         {statusDistribution ? (
@@ -371,6 +494,7 @@ const OrderAnalysisPage = () => {
                             options={{
                               responsive: true,
                               maintainAspectRatio: false,
+                              onClick: handleStatusClick,
                               plugins: {
                                 legend: {
                                   position: 'right',
@@ -393,9 +517,67 @@ const OrderAnalysisPage = () => {
                           <p className="text-center">No status data available</p>
                         )}
                       </div>
+                      <p className="text-center text-muted mt-3">
+                        Click on a segment to view detailed order information
+                      </p>
                     </Card.Body>
                   </Card>
                 </Col>
+
+                {selectedStatus && (
+                  <Col md={6}>
+                    <Card className="shadow-sm h-100" style={{ backgroundColor: "#D9EDFB" }}>
+                      <Card.Body>
+                        <Card.Title className="d-flex align-items-center mb-4">
+                          <FaClipboardCheck className="me-2 text-primary" />
+                          {selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1)} Orders
+                        </Card.Title>
+                        {filteredOrders.length > 0 ? (
+                          <div className="table-responsive" style={{ maxHeight: "350px", overflowY: "auto" }}>
+                            <table className="table table-hover">
+                              <thead className="table-light sticky-top">
+                                <tr>
+                                  <th>Order ID</th>
+                                  <th>Shop</th>
+                                  <th>Date</th>
+                                  <th>Total (LKR)</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {filteredOrders.map(order => (
+                                  <tr key={order.id}>
+                                    <td>#{order.id}</td>
+                                    <td>{order.shop_name || order.shop}</td>
+                                    <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                                    <td>{order.total_amount?.toLocaleString() || 'N/A'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="text-center py-5">
+                            <p>No {selectedStatus} orders found</p>
+                          </div>
+                        )}
+
+                        {filteredOrders.length > 0 && (
+                          <div className="mt-3 p-3 bg-light rounded">
+                            <h6>Summary</h6>
+                            <div className="d-flex justify-content-between">
+                              <span>Total Orders:</span>
+                              <strong>{filteredOrders.length}</strong>
+                            </div>
+                            <div className="d-flex justify-content-between">
+                              <span>Total Amount:</span>
+                              <strong>LKR {filteredOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0).toLocaleString()}</strong>
+                            </div>
+                          </div>
+                        )}
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                )}
                 <Col md={6}>
                   <Card className="shadow-sm h-100" style={{ backgroundColor: "#D9EDFB" }}>
                     <Card.Body>
