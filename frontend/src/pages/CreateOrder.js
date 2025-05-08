@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axios from "../utils/axiosConfig";
 import {
   Container,
   Row,
@@ -35,7 +35,7 @@ import {
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import "./CreateOrder.css"; // We'll create this CSS file later
 import { useNavigate } from "react-router-dom";
-import { getUserRole } from "../utils/auth";
+import { getUserRole, getUserId } from "../utils/auth";
 
 const AddOrderForm = () => {
   const navigate = useNavigate();
@@ -78,7 +78,8 @@ const AddOrderForm = () => {
   const [stockWarnings, setStockWarnings] = useState([]);
   const [activeTab, setActiveTab] = useState("order-details");
 
-  const currentUserId = 1; // ⚠️ Replace with actual authenticated user ID from context or token
+  // Get the current user ID from the JWT token
+  const currentUserId = getUserId();
 
   // Filter products based on search term
   useEffect(() => {
@@ -106,10 +107,21 @@ const AddOrderForm = () => {
         setIsLoading(true);
       }
 
+      // Get the token from localStorage
+      const token = localStorage.getItem('token');
+      console.log('Fetch Data - Token exists:', !!token);
+
+      // Prepare headers with authentication token
+      const headers = {
+        'Authorization': `JWT ${token}`
+      };
+
+      console.log('Fetch Data - Headers:', headers);
+
       const [shopsRes, productsRes, inventoryRes] = await Promise.all([
-        axios.get("http://localhost:8000/api/orders/shops/"),
-        axios.get("http://localhost:8000/api/finished_product/report"),
-        axios.get("http://localhost:8000/api/packing/inventory/")
+        axios.get("http://localhost:8000/api/orders/shops/", { headers }),
+        axios.get("http://localhost:8000/api/finished_product/report", { headers }),
+        axios.get("http://localhost:8000/api/packing/inventory/", { headers })
       ]);
 
       setShops(shopsRes.data);
@@ -148,10 +160,27 @@ const AddOrderForm = () => {
       }
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(isRefresh
-        ? "Failed to refresh inventory data. Please try again."
-        : "Failed to load necessary data. Please refresh the page."
-      );
+
+      // Provide more detailed error message
+      if (err.response) {
+        console.error("Response data:", err.response.data);
+        console.error("Response status:", err.response.status);
+
+        if (err.response.data && err.response.data.detail) {
+          setError(`Error: ${err.response.data.detail}`);
+        } else {
+          setError(`Error ${err.response.status}: ${err.response.statusText}`);
+        }
+      } else if (err.request) {
+        console.error("No response received:", err.request);
+        setError("No response received from server. Please check your connection.");
+      } else {
+        console.error("Error setting up request:", err.message);
+        setError(isRefresh
+          ? "Failed to refresh inventory data. Please try again."
+          : "Failed to load necessary data. Please refresh the page."
+        );
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -342,6 +371,18 @@ const AddOrderForm = () => {
     }
 
     try {
+      // Get the token from localStorage
+      const token = localStorage.getItem('token');
+      console.log('Submit Order - Token exists:', !!token);
+
+      // Prepare headers with authentication token
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `JWT ${token}`
+      };
+
+      console.log('Submit Order - Headers:', headers);
+
       // Step 1: Create the order with role-specific fields
       const orderPayload = {
         shop: orderData.shop,
@@ -358,19 +399,29 @@ const AddOrderForm = () => {
         orderPayload.payment_method = 'cash'; // Default payment method
       }
 
-      const orderRes = await axios.post("http://localhost:8000/api/orders/orders/create/", orderPayload);
+      console.log('Submit Order - Payload:', orderPayload);
+
+      const orderRes = await axios.post(
+        "http://localhost:8000/api/orders/orders/create/",
+        orderPayload,
+        { headers }
+      );
 
       const orderId = orderRes.data.id;
+      console.log('Order created with ID:', orderId);
 
       // Step 2: Create each order item
       const itemRequests = orderData.items.map((item) =>
-        axios.post("http://localhost:8000/api/orders/orders/items/", {
-          order: orderId,
-          finished_product: item.finished_product,
-          quantity_6_packs: item.quantity_6_packs,
-          quantity_12_packs: item.quantity_12_packs,
-          quantity_extra_items: item.quantity_extra_items,
-        })
+        axios.post("http://localhost:8000/api/orders/orders/items/",
+          {
+            order: orderId,
+            finished_product: item.finished_product,
+            quantity_6_packs: item.quantity_6_packs,
+            quantity_12_packs: item.quantity_12_packs,
+            quantity_extra_items: item.quantity_extra_items,
+          },
+          { headers } // Use the same headers with the token
+        )
       );
 
       await Promise.all(itemRequests);
@@ -396,13 +447,40 @@ const AddOrderForm = () => {
         });
       }
 
-      // Redirect to order list after successful creation
+      // Redirect to appropriate order list page based on user role
       setTimeout(() => {
-        navigate("/order-list");
+        // Redirect Sales Team users to the Sales Team orders page
+        if (userRole === 'Sales Team') {
+          navigate("/sales-team-orders");
+        } else {
+          // Redirect Order Coordinators to the standard order list page
+          navigate("/order-list");
+        }
       }, 2000);
     } catch (err) {
       console.error("Error submitting order", err);
-      setError("An error occurred while submitting the order. Please try again.");
+
+      // Provide more detailed error message
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error("Response data:", err.response.data);
+        console.error("Response status:", err.response.status);
+
+        if (err.response.data && err.response.data.detail) {
+          setError(`Error: ${err.response.data.detail}`);
+        } else {
+          setError(`Error ${err.response.status}: ${err.response.statusText}`);
+        }
+      } else if (err.request) {
+        // The request was made but no response was received
+        console.error("No response received:", err.request);
+        setError("No response received from server. Please check your connection.");
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error("Error setting up request:", err.message);
+        setError("An error occurred while submitting the order. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -414,6 +492,18 @@ const AddOrderForm = () => {
     setIsSubmitting(true);
 
     try {
+      // Get the token from localStorage
+      const token = localStorage.getItem('token');
+      console.log('Confirm Despite Warnings - Token exists:', !!token);
+
+      // Prepare headers with authentication token
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `JWT ${token}`
+      };
+
+      console.log('Confirm Despite Warnings - Headers:', headers);
+
       // Create order despite warnings with role-specific fields
       const orderPayload = {
         shop: orderData.shop,
@@ -430,19 +520,29 @@ const AddOrderForm = () => {
         orderPayload.payment_method = 'cash'; // Default payment method
       }
 
-      const orderRes = await axios.post("http://localhost:8000/api/orders/orders/create/", orderPayload);
+      console.log('Confirm Despite Warnings - Payload:', orderPayload);
+
+      const orderRes = await axios.post(
+        "http://localhost:8000/api/orders/orders/create/",
+        orderPayload,
+        { headers }
+      );
 
       const orderId = orderRes.data.id;
+      console.log('Order created with ID (despite warnings):', orderId);
 
       // Create each order item
       const itemRequests = orderData.items.map((item) =>
-        axios.post("http://localhost:8000/api/orders/orders/items/", {
-          order: orderId,
-          finished_product: item.finished_product,
-          quantity_6_packs: item.quantity_6_packs,
-          quantity_12_packs: item.quantity_12_packs,
-          quantity_extra_items: item.quantity_extra_items,
-        })
+        axios.post("http://localhost:8000/api/orders/orders/items/",
+          {
+            order: orderId,
+            finished_product: item.finished_product,
+            quantity_6_packs: item.quantity_6_packs,
+            quantity_12_packs: item.quantity_12_packs,
+            quantity_extra_items: item.quantity_extra_items,
+          },
+          { headers } // Use the same headers with the token
+        )
       );
 
       await Promise.all(itemRequests);
@@ -468,13 +568,40 @@ const AddOrderForm = () => {
         });
       }
 
-      // Redirect to order list after successful creation
+      // Redirect to appropriate order list page based on user role
       setTimeout(() => {
-        navigate("/order-list");
+        // Redirect Sales Team users to the Sales Team orders page
+        if (userRole === 'Sales Team') {
+          navigate("/sales-team-orders");
+        } else {
+          // Redirect Order Coordinators to the standard order list page
+          navigate("/order-list");
+        }
       }, 2000);
     } catch (err) {
-      console.error("Error submitting order", err);
-      setError("An error occurred while submitting the order. Please try again.");
+      console.error("Error submitting order (despite warnings)", err);
+
+      // Provide more detailed error message
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error("Response data:", err.response.data);
+        console.error("Response status:", err.response.status);
+
+        if (err.response.data && err.response.data.detail) {
+          setError(`Error: ${err.response.data.detail}`);
+        } else {
+          setError(`Error ${err.response.status}: ${err.response.statusText}`);
+        }
+      } else if (err.request) {
+        // The request was made but no response was received
+        console.error("No response received:", err.request);
+        setError("No response received from server. Please check your connection.");
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error("Error setting up request:", err.message);
+        setError("An error occurred while submitting the order. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }

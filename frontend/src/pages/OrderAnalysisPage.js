@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Container, Row, Col, Card, Form, Button, Spinner, Alert } from "react-bootstrap";
 import {
-  FaChartLine, FaChartPie, FaMoneyBillWave, FaClipboardCheck
+  FaChartLine, FaChartPie, FaMoneyBillWave, FaClipboardCheck,
+  FaMapMarkerAlt, FaStore
 } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { Line, Pie } from "react-chartjs-2";
@@ -32,6 +33,9 @@ const OrderAnalysisPage = () => {
   const [monthlySales, setMonthlySales] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [filteredOrders, setFilteredOrders] = useState([]);
+  const [districtAnalysis, setDistrictAnalysis] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState(null);
+  const [districtOrders, setDistrictOrders] = useState([]);
 
   // Handle window resize
   useEffect(() => {
@@ -81,8 +85,78 @@ const OrderAnalysisPage = () => {
       // Fetch all orders to analyze status and payment methods
       const ordersResponse = await authGet('orders/orders/create/');
 
+      // Fetch shop district data
+      const shopsResponse = await authGet('orders/shops/district-analysis/');
+
       if (ordersResponse.data) {
         setOrderData(ordersResponse.data);
+
+        // Process district analysis if shop data is available
+        if (shopsResponse.data && shopsResponse.data.length > 0) {
+          // Create a map of shop IDs to districts
+          const shopDistrictMap = {};
+          shopsResponse.data.forEach(shop => {
+            shopDistrictMap[shop.id] = shop.district || 'Unknown';
+          });
+
+          // Count orders by district
+          const districtCounts = {};
+          const districtTotals = {};
+
+          ordersResponse.data.forEach(order => {
+            // Get shop ID from order
+            const shopId = typeof order.shop === 'object' ? order.shop.id : order.shop;
+            // Get district from shop ID
+            const district = shopDistrictMap[shopId] || 'Unknown';
+
+            // Count orders by district
+            districtCounts[district] = (districtCounts[district] || 0) + 1;
+
+            // Sum order totals by district
+            districtTotals[district] = (districtTotals[district] || 0) + (order.total_amount || 0);
+          });
+
+          // Prepare district analysis data for chart
+          setDistrictAnalysis({
+            labels: Object.keys(districtCounts),
+            datasets: [
+              {
+                data: Object.values(districtCounts),
+                backgroundColor: [
+                  'rgba(255, 99, 132, 0.6)',
+                  'rgba(54, 162, 235, 0.6)',
+                  'rgba(255, 206, 86, 0.6)',
+                  'rgba(75, 192, 192, 0.6)',
+                  'rgba(153, 102, 255, 0.6)',
+                  'rgba(255, 159, 64, 0.6)',
+                  'rgba(199, 199, 199, 0.6)',
+                  'rgba(83, 102, 255, 0.6)',
+                  'rgba(255, 159, 128, 0.6)',
+                  'rgba(100, 99, 132, 0.6)'
+                ],
+                borderColor: [
+                  'rgba(255, 99, 132, 1)',
+                  'rgba(54, 162, 235, 1)',
+                  'rgba(255, 206, 86, 1)',
+                  'rgba(75, 192, 192, 1)',
+                  'rgba(153, 102, 255, 1)',
+                  'rgba(255, 159, 64, 1)',
+                  'rgba(199, 199, 199, 1)',
+                  'rgba(83, 102, 255, 1)',
+                  'rgba(255, 159, 128, 1)',
+                  'rgba(100, 99, 132, 1)'
+                ],
+                borderWidth: 1
+              }
+            ],
+            // Store additional data for detailed view
+            districtData: {
+              counts: districtCounts,
+              totals: districtTotals,
+              shopMap: shopDistrictMap
+            }
+          });
+        }
 
         // Process status distribution
         const statusCounts = {};
@@ -316,6 +390,62 @@ const OrderAnalysisPage = () => {
         ]
       });
 
+      // Sample district analysis data
+      setDistrictAnalysis({
+        labels: ['Colombo', 'Gampaha', 'Kandy', 'Galle', 'Kurunegala', 'Unknown'],
+        datasets: [
+          {
+            data: [35, 25, 15, 12, 8, 5],
+            backgroundColor: [
+              'rgba(255, 99, 132, 0.6)',
+              'rgba(54, 162, 235, 0.6)',
+              'rgba(255, 206, 86, 0.6)',
+              'rgba(75, 192, 192, 0.6)',
+              'rgba(153, 102, 255, 0.6)',
+              'rgba(199, 199, 199, 0.6)'
+            ],
+            borderColor: [
+              'rgba(255, 99, 132, 1)',
+              'rgba(54, 162, 235, 1)',
+              'rgba(255, 206, 86, 1)',
+              'rgba(75, 192, 192, 1)',
+              'rgba(153, 102, 255, 1)',
+              'rgba(199, 199, 199, 1)'
+            ],
+            borderWidth: 1
+          }
+        ],
+        // Sample additional data for detailed view
+        districtData: {
+          counts: {
+            'Colombo': 35,
+            'Gampaha': 25,
+            'Kandy': 15,
+            'Galle': 12,
+            'Kurunegala': 8,
+            'Unknown': 5
+          },
+          totals: {
+            'Colombo': 875000,
+            'Gampaha': 625000,
+            'Kandy': 375000,
+            'Galle': 300000,
+            'Kurunegala': 200000,
+            'Unknown': 125000
+          },
+          shopMap: {
+            1: 'Colombo',
+            2: 'Gampaha',
+            3: 'Colombo',
+            4: 'Kandy',
+            5: 'Galle',
+            6: 'Kurunegala',
+            7: 'Gampaha',
+            8: 'Unknown'
+          }
+        }
+      });
+
       // Show a warning but don't block the UI
       setError("Could not load real data. Showing sample data instead.");
     } finally {
@@ -361,6 +491,45 @@ const OrderAnalysisPage = () => {
   const clearSelection = () => {
     setSelectedStatus(null);
     setFilteredOrders([]);
+  };
+
+  // Handle click on district chart segment
+  const handleDistrictClick = (_, elements) => {
+    if (elements.length > 0) {
+      const clickedIndex = elements[0].index;
+      const clickedDistrict = districtAnalysis.labels[clickedIndex];
+
+      // If clicking the same district, clear the selection
+      if (selectedDistrict === clickedDistrict) {
+        setSelectedDistrict(null);
+        setDistrictOrders([]);
+        return;
+      }
+
+      setSelectedDistrict(clickedDistrict);
+
+      // Filter orders by the selected district
+      if (orderData && districtAnalysis?.districtData?.shopMap) {
+        // Get shop IDs for the selected district
+        const shopIds = Object.entries(districtAnalysis.districtData.shopMap)
+          .filter(([_, district]) => district === clickedDistrict)
+          .map(([id, _]) => parseInt(id));
+
+        // Filter orders by shop IDs
+        const filtered = orderData.filter(order => {
+          const shopId = typeof order.shop === 'object' ? order.shop.id : order.shop;
+          return shopIds.includes(shopId);
+        });
+
+        setDistrictOrders(filtered);
+      }
+    }
+  };
+
+  // Clear selected district
+  const clearDistrictSelection = () => {
+    setSelectedDistrict(null);
+    setDistrictOrders([]);
   };
 
   return (
@@ -462,6 +631,130 @@ const OrderAnalysisPage = () => {
                           <p className="text-center">No sales data available</p>
                         )}
                       </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+
+              {/* District Analysis */}
+              <Row className="mb-4">
+                <Col lg={12}>
+                  <Card className="shadow-sm" style={{ backgroundColor: "#D9EDFB" }}>
+                    <Card.Body>
+                      <Card.Title className="d-flex align-items-center mb-4">
+                        <FaMapMarkerAlt className="me-2 text-primary" />
+                        District Order Distribution
+                      </Card.Title>
+                      <Row>
+                        <Col md={selectedDistrict ? 6 : 12}>
+                          <div style={{ height: "300px" }}>
+                            {districtAnalysis ? (
+                              <Pie
+                                data={districtAnalysis}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  onClick: handleDistrictClick,
+                                  plugins: {
+                                    legend: {
+                                      position: 'right',
+                                    },
+                                    tooltip: {
+                                      callbacks: {
+                                        label: function(context) {
+                                          const label = context.label || '';
+                                          const value = context.raw || 0;
+                                          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                          const percentage = Math.round((value / total) * 100);
+                                          const districtTotal = districtAnalysis.districtData?.totals[label] || 0;
+                                          return [
+                                            `${label}: ${value} orders (${percentage}%)`,
+                                            `Total: LKR ${districtTotal.toLocaleString()}`
+                                          ];
+                                        }
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <p className="text-center">No district data available</p>
+                            )}
+                          </div>
+                          <p className="text-center text-muted mt-3">
+                            Click on a district to view detailed order information
+                          </p>
+                        </Col>
+
+                        {selectedDistrict && (
+                          <Col md={6}>
+                            <Card className="h-100 border-0 bg-light">
+                              <Card.Body>
+                                <Card.Title className="d-flex align-items-center justify-content-between mb-4">
+                                  <div className="d-flex align-items-center">
+                                    <FaStore className="me-2 text-primary" />
+                                    {selectedDistrict} District Orders
+                                  </div>
+                                  <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    onClick={clearDistrictSelection}
+                                  >
+                                    Clear Selection
+                                  </Button>
+                                </Card.Title>
+
+                                {districtOrders.length > 0 ? (
+                                  <div className="table-responsive" style={{ maxHeight: "250px", overflowY: "auto" }}>
+                                    <table className="table table-hover">
+                                      <thead className="table-light sticky-top">
+                                        <tr>
+                                          <th>Order ID</th>
+                                          <th>Shop</th>
+                                          <th>Date</th>
+                                          <th>Total (LKR)</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {districtOrders.map(order => (
+                                          <tr key={order.id}>
+                                            <td>#{order.id}</td>
+                                            <td>{order.shop_name || order.shop}</td>
+                                            <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                                            <td>{order.total_amount?.toLocaleString() || 'N/A'}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-4">
+                                    <p>No orders found for {selectedDistrict} district</p>
+                                  </div>
+                                )}
+
+                                {districtOrders.length > 0 && (
+                                  <div className="mt-3 p-3 bg-white rounded">
+                                    <h6>District Summary</h6>
+                                    <div className="d-flex justify-content-between">
+                                      <span>Total Orders:</span>
+                                      <strong>{districtOrders.length}</strong>
+                                    </div>
+                                    <div className="d-flex justify-content-between">
+                                      <span>Total Amount:</span>
+                                      <strong>LKR {districtOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0).toLocaleString()}</strong>
+                                    </div>
+                                    <div className="d-flex justify-content-between">
+                                      <span>Average Order Value:</span>
+                                      <strong>LKR {(districtOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0) / districtOrders.length).toLocaleString(undefined, {maximumFractionDigits: 0})}</strong>
+                                    </div>
+                                  </div>
+                                )}
+                              </Card.Body>
+                            </Card>
+                          </Col>
+                        )}
+                      </Row>
                     </Card.Body>
                   </Card>
                 </Col>

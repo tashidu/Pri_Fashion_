@@ -5,6 +5,8 @@ import App from './App';
 import "./App.css";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import reportWebVitals from './reportWebVitals';
+// Import axios configuration to set up interceptors
+import './utils/axiosConfig';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

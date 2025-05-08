@@ -47,6 +47,42 @@ export const logout = () => {
 };
 
 /**
+ * Decode the JWT token to get user information
+ * @returns {Object|null} The decoded token payload or null if no token exists
+ */
+export const decodeToken = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+
+  try {
+    // JWT tokens are in format: header.payload.signature
+    // We only need the payload part which is the second part
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return null;
+  }
+};
+
+/**
+ * Get the current user ID from the JWT token
+ * @returns {number|null} The user ID or null if not available
+ */
+export const getUserId = () => {
+  const decodedToken = decodeToken();
+  return decodedToken ? decodedToken.user_id : null;
+};
+
+/**
  * Get the valid roles for the application
  * @returns {Array} Array of valid roles
  */
