@@ -62,7 +62,7 @@ function OrderCoordinatorNavBar() {
     {
       title: "Packing",
       icon: <FaBoxes />,
-      path: "/add-packing-session"
+      path: "/view-packing-inventory"
     },
     {
       title: "Reports",
