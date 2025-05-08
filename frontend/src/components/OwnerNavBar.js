@@ -14,7 +14,8 @@ import {
   FaBoxes,
   FaUserPlus,
   FaBoxOpen,
-  FaWarehouse
+  FaWarehouse,
+  FaChartLine
 } from "react-icons/fa";
 import { logout } from "../utils/auth";
 
@@ -92,6 +93,11 @@ function OwnerNavBar() {
       title: "Orders",
       icon: <FaClipboardCheck />,
       path: "/owner-orders"
+    },
+    {
+      title: "Order Analysis",
+      icon: <FaChartLine />,
+      path: "/order-analysis"
     },
     {
       title: "Sign Up",

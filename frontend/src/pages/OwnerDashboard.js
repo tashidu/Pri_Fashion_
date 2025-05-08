@@ -946,13 +946,23 @@ function OwnerDashboard() {
                                 {salesPerformance.payment_status.payment_due_count} Payment Due
                               </Badge>
                             </div>
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              onClick={() => navigate('/owner-orders')}
-                            >
-                              View All Orders
-                            </Button>
+                            <div>
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                className="me-2"
+                                onClick={() => navigate('/owner-orders')}
+                              >
+                                View All Orders
+                              </Button>
+                              <Button
+                                variant="outline-info"
+                                size="sm"
+                                onClick={() => navigate('/order-analysis')}
+                              >
+                                <FaChartLine className="me-1" /> Detailed Analysis
+                              </Button>
+                            </div>
                           </div>
                         </Col>
                       </Row>
@@ -1002,6 +1012,13 @@ function OwnerDashboard() {
                       onClick={() => navigate('/viewfabric')}
                     >
                       <FaTshirt className="me-2" /> View Fabrics
+                    </Button>
+                    <Button
+                      variant="outline-secondary"
+                      className="d-flex align-items-center"
+                      onClick={() => navigate('/order-analysis')}
+                    >
+                      <FaChartLine className="me-2" /> Order Analysis
                     </Button>
                     <Button
                       variant="outline-danger"

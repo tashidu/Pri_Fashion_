@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaPrint } from "react-icons/fa";
+import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaPrint, FaChartLine } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
+import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 // Import custom modal components
 import PaymentModal from "../components/PaymentModal";
@@ -10,6 +11,7 @@ import InvoicePreviewModal from "../components/InvoicePreviewModal";
 import { authGet, authPost, authPut } from "../utils/api";
 
 const OwnerOrdersPage = () => {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
@@ -417,9 +419,17 @@ const OwnerOrdersPage = () => {
       >
         <div className="container-fluid">
           <div className="row mb-4">
-            <div className="col-12">
+            <div className="col-md-8">
               <h2 className="text-center fw-bold text-primary">Order Management</h2>
               <p className="text-center text-muted">Approve orders, generate invoices, and track payments</p>
+            </div>
+            <div className="col-md-4 d-flex justify-content-end align-items-center">
+              <button
+                className="btn btn-outline-primary d-flex align-items-center"
+                onClick={() => navigate('/order-analysis')}
+              >
+                <FaChartLine className="me-2" /> View Order Analysis
+              </button>
             </div>
           </div>
 
