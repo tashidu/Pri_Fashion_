@@ -60,11 +60,6 @@ function OrderCoordinatorNavBar() {
       title: "Packing",
       icon: <FaBoxes />,
       path: "/view-packing-inventory"
-    },
-    {
-      title: "Reports",
-      icon: <FaChartLine />,
-      path: "/packing-report"
     }
   ];
 
