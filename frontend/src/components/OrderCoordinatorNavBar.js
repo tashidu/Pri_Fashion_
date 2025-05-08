@@ -54,10 +54,7 @@ function OrderCoordinatorNavBar() {
       title: "Orders",
       icon: <FaClipboardCheck />,
       path: "/order-list",
-      subItems: [
-        { title: "View Orders", path: "/order-list" },
-        { title: "Create Order", path: "/addorder" }
-      ]
+      
     },
     {
       title: "Packing",
