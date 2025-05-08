@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { FaSearch, FaFilter, FaEye, FaPaperPlane, FaSync } from "react-icons/fa";
 import OrderCoordinatorNavBar from "../components/OrderCoordinatorNavBar";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { authGet } from "../utils/api";
 
 const OrderListPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
@@ -47,14 +47,16 @@ const OrderListPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(
-        "http://localhost:8000/api/orders/orders/create/"
-      );
+      const response = await authGet("orders/orders/create/");
       setOrders(response.data);
       setFilteredOrders(response.data);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
-      setError("Failed to load orders. Please try again later.");
+      if (error.response && error.response.status === 403) {
+        setError("You don't have permission to view orders. Please contact your administrator.");
+      } else {
+        setError("Failed to load orders. Please try again later.");
+      }
     } finally {
       setLoading(false);
     }
@@ -66,35 +68,46 @@ const OrderListPage = () => {
 
     setSubmitting(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/orders/${orderId}/submit/`, {
+      // Get the authentication token from localStorage
+      const token = localStorage.getItem('token');
+
+      // Use fetch with the correct authentication header
+      const response = await fetch(`http://localhost:8000/api/orders/orders/${orderId}/submit/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `JWT ${token}`
         },
       });
 
-      if (response.ok) {
-        // Update the order status locally to avoid refetching
-        const updatedOrders = orders.map(order =>
-          order.id === orderId ? { ...order, status: 'submitted' } : order
-        );
-        setOrders(updatedOrders);
-
-        // Show success message
-        const successMessage = document.getElementById('success-message');
-        successMessage.style.display = "block";
-
-        // Hide success message after 3 seconds
-        setTimeout(() => {
-          successMessage.style.display = "none";
-        }, 3000);
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to submit order");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to submit order");
       }
+
+      // Update the order status locally to avoid refetching
+      const updatedOrders = orders.map(order =>
+        order.id === orderId ? { ...order, status: 'submitted' } : order
+      );
+      setOrders(updatedOrders);
+
+      // Show success message
+      const successMessage = document.getElementById('success-message');
+      successMessage.style.display = "block";
+
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        successMessage.style.display = "none";
+      }, 3000);
     } catch (error) {
       console.error("Submit failed:", error);
-      setError("Error submitting the order. Please try again.");
+      if (error.response && error.response.status === 403) {
+        setError("You don't have permission to submit orders. Only Order Coordinators can submit orders.");
+      } else if (error.response && error.response.data) {
+        setError(error.response.data.error || "Failed to submit order");
+      } else {
+        setError("Error submitting the order. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -110,14 +123,16 @@ const OrderListPage = () => {
 
     try {
       setLoading(true);
-      const response = await axios.get(
-        `http://localhost:8000/api/orders/orders/${orderId}/`
-      );
+      const response = await authGet(`orders/orders/${orderId}/`);
       setSelectedOrderItems(response.data.items);
       setSelectedOrderId(orderId);
     } catch (error) {
       console.error("Failed to fetch order items:", error);
-      setError("Failed to load order details. Please try again.");
+      if (error.response && error.response.status === 403) {
+        setError("You don't have permission to view order details. Please contact your administrator.");
+      } else {
+        setError("Failed to load order details. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

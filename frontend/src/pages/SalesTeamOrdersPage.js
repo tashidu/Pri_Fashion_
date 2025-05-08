@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { FaSearch, FaFilter, FaEye, FaTruck, FaSync } from "react-icons/fa";
 import SalesTeamNavBar from "../components/SalesTeamNavBar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import DeliveryModal from "../components/DeliveryModal";
+// Import authenticated API utilities
+import { authGet, authPost } from "../utils/api";
 
 const SalesTeamOrdersPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
@@ -64,14 +65,20 @@ const SalesTeamOrdersPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(
-        "http://localhost:8000/api/orders/orders/create/"
+      const response = await authGet(
+        "orders/orders/create/"
       );
       setOrders(response.data);
       setFilteredOrders(response.data);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
-      setError("Failed to load orders. Please try again later.");
+      if (error.response && error.response.data) {
+        setError(`${error.response.data.detail || 'Failed to load orders. Please try again later.'}`);
+      } else if (error.code === 'ERR_NETWORK') {
+        setError("Network error: Cannot connect to the server. Please make sure the backend server is running.");
+      } else {
+        setError("Failed to load orders. Please try again later.");
+      }
     } finally {
       setLoading(false);
     }
@@ -88,15 +95,21 @@ const SalesTeamOrdersPage = () => {
 
     try {
       setLoading(true);
-      const response = await axios.get(
-        `http://localhost:8000/api/orders/orders/${orderId}/`
+      const response = await authGet(
+        `orders/orders/${orderId}/`
       );
       setSelectedOrderItems(response.data.items);
       setSelectedOrderId(orderId);
       setSelectedOrder(response.data);
     } catch (error) {
       console.error("Failed to fetch order items:", error);
-      setError("Failed to load order details. Please try again.");
+      if (error.response && error.response.data) {
+        setError(`${error.response.data.detail || 'Failed to load order details. Please try again.'}`);
+      } else if (error.code === 'ERR_NETWORK') {
+        setError("Network error: Cannot connect to the server. Please make sure the backend server is running.");
+      } else {
+        setError("Failed to load order details. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -119,16 +132,10 @@ const SalesTeamOrdersPage = () => {
 
     setProcessing(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/orders/orders/${orderForModal.id}/mark-delivered/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(deliveryData)
-      });
+      const response = await authPost(`orders/orders/${orderForModal.id}/mark-delivered/`, deliveryData);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
 
         // Update the order status locally to avoid refetching
         const updatedOrders = orders.map(order =>
@@ -157,13 +164,14 @@ const SalesTeamOrdersPage = () => {
 
         // Close the modal
         setShowDeliveryModal(false);
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to mark order as delivered");
       }
     } catch (error) {
       console.error("Mark delivered failed:", error);
-      setError("Error marking the order as delivered. Please try again.");
+      if (error.response && error.response.data) {
+        setError(error.response.data.error || "Failed to mark order as delivered");
+      } else {
+        setError("Error marking the order as delivered. Please try again.");
+      }
     } finally {
       setProcessing(false);
     }
@@ -226,6 +234,16 @@ const SalesTeamOrdersPage = () => {
           {error && (
             <div className="alert alert-danger alert-dismissible fade show" role="alert">
               <strong>Error!</strong> {error}
+              {error.includes("Network error") && (
+                <div className="mt-2">
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={fetchOrders}
+                  >
+                    <FaSync className="me-1" /> Try Again
+                  </button>
+                </div>
+              )}
               <button type="button" className="btn-close" onClick={() => setError(null)}></button>
             </div>
           )}

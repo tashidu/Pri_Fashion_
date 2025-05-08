@@ -4,6 +4,7 @@ pymysql.install_as_MySQLdb()
 
 from pathlib import Path
 import os
+from datetime import timedelta
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,16 +32,13 @@ INSTALLED_APPS = [
     'corsheaders',
     'fabric',
     'rest_framework',
+    'rest_framework.authtoken',
     'cutting',
     'sewing',
     'finished_product',
     'packing_app',
     'reports',
     'order',
-
-
-
-
 ]
 
 MIDDLEWARE = [
@@ -145,3 +143,17 @@ CORS_ALLOWED_ORIGINS = [
 DEBUG = True
 
 AUTH_USER_MODEL = 'authentication.CustomUser'
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+}
+
+# JWT settings
+SIMPLE_JWT = {
+    'AUTH_HEADER_TYPES': ('JWT',),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+}

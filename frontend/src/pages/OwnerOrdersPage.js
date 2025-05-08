@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaPrint } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -7,6 +6,8 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import PaymentModal from "../components/PaymentModal";
 import DeliveryModal from "../components/DeliveryModal";
 import InvoicePreviewModal from "../components/InvoicePreviewModal";
+// Import authenticated API utilities
+import { authGet, authPost, authPut } from "../utils/api";
 
 const OwnerOrdersPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
@@ -70,14 +71,22 @@ const OwnerOrdersPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(
-        "http://localhost:8000/api/orders/orders/create/"
+      const response = await authGet(
+        "orders/orders/create/"
       );
       setOrders(response.data);
       setFilteredOrders(response.data);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
-      setError("Failed to load orders. Please try again later.");
+      if (error.code === 'ERR_NETWORK') {
+        setError("Network error: Cannot connect to the server. Please make sure the backend server is running.");
+      } else if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        setError(`Server error: ${error.response.status} - ${error.response.data.detail || 'Failed to load orders'}`);
+      } else {
+        setError("Failed to load orders. Please try again later.");
+      }
     } finally {
       setLoading(false);
     }
@@ -97,13 +106,13 @@ const OwnerOrdersPage = () => {
       setLoading(true);
 
       // Fetch order details
-      const orderResponse = await axios.get(
-        `http://localhost:8000/api/orders/orders/${orderId}/`
+      const orderResponse = await authGet(
+        `orders/orders/${orderId}/`
       );
 
       // Fetch payment history
-      const paymentsResponse = await axios.get(
-        `http://localhost:8000/api/orders/orders/${orderId}/payments/`
+      const paymentsResponse = await authGet(
+        `orders/orders/${orderId}/payments/`
       );
 
       setSelectedOrderItems(orderResponse.data.items);
@@ -112,7 +121,13 @@ const OwnerOrdersPage = () => {
       setOrderPayments(paymentsResponse.data);
     } catch (error) {
       console.error("Failed to fetch order details:", error);
-      setError("Failed to load order details. Please try again.");
+      if (error.code === 'ERR_NETWORK') {
+        setError("Network error: Cannot connect to the server. Please make sure the backend server is running.");
+      } else if (error.response) {
+        setError(`Server error: ${error.response.status} - ${error.response.data.detail || 'Failed to load order details'}`);
+      } else {
+        setError("Failed to load order details. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -124,14 +139,9 @@ const OwnerOrdersPage = () => {
 
     setProcessing(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/orders/orders/${orderId}/approve/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await authPost(`orders/orders/${orderId}/approve/`);
 
-      if (response.ok) {
+      if (response.status === 200) {
         // Update the order status locally to avoid refetching
         const updatedOrders = orders.map(order =>
           order.id === orderId ? { ...order, status: 'approved' } : order
@@ -145,13 +155,14 @@ const OwnerOrdersPage = () => {
         setTimeout(() => {
           setSuccessMessage("");
         }, 3000);
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to approve order");
       }
     } catch (error) {
       console.error("Approval failed:", error);
-      setError("Error approving the order. Please try again.");
+      if (error.response && error.response.data) {
+        setError(error.response.data.error || "Failed to approve order");
+      } else {
+        setError("Error approving the order. Please try again.");
+      }
     } finally {
       setProcessing(false);
     }
@@ -163,15 +174,10 @@ const OwnerOrdersPage = () => {
 
     setProcessing(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/orders/orders/${orderId}/generate-invoice/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await authPost(`orders/orders/${orderId}/generate-invoice/`);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
 
         // Update the order status locally to avoid refetching
         const updatedOrders = orders.map(order =>
@@ -193,13 +199,14 @@ const OwnerOrdersPage = () => {
 
         // Refresh order details
         viewOrderItems(orderId);
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to generate invoice");
       }
     } catch (error) {
       console.error("Invoice generation failed:", error);
-      setError("Error generating invoice. Please try again.");
+      if (error.response && error.response.data) {
+        setError(error.response.data.error || "Failed to generate invoice");
+      } else {
+        setError("Error generating invoice. Please try again.");
+      }
     } finally {
       setProcessing(false);
     }
@@ -226,16 +233,10 @@ const OwnerOrdersPage = () => {
 
     setProcessing(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/orders/orders/${orderForModal.id}/mark-delivered/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(deliveryData)
-      });
+      const response = await authPost(`orders/orders/${orderForModal.id}/mark-delivered/`, deliveryData);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
 
         // Update the order status locally to avoid refetching
         const updatedOrders = orders.map(order =>
@@ -264,13 +265,14 @@ const OwnerOrdersPage = () => {
 
         // Close the modal
         setShowDeliveryModal(false);
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to mark order as delivered");
       }
     } catch (error) {
       console.error("Mark delivered failed:", error);
-      setError("Error marking the order as delivered. Please try again.");
+      if (error.response && error.response.data) {
+        setError(error.response.data.error || "Failed to mark order as delivered");
+      } else {
+        setError("Error marking the order as delivered. Please try again.");
+      }
     } finally {
       setProcessing(false);
     }
@@ -293,16 +295,10 @@ const OwnerOrdersPage = () => {
 
     setProcessing(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/orders/orders/${orderForModal.id}/record-payment/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(paymentData)
-      });
+      const response = await authPost(`orders/orders/${orderForModal.id}/record-payment/`, paymentData);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
 
         // Update the order status locally to avoid refetching
         const updatedOrders = orders.map(order =>
@@ -334,8 +330,8 @@ const OwnerOrdersPage = () => {
         if (selectedOrderId === orderForModal.id) {
           // Fetch updated payment history
           try {
-            const paymentsResponse = await axios.get(
-              `http://localhost:8000/api/orders/orders/${orderForModal.id}/payments/`
+            const paymentsResponse = await authGet(
+              `orders/orders/${orderForModal.id}/payments/`
             );
             setOrderPayments(paymentsResponse.data);
 
@@ -348,13 +344,14 @@ const OwnerOrdersPage = () => {
 
         // Close the modal
         setShowPaymentModal(false);
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to record payment");
       }
     } catch (error) {
       console.error("Record payment failed:", error);
-      setError("Error recording payment. Please try again.");
+      if (error.response && error.response.data) {
+        setError(error.response.data.error || "Failed to record payment");
+      } else {
+        setError("Error recording payment. Please try again.");
+      }
     } finally {
       setProcessing(false);
     }
@@ -438,6 +435,16 @@ const OwnerOrdersPage = () => {
           {error && (
             <div className="alert alert-danger alert-dismissible fade show" role="alert">
               <strong>Error!</strong> {error}
+              {error.includes("Network error") && (
+                <div className="mt-2">
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={fetchOrders}
+                  >
+                    <FaSync className="me-1" /> Try Again
+                  </button>
+                </div>
+              )}
               <button type="button" className="btn-close" onClick={() => setError(null)}></button>
             </div>
           )}

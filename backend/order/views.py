@@ -10,6 +10,7 @@ from packing_app.models import PackingInventory
 from finished_product.models import FinishedProduct
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
+from authentication.permissions import IsOwner, IsInventoryManager, IsOrderCoordinator, IsSalesTeam
 
 class ShopListCreateView(generics.ListCreateAPIView):
     queryset = Shop.objects.all()
@@ -32,10 +33,12 @@ class ShopDistrictAnalysisView(generics.ListAPIView):
 
 
 class OrderListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]  # Any authenticated user can list/create orders
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]  # Any authenticated user can view order details
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
 
@@ -43,6 +46,7 @@ class OrderApproveView(APIView):
     """
     Allows owners to approve submitted orders.
     """
+    permission_classes = [IsAuthenticated, IsOwner]  # Only owners can approve orders
     def post(self, request, pk):
         try:
             order = Order.objects.get(pk=pk)
@@ -64,6 +68,7 @@ class OrderApproveView(APIView):
             return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
 
 class OrderItemCreateView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]  # Any authenticated user can create order items
     queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
 
@@ -100,6 +105,8 @@ class OrderSubmitView(APIView):
     """
     Lets Order Coordinator mark an order as 'submitted' (finished preparing).
     """
+    permission_classes = [IsAuthenticated, IsOrderCoordinator]  # Ensure user is authenticated and is an Order Coordinator
+
     def post(self, request, pk):
         try:
             order = Order.objects.get(pk=pk)
@@ -122,6 +129,7 @@ class GenerateInvoiceView(APIView):
     """
     Allows owners to generate an invoice for an approved order.
     """
+    permission_classes = [IsAuthenticated, IsOwner]  # Only owners can generate invoices
     def post(self, request, pk):
         try:
             order = Order.objects.prefetch_related('items__finished_product').get(pk=pk)
@@ -171,6 +179,7 @@ class MarkOrderDeliveredView(APIView):
     """
     Allows owners to mark an invoiced order as delivered.
     """
+    permission_classes = [IsAuthenticated, IsSalesTeam]  # Only sales team can mark orders as delivered
     def post(self, request, pk):
         try:
             order = Order.objects.get(pk=pk)
@@ -204,6 +213,7 @@ class RecordPaymentView(APIView):
     """
     Allows owners to record payment for an order.
     """
+    permission_classes = [IsAuthenticated, IsOwner]  # Only owners can record payments
     def post(self, request, pk):
         try:
             order = Order.objects.get(pk=pk)
@@ -293,6 +303,7 @@ class OrderPaymentsListView(generics.ListAPIView):
     """
     Returns a list of all payments for a specific order.
     """
+    permission_classes = [IsAuthenticated, IsOwner]  # Only owners can view payment details
     serializer_class = PaymentSerializer
 
     def get_queryset(self):
@@ -304,6 +315,7 @@ class ProductSalesView(APIView):
     """
     Returns sales data for a specific product.
     """
+    permission_classes = [IsAuthenticated]  # Any authenticated user can view product sales data
     def get(self, request, product_id):
         try:
             # Get all order items for this product
