@@ -1,0 +1,92 @@
+/* CreateOrder.css */
+
+/* Card styling with the preferred color */
+.custom-card {
+  background-color: #D9EDFB;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: none;
+}
+
+.custom-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Order item card styling */
+.order-item-card {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e9ecef;
+}
+
+.order-item-card:hover {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+/* Form control focus styling */
+.form-control:focus,
+.form-select:focus {
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Badge styling */
+.badge {
+  font-weight: 500;
+  padding: 0.5em 0.75em;
+}
+
+/* Highlight effect for important elements */
+.highlight {
+  background-color: rgba(13, 110, 253, 0.1);
+  border-left: 3px solid #0d6efd;
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem;
+  }
+
+  .card-footer .row .col {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Button styling */
+.btn-primary {
+  background: linear-gradient(45deg, #0d6efd, #0a58ca);
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(45deg, #0a58ca, #084298);
+}
+
+.btn-success {
+  background: linear-gradient(45deg, #198754, #157347);
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(45deg, #157347, #125e3a);
+}
+
+.btn-outline-danger {
+  transition: all 0.3s ease;
+}
+
+.btn-outline-danger:hover {
+  transform: translateY(-2px);
+}
