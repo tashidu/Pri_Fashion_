@@ -22,6 +22,7 @@ const ViewApproveProduct = () => {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
 
   // State for product detail modal
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -300,10 +301,28 @@ const ViewApproveProduct = () => {
     return `LKR ${parseFloat(value).toFixed(2)}`;
   };
 
+  // Add this useEffect for handling responsive sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSidebarOpen(window.innerWidth >= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <>
       <RoleBasedNavBar />
-      <div className="main-content">
+      <div 
+        className="main-content"
+        style={{
+          marginLeft: isSidebarOpen ? "240px" : "70px",
+          width: `calc(100% - ${isSidebarOpen ? "240px" : "70px"})`,
+          transition: "all 0.3s ease",
+          padding: "20px"
+        }}
+      >
         <Container fluid>
           {/* Header Section */}
           <Card className="shadow-sm mb-4" style={{ backgroundColor: "#D9EDFB", borderRadius: "10px" }}>
