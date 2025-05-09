@@ -102,6 +102,7 @@ class FinishedProductReportSerializer(serializers.ModelSerializer):
     total_clothing = serializers.SerializerMethodField()
     product_name = serializers.SerializerMethodField()
     product_image = serializers.SerializerMethodField()
+    product_images = serializers.SerializerMethodField()
 
     class Meta:
         model = FinishedProduct
@@ -117,7 +118,8 @@ class FinishedProductReportSerializer(serializers.ModelSerializer):
             'total_sewn_xl',
             'approval_date',
             'total_clothing',
-            'product_image'
+            'product_image',
+            'product_images'
         ]
 
     def get_total_clothing(self, obj):
@@ -139,9 +141,48 @@ class FinishedProductReportSerializer(serializers.ModelSerializer):
     def get_product_image(self, obj):
         # Return the image URL if available
         request = self.context.get('request')
+
+        # First try to get images from the ProductImage model
+        images = obj.images.all()
+        if images.exists():
+            first_image = images.first()
+            if first_image.external_url:
+                # External URLs (like Firebase) don't need to be built with request
+                return first_image.external_url
+            elif first_image.image and request:
+                return request.build_absolute_uri(first_image.image.url)
+
+        # Fall back to the legacy product_image field
         if obj.product_image and request:
             return request.build_absolute_uri(obj.product_image.url)
+
         return None
+
+    def get_product_images(self, obj):
+        """
+        Returns a list of all product image URLs.
+        """
+        request = self.context.get('request')
+        if not request:
+            return []
+
+        # Get images from the ProductImage model
+        image_urls = []
+        for img in obj.images.all():
+            if hasattr(img, 'url') and img.url:  # Use the url property which handles both image and external_url
+                if img.external_url:
+                    # External URLs (like Firebase) don't need to be built with request
+                    image_urls.append(img.external_url)
+                else:
+                    image_urls.append(request.build_absolute_uri(img.image.url))
+            elif img.image:
+                image_urls.append(request.build_absolute_uri(img.image.url))
+
+        # If no ProductImage instances, fall back to the legacy product_image
+        if not image_urls and obj.product_image:
+            image_urls.append(request.build_absolute_uri(obj.product_image.url))
+
+        return image_urls
 
 
 class FinishedProductImageSerializer(serializers.ModelSerializer):

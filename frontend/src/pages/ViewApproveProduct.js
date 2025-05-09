@@ -9,7 +9,7 @@ import {
 import {
   FaSearch, FaSort, FaImage, FaUpload, FaTrash, FaUndo,
   FaInfoCircle, FaMoneyBillWave, FaTshirt, FaCalendarAlt,
-  FaCheck, FaExclamationTriangle, FaEye
+  FaCheck, FaExclamationTriangle, FaEye, FaArrowLeft, FaArrowRight
 } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { useDropzone } from "react-dropzone";
@@ -26,6 +26,7 @@ const ViewApproveProduct = () => {
   // State for product detail modal
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // State for image upload
   const [showImageModal, setShowImageModal] = useState(false);
@@ -103,6 +104,7 @@ const ViewApproveProduct = () => {
   // Open product detail modal
   const handleViewDetails = (product) => {
     setSelectedProduct(product);
+    setActiveImageIndex(0); // Reset to first image
     setShowDetailModal(true);
   };
 
@@ -186,12 +188,12 @@ const ViewApproveProduct = () => {
 
     // Create FormData for file upload
     const formData = new FormData();
-    formData.append('product_image', productImage);
+    formData.append('image', productImage);
 
     try {
-      // Use the dedicated endpoint for updating product images
-      const response = await axios.patch(
-        `http://localhost:8000/api/finished_product/update-image/${selectedProduct.id}/`,
+      // Use the dedicated endpoint for adding a new product image
+      const response = await axios.post(
+        `http://localhost:8000/api/finished_product/upload-image/${selectedProduct.id}/`,
         formData,
         {
           headers: {
@@ -203,11 +205,23 @@ const ViewApproveProduct = () => {
       setUploadSuccess("Image uploaded successfully!");
 
       // Update the selected product with the new image URL
-      if (response.data && response.data.product_image) {
-        setSelectedProduct({
-          ...selectedProduct,
-          product_image: response.data.product_image
-        });
+      if (response.data && response.data.image_url) {
+        // If product already has images, add to the array
+        if (selectedProduct.product_images && selectedProduct.product_images.length > 0) {
+          setSelectedProduct({
+            ...selectedProduct,
+            product_images: [...selectedProduct.product_images, response.data.image_url]
+          });
+        }
+        // If product has no images yet, create a new array
+        else {
+          setSelectedProduct({
+            ...selectedProduct,
+            product_images: [response.data.image_url],
+            // Also update the primary image for backward compatibility
+            product_image: response.data.image_url
+          });
+        }
       }
 
       // Refresh the products list after a short delay
@@ -367,6 +381,7 @@ const ViewApproveProduct = () => {
                 <Table hover>
                   <thead>
                     <tr>
+                      <th style={{ width: '80px' }}>Image</th>
                       <th onClick={() => requestSort('product_name')} style={{ cursor: 'pointer' }}>
                         Product Name <FaSort className="ms-1" />
                       </th>
@@ -386,16 +401,18 @@ const ViewApproveProduct = () => {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="6" className="text-center py-4">
-                          <Spinner animation="border" role="status">
+                        <td colSpan="7" className="text-center py-5">
+                          <Spinner animation="border" role="status" className="me-2">
                             <span className="visually-hidden">Loading...</span>
                           </Spinner>
+                          <span>Loading products...</span>
                         </td>
                       </tr>
                     ) : filteredProducts.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="text-center py-4">
-                          No products found
+                        <td colSpan="7" className="text-center py-5">
+                          <FaExclamationTriangle className="text-warning mb-3" size={30} />
+                          <p className="mb-0">No products found matching your search criteria</p>
                         </td>
                       </tr>
                     ) : (
@@ -409,6 +426,60 @@ const ViewApproveProduct = () => {
 
                         return (
                           <tr key={product.id}>
+                            <td className="text-center">
+                              {product.product_images && product.product_images.length > 0 ? (
+                                <div className="position-relative">
+                                  <Image
+                                    src={product.product_images[0]}
+                                    alt={product.product_name}
+                                    style={{
+                                      width: '60px',
+                                      height: '60px',
+                                      objectFit: 'cover',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer'
+                                    }}
+                                    onClick={() => handleViewDetails(product)}
+                                  />
+                                  {product.product_images.length > 1 && (
+                                    <Badge
+                                      bg="primary"
+                                      pill
+                                      className="position-absolute top-0 end-0 translate-middle"
+                                      style={{ fontSize: '0.6rem' }}
+                                    >
+                                      +{product.product_images.length - 1}
+                                    </Badge>
+                                  )}
+                                </div>
+                              ) : product.product_image ? (
+                                <Image
+                                  src={product.product_image}
+                                  alt={product.product_name}
+                                  style={{
+                                    width: '60px',
+                                    height: '60px',
+                                    objectFit: 'cover',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => handleViewDetails(product)}
+                                />
+                              ) : (
+                                <div
+                                  className="d-flex align-items-center justify-content-center bg-light"
+                                  style={{
+                                    width: '60px',
+                                    height: '60px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => handleAddImage(product)}
+                                >
+                                  <FaImage size={20} className="text-secondary" />
+                                </div>
+                              )}
+                            </td>
                             <td>{product.product_name}</td>
                             <td>{formatCurrency(product.manufacture_price)}</td>
                             <td>{formatCurrency(product.selling_price)}</td>
@@ -439,7 +510,13 @@ const ViewApproveProduct = () => {
                                 size="sm"
                                 onClick={() => handleAddImage(product)}
                               >
-                                <FaImage className="me-1" /> Add Image
+                                <FaImage className="me-1" />
+                                {product.product_images && product.product_images.length > 0
+                                  ? `Add More Images (${product.product_images.length})`
+                                  : product.product_image
+                                    ? 'Change Image'
+                                    : 'Add Image'
+                                }
                               </Button>
                             </td>
                           </tr>
@@ -504,21 +581,132 @@ const ViewApproveProduct = () => {
                   </Col>
                 </Row>
               </Tab>
-              <Tab eventKey="image" title={<span><FaImage className="me-2" />Product Image</span>}>
+              <Tab eventKey="image" title={<span><FaImage className="me-2" />Product Images</span>}>
                 <div className="text-center p-4">
-                  {selectedProduct.product_image ? (
+                  {selectedProduct.product_images && selectedProduct.product_images.length > 0 ? (
                     <div>
-                      <Image
-                        src={selectedProduct.product_image}
-                        alt={selectedProduct.product_name}
-                        fluid
-                        className="mb-3"
-                        style={{ maxHeight: '300px' }}
-                      />
+                      <div className="position-relative mb-4" style={{ maxWidth: '500px', margin: '0 auto' }}>
+                        {/* Main Image Display */}
+                        <Image
+                          src={selectedProduct.product_images[activeImageIndex]}
+                          alt={`${selectedProduct.product_name} - Image ${activeImageIndex + 1}`}
+                          fluid
+                          className="shadow-sm"
+                          style={{
+                            maxHeight: '400px',
+                            borderRadius: '8px',
+                            objectFit: 'contain',
+                            backgroundColor: '#f8f9fa'
+                          }}
+                        />
+
+                        {/* Image Navigation Controls */}
+                        {selectedProduct.product_images.length > 1 && (
+                          <>
+                            <Button
+                              variant="light"
+                              size="sm"
+                              className="position-absolute top-50 start-0 translate-middle-y"
+                              style={{ opacity: 0.8 }}
+                              onClick={() => setActiveImageIndex(prev => (prev === 0 ? selectedProduct.product_images.length - 1 : prev - 1))}
+                            >
+                              <FaArrowLeft />
+                            </Button>
+                            <Button
+                              variant="light"
+                              size="sm"
+                              className="position-absolute top-50 end-0 translate-middle-y"
+                              style={{ opacity: 0.8 }}
+                              onClick={() => setActiveImageIndex(prev => (prev === selectedProduct.product_images.length - 1 ? 0 : prev + 1))}
+                            >
+                              <FaArrowRight />
+                            </Button>
+                          </>
+                        )}
+
+                        {/* Add/Change Image Button */}
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="position-absolute top-0 end-0 m-2"
+                          onClick={() => {
+                            setShowDetailModal(false);
+                            handleAddImage(selectedProduct);
+                          }}
+                        >
+                          <FaUpload className="me-1" /> Add More
+                        </Button>
+                      </div>
+
+                      {/* Thumbnail Navigation */}
+                      {selectedProduct.product_images.length > 1 && (
+                        <div className="d-flex justify-content-center flex-wrap mt-3 mb-3">
+                          {selectedProduct.product_images.map((img, index) => (
+                            <div
+                              key={index}
+                              onClick={() => setActiveImageIndex(index)}
+                              className={`m-1 border ${activeImageIndex === index ? 'border-primary' : 'border-light'}`}
+                              style={{
+                                width: '60px',
+                                height: '60px',
+                                cursor: 'pointer',
+                                borderRadius: '4px',
+                                borderWidth: activeImageIndex === index ? '2px' : '1px'
+                              }}
+                            >
+                              <Image
+                                src={img}
+                                alt={`Thumbnail ${index + 1}`}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  borderRadius: '3px'
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="text-muted">
+                        {selectedProduct.product_images.length > 1
+                          ? `Image ${activeImageIndex + 1} of ${selectedProduct.product_images.length} for ${selectedProduct.product_name}`
+                          : `Product image for ${selectedProduct.product_name}`
+                        }
+                      </p>
+                    </div>
+                  ) : selectedProduct.product_image ? (
+                    <div>
+                      <div className="position-relative mb-4" style={{ maxWidth: '500px', margin: '0 auto' }}>
+                        <Image
+                          src={selectedProduct.product_image}
+                          alt={selectedProduct.product_name}
+                          fluid
+                          className="shadow-sm"
+                          style={{
+                            maxHeight: '400px',
+                            borderRadius: '8px',
+                            objectFit: 'contain',
+                            backgroundColor: '#f8f9fa'
+                          }}
+                        />
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="position-absolute top-0 end-0 m-2"
+                          onClick={() => {
+                            setShowDetailModal(false);
+                            handleAddImage(selectedProduct);
+                          }}
+                        >
+                          <FaUpload className="me-1" /> Change
+                        </Button>
+                      </div>
                       <p className="text-muted">Product image for {selectedProduct.product_name}</p>
                     </div>
                   ) : (
-                    <div className="p-5 bg-light rounded">
+                    <div className="p-5 bg-light rounded shadow-sm" style={{ maxWidth: '500px', margin: '0 auto' }}>
                       <FaImage size={60} className="mb-3 text-secondary" />
                       <p>No image available for this product</p>
                       <Button
@@ -554,14 +742,24 @@ const ViewApproveProduct = () => {
         <Modal.Header closeButton>
           <Modal.Title>
             <FaImage className="me-2" />
-            Add Product Image
+            {selectedProduct && selectedProduct.product_images && selectedProduct.product_images.length > 0
+              ? `Add More Images for ${selectedProduct.product_name}`
+              : selectedProduct && selectedProduct.product_image
+                ? `Change Product Image for ${selectedProduct.product_name}`
+                : `Add Product Image`
+            }
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {selectedProduct && (
             <>
               <p className="mb-3">
-                Add an image for <strong>{selectedProduct.product_name}</strong>
+                {selectedProduct.product_images && selectedProduct.product_images.length > 0
+                  ? `Add another image for ${selectedProduct.product_name}. Current images: ${selectedProduct.product_images.length}`
+                  : selectedProduct.product_image
+                    ? `Replace the current image for ${selectedProduct.product_name}`
+                    : `Add an image for ${selectedProduct.product_name}`
+                }
               </p>
 
               {uploadError && (
@@ -580,48 +778,61 @@ const ViewApproveProduct = () => {
 
               <div
                 {...getRootProps()}
-                className={`border rounded p-4 text-center mb-3 ${isDragActive ? 'bg-light' : ''}`}
-                style={{ cursor: 'pointer' }}
+                className={`border rounded p-4 text-center mb-3 ${isDragActive ? 'bg-light border-primary' : ''}`}
+                style={{
+                  cursor: 'pointer',
+                  borderStyle: 'dashed',
+                  transition: 'all 0.3s ease'
+                }}
               >
                 <input {...getInputProps()} />
 
                 {imagePreview ? (
                   <div className="text-center">
-                    <Image
-                      src={imagePreview}
-                      alt="Preview"
-                      className="mb-3"
-                      style={{ maxHeight: '200px' }}
-                    />
-                    <div>
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeImage();
+                    <div className="position-relative mb-3" style={{ maxWidth: '400px', margin: '0 auto' }}>
+                      <Image
+                        src={imagePreview}
+                        alt="Preview"
+                        className="shadow-sm"
+                        style={{
+                          maxHeight: '250px',
+                          borderRadius: '8px',
+                          objectFit: 'contain'
                         }}
-                        className="me-2"
-                      >
-                        <FaTrash className="me-1" /> Remove
-                      </Button>
-                      <Button
-                        variant="outline-primary"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          triggerFileInput();
-                        }}
-                      >
-                        <FaUndo className="me-1" /> Change
-                      </Button>
+                      />
+                      <div className="position-absolute top-0 end-0 m-2">
+                        <Button
+                          variant="light"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeImage();
+                          }}
+                          className="me-2 shadow-sm"
+                        >
+                          <FaTrash className="text-danger" />
+                        </Button>
+                        <Button
+                          variant="light"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerFileInput();
+                          }}
+                          className="shadow-sm"
+                        >
+                          <FaUndo className="text-primary" />
+                        </Button>
+                      </div>
                     </div>
+                    <p className="text-muted">Image selected for {selectedProduct.product_name}</p>
                   </div>
                 ) : (
-                  <div className="text-center">
+                  <div className="text-center py-4">
                     <FaUpload size={40} className="mb-3 text-primary" />
-                    <p>Drag & drop a product image here, or click to select</p>
-                    <p className="text-muted small">Supported formats: JPEG, PNG, GIF (Max: 5MB)</p>
+                    <h5>Drag & drop a product image here</h5>
+                    <p>or click to select from your device</p>
+                    <p className="text-muted small mt-3">Supported formats: JPEG, PNG, GIF (Max: 5MB)</p>
                   </div>
                 )}
 
