@@ -9,7 +9,7 @@ from .dashboard_views import (
     ColorAnalysisView,
     FabricStockView
 )
-from .sales_views import SalesPerformanceView
+from .sales_views import SalesPerformanceView, ProductIncomePercentageView
 
 urlpatterns = [
     path('product-packing-report/', ProductPackingReportView.as_view(), name='product-packing-report'),
@@ -24,4 +24,5 @@ urlpatterns = [
 
     # Sales performance endpoints
     path('sales/performance/', SalesPerformanceView.as_view(), name='sales-performance'),
+    path('sales/product-income-percentage/', ProductIncomePercentageView.as_view(), name='product-income-percentage'),
 ]

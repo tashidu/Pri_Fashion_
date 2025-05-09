@@ -2,7 +2,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models.functions import TruncMonth
+from django.db.models import Sum, F, FloatField
+from django.db.models.expressions import ExpressionWrapper
 from order.models import Order, OrderItem
+from finished_product.models import FinishedProduct
 from datetime import datetime, timedelta
 
 class SalesPerformanceView(APIView):
@@ -240,6 +243,104 @@ class SalesPerformanceView(APIView):
                     'total_amount': float(total_amount),
                     'payment_rate': round(payment_rate, 2)
                 }
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ProductIncomePercentageView(APIView):
+    """
+    API endpoint that returns product income percentage analysis.
+    Shows which products generate more income as a percentage of total sales.
+    """
+    def get(self, request, format=None):
+        try:
+            # Get time period from query params (default to last 6 months)
+            months = int(request.query_params.get('months', 6))
+
+            # Calculate date range
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=30 * months)
+
+            # Get all order items in the period
+            order_items = OrderItem.objects.filter(
+                order__created_at__gte=start_date,
+                order__created_at__lte=end_date
+            ).select_related('finished_product', 'finished_product__cutting_record')
+
+            # Group by product and calculate totals
+            products_data = {}
+            total_sales_amount = 0
+
+            for item in order_items:
+                # Get product name and ID
+                product_name = None
+                product_id = item.finished_product.id
+
+                if hasattr(item.finished_product, 'cutting_record') and item.finished_product.cutting_record:
+                    product_name = item.finished_product.cutting_record.product_name
+
+                if not product_name:
+                    product_name = f"Product #{item.finished_product.id}"
+
+                # Initialize product data if not exists
+                if product_id not in products_data:
+                    manufacture_price = item.finished_product.manufacture_price or 0
+                    selling_price = item.finished_product.selling_price or 0
+
+                    # Calculate profit margin if both prices are available
+                    profit_margin = 0
+                    if selling_price > 0 and manufacture_price > 0:
+                        profit_margin = ((selling_price - manufacture_price) / selling_price) * 100
+
+                    products_data[product_id] = {
+                        'product_id': product_id,
+                        'product_name': product_name,
+                        'total_units': 0,
+                        'total_sales': 0,
+                        'manufacture_price': manufacture_price,
+                        'selling_price': selling_price,
+                        'profit_margin': round(profit_margin, 2)
+                    }
+
+                # Calculate total units
+                total_units = (
+                    item.quantity_6_packs * 6 +
+                    item.quantity_12_packs * 12 +
+                    item.quantity_extra_items
+                )
+
+                # Calculate sales amount
+                unit_price = item.finished_product.selling_price or 0
+                sales_amount = unit_price * total_units
+
+                # Add to product totals
+                products_data[product_id]['total_units'] += total_units
+                products_data[product_id]['total_sales'] += sales_amount
+
+                # Add to total sales amount
+                total_sales_amount += sales_amount
+
+            # Convert to list
+            products_list = list(products_data.values())
+
+            # Calculate income percentage for each product
+            for product in products_list:
+                if total_sales_amount > 0:
+                    product['income_percentage'] = round((product['total_sales'] / total_sales_amount) * 100, 2)
+                else:
+                    product['income_percentage'] = 0
+
+            # Sort by income percentage (highest first)
+            products_list.sort(key=lambda x: x['income_percentage'], reverse=True)
+
+            # Return the product income percentage data
+            return Response({
+                'total_sales_amount': float(total_sales_amount),
+                'products': products_list
             }, status=status.HTTP_200_OK)
 
         except Exception as e:

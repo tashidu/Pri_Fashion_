@@ -31,7 +31,10 @@ import {
   Bar,
   ResponsiveContainer,
   LineChart,
-  Line
+  Line,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
 
 // Import DashboardCard component if available, otherwise define it inline
@@ -66,6 +69,14 @@ function OwnerDashboard() {
       payment_rate: 0
     }
   });
+
+  const [productIncomeData, setProductIncomeData] = useState({
+    total_sales_amount: 0,
+    products: []
+  });
+
+  // COLORS for pie chart
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#8DD1E1', '#A4DE6C', '#D0ED57'];
 
   // Add resize event listener to update sidebar state
   useEffect(() => {
@@ -162,6 +173,10 @@ function OwnerDashboard() {
         const response = await axios.get(`http://localhost:8000/api/reports/sales/performance/?months=${timeFrame}`);
         setSalesPerformance(response.data);
 
+        // Fetch product income percentage data
+        const incomeResponse = await axios.get(`http://localhost:8000/api/reports/sales/product-income-percentage/?months=${timeFrame}`);
+        setProductIncomeData(incomeResponse.data);
+
       } catch (error) {
         console.error('Error fetching sales performance data:', error);
 
@@ -200,6 +215,18 @@ function OwnerDashboard() {
             total_amount: 1000000,
             payment_rate: 85
           }
+        });
+
+        // Set fallback sample data for product income percentage
+        setProductIncomeData({
+          total_sales_amount: 1000000,
+          products: [
+            { product_id: 1, product_name: 'Men\'s T-Shirt', total_units: 450, total_sales: 90000, income_percentage: 30, profit_margin: 45 },
+            { product_id: 2, product_name: 'Women\'s Blouse', total_units: 320, total_sales: 80000, income_percentage: 25, profit_margin: 50 },
+            { product_id: 3, product_name: 'Kids Shirt', total_units: 280, total_sales: 56000, income_percentage: 15, profit_margin: 40 },
+            { product_id: 4, product_name: 'Polo Shirt', total_units: 220, total_sales: 55000, income_percentage: 15, profit_margin: 35 },
+            { product_id: 5, product_name: 'Formal Shirt', total_units: 180, total_sales: 54000, income_percentage: 15, profit_margin: 30 }
+          ]
         });
       } finally {
         setSalesLoading(false);
@@ -334,8 +361,9 @@ function OwnerDashboard() {
                         axios.get('http://localhost:8000/api/reports/product-packing-report/'),
                         axios.get('http://localhost:8000/api/reports/dashboard/fabric-stock/'),
                         axios.get('http://localhost:8000/api/orders/orders/create/'),
-                        axios.get(`http://localhost:8000/api/reports/sales/performance/?months=${timeFrame}`)
-                      ]).then(([packingResponse, fabricResponse, ordersResponse, salesResponse]) => {
+                        axios.get(`http://localhost:8000/api/reports/sales/performance/?months=${timeFrame}`),
+                        axios.get(`http://localhost:8000/api/reports/sales/product-income-percentage/?months=${timeFrame}`)
+                      ]).then(([packingResponse, fabricResponse, ordersResponse, salesResponse, incomeResponse]) => {
                         setPackingData(packingResponse.data);
                         setRemainingFabrics(fabricResponse.data);
 
@@ -355,6 +383,7 @@ function OwnerDashboard() {
 
                         setRecentOrders(ordersResponse.data.slice(0, 5));
                         setSalesPerformance(salesResponse.data);
+                        setProductIncomeData(incomeResponse.data);
                       }).catch(error => {
                         console.error('Error refreshing dashboard data:', error);
                       }).finally(() => {
@@ -963,6 +992,134 @@ function OwnerDashboard() {
                                 <FaChartLine className="me-1" /> Detailed Analysis
                               </Button>
                             </div>
+                          </div>
+                        </Col>
+                      </Row>
+                    </>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Product Income Percentage Analysis */}
+          <Row>
+            <Col lg={12} className="mb-4">
+              <Card className="shadow-sm">
+                <Card.Header className="bg-white">
+                  <h5 className="mb-0">
+                    <FaPercentage className="text-primary me-2" />
+                    Product Income Percentage Analysis
+                  </h5>
+                </Card.Header>
+                <Card.Body>
+                  {salesLoading ? (
+                    <div className="text-center py-4">
+                      <Spinner animation="border" variant="primary" />
+                    </div>
+                  ) : (
+                    <>
+                      <Row>
+                        {/* Pie Chart */}
+                        <Col md={5}>
+                          <h6 className="mb-3 text-center">Income Distribution by Product</h6>
+                          <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                              <Pie
+                                data={productIncomeData.products.slice(0, 5)}
+                                dataKey="income_percentage"
+                                nameKey="product_name"
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={100}
+                                fill="#8884d8"
+                                label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              >
+                                {productIncomeData.products.slice(0, 5).map((_, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(value) => `${value}%`} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="text-center mt-2">
+                            <small className="text-muted">
+                              Top 5 products by income percentage
+                            </small>
+                          </div>
+                        </Col>
+
+                        {/* Product Income Table */}
+                        <Col md={7}>
+                          <h6 className="mb-3">Product Income Breakdown</h6>
+                          <Table hover responsive size="sm">
+                            <thead>
+                              <tr>
+                                <th>Product</th>
+                                <th>Income %</th>
+                                <th>Revenue</th>
+                                <th>Units Sold</th>
+                                <th>Profit Margin</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {productIncomeData.products.map((product, index) => (
+                                <tr key={index}>
+                                  <td>{product.product_name}</td>
+                                  <td>
+                                    <strong>{product.income_percentage}%</strong>
+                                  </td>
+                                  <td>Rs. {product.total_sales.toLocaleString()}</td>
+                                  <td>{product.total_units}</td>
+                                  <td>
+                                    <Badge bg={product.profit_margin > 40 ? "success" :
+                                             product.profit_margin > 25 ? "info" : "warning"}>
+                                      {product.profit_margin}%
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </Table>
+
+                          <div className="mt-3">
+                            <p className="text-muted mb-0">
+                              <small>
+                                <strong>Note:</strong> Income percentage represents each product's contribution to total revenue.
+                                Products with higher income percentage contribute more to your business revenue.
+                              </small>
+                            </p>
+                          </div>
+                        </Col>
+                      </Row>
+
+                      {/* Key Insights */}
+                      <Row className="mt-4">
+                        <Col md={12}>
+                          <h6 className="mb-3">Key Insights</h6>
+                          <div className="p-3" style={{ backgroundColor: '#D9EDFB', borderRadius: '8px' }}>
+                            <ul className="mb-0">
+                              {productIncomeData.products.length > 0 && (
+                                <li>
+                                  <strong>{productIncomeData.products[0].product_name}</strong> generates the highest income percentage
+                                  at <strong>{productIncomeData.products[0].income_percentage}%</strong> of total sales.
+                                </li>
+                              )}
+                              {productIncomeData.products.filter(p => p.profit_margin > 40).length > 0 && (
+                                <li>
+                                  Products with highest profit margins: {' '}
+                                  {productIncomeData.products
+                                    .filter(p => p.profit_margin > 40)
+                                    .map(p => p.product_name)
+                                    .join(', ')}
+                                </li>
+                              )}
+                              {productIncomeData.products.length > 0 && (
+                                <li>
+                                  Total revenue from all products: <strong>Rs. {productIncomeData.total_sales_amount.toLocaleString()}</strong>
+                                </li>
+                              )}
+                            </ul>
                           </div>
                         </Col>
                       </Row>
