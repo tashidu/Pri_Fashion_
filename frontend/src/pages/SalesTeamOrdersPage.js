@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { FaSearch, FaFilter, FaEye, FaTruck, FaSync } from "react-icons/fa";
+import { FaSearch, FaFilter, FaEye, FaTruck, FaSync, FaPrint, FaFileInvoice, FaDownload } from "react-icons/fa";
 import SalesTeamNavBar from "../components/SalesTeamNavBar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import DeliveryModal from "../components/DeliveryModal";
+import InvoicePreviewModal from "../components/InvoicePreviewModal";
 // Import authenticated API utilities
 import { authGet, authPost } from "../utils/api";
 
@@ -24,6 +25,7 @@ const SalesTeamOrdersPage = () => {
 
   // Modal states
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
   const [orderForModal, setOrderForModal] = useState(null);
 
   useEffect(() => {
@@ -175,6 +177,27 @@ const SalesTeamOrdersPage = () => {
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleViewInvoice = (order) => {
+    if (!order || !order.items) {
+      setError("Cannot generate invoice: Order data is missing.");
+      return;
+    }
+
+    if (!order.items.length) {
+      setError("Cannot generate invoice: No order items found.");
+      return;
+    }
+
+    if (!order.invoice_number) {
+      setError("Cannot generate invoice: Invoice number is missing.");
+      return;
+    }
+
+    // Set the order for the modal and show the modal
+    setOrderForModal(order);
+    setShowInvoicePreviewModal(true);
   };
 
   // Get current orders for pagination
@@ -358,6 +381,16 @@ const SalesTeamOrdersPage = () => {
                                   <FaTruck className="me-1" /> Deliver
                                 </button>
                               )}
+
+                              {order.status === "delivered" && order.invoice_number && (
+                                <button
+                                  onClick={() => handleViewInvoice(order)}
+                                  className="btn btn-sm btn-info d-flex align-items-center text-white"
+                                  title="View Delivered Invoice"
+                                >
+                                  <FaPrint className="me-1" /> Invoice
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -509,6 +542,17 @@ const SalesTeamOrdersPage = () => {
                         </button>
                       </div>
                     )}
+
+                    {selectedOrder.status === "delivered" && selectedOrder.invoice_number && (
+                      <div className="mt-4 d-flex flex-wrap gap-2 justify-content-end">
+                        <button
+                          onClick={() => handleViewInvoice(selectedOrder)}
+                          className="btn btn-info text-white"
+                        >
+                          <FaPrint className="me-2" /> View Delivered Invoice
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-5 bg-light rounded">
@@ -528,6 +572,15 @@ const SalesTeamOrdersPage = () => {
         order={orderForModal}
         onSubmit={handleDeliverySubmit}
         processing={processing}
+      />
+
+      {/* InvoicePreviewModal component */}
+      <InvoicePreviewModal
+        show={showInvoicePreviewModal}
+        onHide={() => setShowInvoicePreviewModal(false)}
+        order={orderForModal}
+        onSuccess={(message) => setSuccessMessage(message)}
+        onError={(message) => setError(message)}
       />
     </>
   );
