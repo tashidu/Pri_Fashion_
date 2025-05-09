@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Container, Row, Col, Card, Button, Badge, Table, Spinner, Form } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Table, Spinner, Form, Modal } from 'react-bootstrap';
 import {
   FaTshirt,
   FaClipboardCheck,
@@ -20,7 +20,12 @@ import {
   FaShoppingBag,
   FaCalendarAlt,
   FaPercentage,
-  FaArrowUp
+  FaArrowUp,
+  FaSort,
+  FaSortUp,
+  FaSortDown,
+  FaFilter,
+  FaInfoCircle
 } from 'react-icons/fa';
 import {
   BarChart,
@@ -39,6 +44,14 @@ import {
 
 // Import DashboardCard component if available, otherwise define it inline
 import DashboardCard from "../components/DashboardCard";
+
+// CSS for hover effect
+const hoverStyles = `
+  .hover-shadow:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+`;
 
 function OwnerDashboard() {
   const navigate = useNavigate();
@@ -77,6 +90,12 @@ function OwnerDashboard() {
 
   // COLORS for pie chart
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#8DD1E1', '#A4DE6C', '#D0ED57'];
+
+  // Modal state for unpacked items
+  const [showUnpackedModal, setShowUnpackedModal] = useState(false);
+  const [unpackedItems, setUnpackedItems] = useState([]);
+  const [sortConfig, setSortConfig] = useState({ key: 'available_quantity', direction: 'desc' });
+  const [filterText, setFilterText] = useState('');
 
   // Add resize event listener to update sidebar state
   useEffect(() => {
@@ -161,6 +180,7 @@ function OwnerDashboard() {
     };
 
     fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch sales performance data
@@ -300,9 +320,169 @@ function OwnerDashboard() {
     }
   };
 
+  // Handle opening the unpacked items modal
+  const handleShowUnpackedModal = () => {
+    // Filter items that have available_quantity > 0 (unpacked items)
+    const items = packingData.filter(item => item.available_quantity > 0);
+    setUnpackedItems(items);
+    setShowUnpackedModal(true);
+  };
+
+  // Handle sorting in the modal
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Get sorted and filtered items
+  const getSortedAndFilteredItems = () => {
+    // First filter by search text
+    let filteredItems = unpackedItems;
+    if (filterText) {
+      const lowerCaseFilter = filterText.toLowerCase();
+      filteredItems = unpackedItems.filter(item =>
+        item.product_name.toLowerCase().includes(lowerCaseFilter)
+      );
+    }
+
+    // Then sort
+    return [...filteredItems].sort((a, b) => {
+      if (a[sortConfig.key] < b[sortConfig.key]) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (a[sortConfig.key] > b[sortConfig.key]) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
   return (
     <>
+      {/* Add the hover styles */}
+      <style>{hoverStyles}</style>
+
       <RoleBasedNavBar />
+
+      {/* Unpacked Items Modal */}
+      <Modal
+        show={showUnpackedModal}
+        onHide={() => setShowUnpackedModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title>
+            <FaBoxes className="me-2 text-success" />
+            Items Not Yet Packed
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="mb-3 d-flex justify-content-between align-items-center">
+            <Form.Group className="mb-0" style={{ width: '60%' }}>
+              <Form.Control
+                type="text"
+                placeholder="Search by product name..."
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+              />
+            </Form.Group>
+            <div>
+              <Badge bg="info" className="me-2">
+                Total Items: {getSortedAndFilteredItems().reduce((acc, item) => acc + item.available_quantity, 0)}
+              </Badge>
+              <Badge bg="success">
+                Products: {getSortedAndFilteredItems().length}
+              </Badge>
+            </div>
+          </div>
+
+          <Table hover responsive>
+            <thead>
+              <tr>
+                <th onClick={() => handleSort('product_name')} style={{ cursor: 'pointer' }}>
+                  Product Name
+                  {sortConfig.key === 'product_name' && (
+                    sortConfig.direction === 'asc' ? <FaSortUp className="ms-1" /> : <FaSortDown className="ms-1" />
+                  )}
+                </th>
+                <th onClick={() => handleSort('total_sewn')} style={{ cursor: 'pointer' }}>
+                  Total Sewn
+                  {sortConfig.key === 'total_sewn' && (
+                    sortConfig.direction === 'asc' ? <FaSortUp className="ms-1" /> : <FaSortDown className="ms-1" />
+                  )}
+                </th>
+                <th onClick={() => handleSort('total_packed')} style={{ cursor: 'pointer' }}>
+                  Total Packed
+                  {sortConfig.key === 'total_packed' && (
+                    sortConfig.direction === 'asc' ? <FaSortUp className="ms-1" /> : <FaSortDown className="ms-1" />
+                  )}
+                </th>
+                <th onClick={() => handleSort('available_quantity')} style={{ cursor: 'pointer' }}>
+                  Available to Pack
+                  {sortConfig.key === 'available_quantity' && (
+                    sortConfig.direction === 'asc' ? <FaSortUp className="ms-1" /> : <FaSortDown className="ms-1" />
+                  )}
+                </th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {getSortedAndFilteredItems().map((item) => (
+                <tr key={item.id}>
+                  <td>{item.product_name}</td>
+                  <td>{item.total_sewn}</td>
+                  <td>{item.total_packed}</td>
+                  <td>
+                    <Badge bg="warning" className="p-2">
+                      {item.available_quantity} units
+                    </Badge>
+                  </td>
+                  <td>
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => navigate('/add-packing-session', { state: { productId: item.id } })}
+                    >
+                      <FaBoxes className="me-1" /> Pack Now
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              {getSortedAndFilteredItems().length === 0 && (
+                <tr>
+                  <td colSpan="5" className="text-center py-3">
+                    {filterText ? "No matching products found" : "No unpacked items available"}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+
+          <div className="mt-3 p-3 bg-light rounded">
+            <h6 className="mb-2"><FaInfoCircle className="me-2 text-info" />Packing Recommendations</h6>
+            <ul className="mb-0">
+              <li>Focus on products with higher available quantities first</li>
+              <li>Consider packing in standard 6-packs or 12-packs for efficient inventory management</li>
+              <li>Products that have been sewn recently may need quality inspection before packing</li>
+            </ul>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowUnpackedModal(false)}>
+            Close
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => navigate('/add-packing-session')}
+          >
+            Go to Packing Page
+          </Button>
+        </Modal.Footer>
+      </Modal>
       <div
         style={{
           marginLeft: isSidebarOpen ? "240px" : "70px",
@@ -510,7 +690,16 @@ function OwnerDashboard() {
 
                     {/* Production Efficiency */}
                     <Col md={4} className="mb-3">
-                      <Card style={{ backgroundColor: '#D9EDFB', border: 'none' }}>
+                      <Card
+                        style={{
+                          backgroundColor: '#D9EDFB',
+                          border: 'none',
+                          cursor: 'pointer',
+                          transition: 'transform 0.2s'
+                        }}
+                        className="hover-shadow"
+                        onClick={handleShowUnpackedModal}
+                      >
                         <Card.Body>
                           <div className="d-flex justify-content-between align-items-center">
                             <div>
@@ -531,6 +720,12 @@ function OwnerDashboard() {
                             <div style={{ fontSize: '2.5rem', opacity: 0.7, color: '#28a745' }}>
                               <FaBoxes />
                             </div>
+                          </div>
+                          <div className="text-center mt-2">
+                            <small className="text-primary">
+                              <FaInfoCircle className="me-1" />
+                              Click for unpacked items details
+                            </small>
                           </div>
                         </Card.Body>
                       </Card>

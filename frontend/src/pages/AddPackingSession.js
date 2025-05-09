@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import InverntoryManagerNavBar from "../components/InventoryManagerNavBar";
+import { useNavigate, useLocation } from "react-router-dom";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { Card, Form, Button, Row, Col, Spinner, Alert } from "react-bootstrap";
 import { BsBoxSeam, BsCheck2Circle, BsExclamationTriangle } from "react-icons/bs";
 
@@ -20,6 +20,10 @@ const AddPackingSession = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
   const [formValid, setFormValid] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if a product ID was passed in the location state
+  const productIdFromState = location.state?.productId;
 
   const totalItems = pack6 * 6 + pack12 * 12 + Number(extraItems);
 
@@ -41,6 +45,12 @@ const AddPackingSession = () => {
       .then((res) => {
         console.log("API response:", res.data);
         setFinishedProducts(res.data);
+
+        // If a product ID was passed in the state, select it
+        if (productIdFromState) {
+          setSelectedProduct(productIdFromState.toString());
+        }
+
         setIsLoading(false);
       })
       .catch((err) => {
@@ -48,7 +58,7 @@ const AddPackingSession = () => {
         setIsLoading(false);
         console.error("Error loading products:", err);
       });
-  }, []);
+  }, [productIdFromState]);
 
   // Fetch selected product details when product changes
   useEffect(() => {
@@ -124,8 +134,12 @@ const AddPackingSession = () => {
       setMessage("✅ Packing session created successfully!");
       setShowConfirmation(false);
 
-      // Redirect after success
-      setTimeout(() => navigate("/view-packing-sessions"), 1500);
+      // Redirect after success - go back to the previous page if coming from the modal
+      if (productIdFromState) {
+        setTimeout(() => navigate(-1), 1500); // Go back to the previous page
+      } else {
+        setTimeout(() => navigate("/view-packing-sessions"), 1500);
+      }
     } catch (err) {
       console.error("Error creating session:", err);
       setShowConfirmation(false);
@@ -149,7 +163,7 @@ const AddPackingSession = () => {
 
   return (
     <>
-      <InverntoryManagerNavBar/>
+      <RoleBasedNavBar />
       <div
         style={{
           marginLeft: isSidebarOpen ? "240px" : "70px",
