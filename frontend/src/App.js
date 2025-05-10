@@ -16,6 +16,7 @@ import ViewFabrics from "./pages/ViewFabrics";
 import ViewCutting from "./pages/ViewCutting.js";
 import ViewFabricVariants from "./pages/ViewFabricVariants";
 import FabricInventoryDetail from "./pages/FabricInventoryDetail";
+import CuttingRecordDetail from "./pages/CuttingRecordDetail";
 import AddCutting  from "./pages/AddCutting.js"
 import AddDailySewingRecord from "./pages/AddDailySewingRecord";
 import ViewDailySewingHistory from './pages/ViewDailySewingHistory';
@@ -62,6 +63,7 @@ function App() {
           element={<FabricInventoryDetail />}
         />
         <Route path="/viewcutting" element={<ViewCutting />} />
+        <Route path="/cutting-record/:recordId" element={<CuttingRecordDetail />} />
         <Route path="/addcutting" element={<AddCutting />} />
         <Route path="/adddailysewing" element={<AddDailySewingRecord />} />
         <Route path="/daily-sewing-history" element={<ViewDailySewingHistory />} />

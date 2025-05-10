@@ -57,7 +57,8 @@ class FabricVariantCuttingHistoryView(APIView):
             for record_fabric in cutting_records_fabric:
                 cutting_record = record_fabric.cutting_record
                 result.append({
-                    'id': cutting_record.id,
+                    'id': record_fabric.id,  # This is the CuttingRecordFabric ID
+                    'cutting_record_id': cutting_record.id,  # This is the CuttingRecord ID for navigation
                     'product_name': cutting_record.product_name or f"Cutting on {cutting_record.cutting_date}",
                     'cutting_date': cutting_record.cutting_date,
                     'description': cutting_record.description,

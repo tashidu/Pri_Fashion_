@@ -10,7 +10,7 @@ import {
 import {
   FaSearch, FaSort, FaSortUp, FaSortDown,
   FaEye, FaTshirt, FaCalendarAlt,
-  FaUserTie, FaPalette, FaHistory
+  FaUserTie, FaPalette
 } from 'react-icons/fa';
 
 const ViewFabrics = () => {
@@ -134,32 +134,6 @@ const ViewFabrics = () => {
     navigate(`/fabric-definitions/${fabricId}`);
   };
 
-  // Handler to navigate to the fabric inventory detail page
-  const handleViewInventory = (variantId) => {
-    navigate(`/fabric-inventory/${variantId}`);
-  };
-
-  // Handler to fetch the first variant of a fabric and navigate to its inventory detail
-  const handleViewFabricInventory = (fabricId) => {
-    setLoading(true);
-    axios
-      .get(`http://localhost:8000/api/fabric-definitions/${fabricId}/variants/`)
-      .then((response) => {
-        if (response.data && response.data.length > 0) {
-          // Navigate to the inventory detail of the first variant
-          navigate(`/fabric-inventory/${response.data[0].id}`);
-        } else {
-          setMessage("No variants found for this fabric.");
-          setLoading(false);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching fabric variants:", error);
-        setMessage("Error loading fabric variants.");
-        setLoading(false);
-      });
-  };
-
   // Handler for sorting
   const handleSort = (field) => {
     if (sortField === field) {
@@ -256,23 +230,13 @@ const ViewFabrics = () => {
                   </Badge>
                 </td>
                 <td className="text-center">
-                  <div className="d-flex gap-2">
-                    <Button
-                      variant="info"
-                      className="btn-sm"
-                      onClick={() => handleViewVariants(fabric.id)}
-                    >
-                      <FaEye className="me-1" /> View Variants
-                    </Button>
-                    <Button
-                      variant="outline-primary"
-                      className="btn-sm"
-                      onClick={() => handleViewFabricInventory(fabric.id)}
-                      title="View real-time inventory and cutting history"
-                    >
-                      <FaHistory className="me-1" /> Inventory
-                    </Button>
-                  </div>
+                  <Button
+                    variant="info"
+                    className="btn-sm"
+                    onClick={() => handleViewVariants(fabric.id)}
+                  >
+                    <FaEye className="me-1" /> View Variants
+                  </Button>
                 </td>
               </tr>
             ))}

@@ -11,6 +11,13 @@ import {
   FaBoxes, FaInfoCircle, FaHistory
 } from 'react-icons/fa';
 
+// Add custom CSS for hover effect
+const styles = {
+  hoverHighlight: {
+    transition: 'background-color 0.2s ease',
+  }
+};
+
 const FabricInventoryDetail = () => {
   const { variantId } = useParams();
   const navigate = useNavigate();
@@ -171,10 +178,15 @@ const FabricInventoryDetail = () => {
             {/* Cutting History Card */}
             <Card className="shadow-sm">
               <Card.Header className="bg-info text-white">
-                <h4 className="mb-0">
-                  <FaHistory className="me-2" />
-                  Fabric Cutting History
-                </h4>
+                <div className="d-flex justify-content-between align-items-center">
+                  <h4 className="mb-0">
+                    <FaHistory className="me-2" />
+                    Fabric Cutting History
+                  </h4>
+                  <small className="text-white">
+                    <FaInfoCircle className="me-1" /> Click on a record to view details
+                  </small>
+                </div>
               </Card.Header>
               <Card.Body className="p-0">
                 {fabricData.cutting_history.length === 0 ? (
@@ -195,7 +207,20 @@ const FabricInventoryDetail = () => {
                       </thead>
                       <tbody>
                         {fabricData.cutting_history.map((record) => (
-                          <tr key={record.id}>
+                          <tr
+                            key={record.id}
+                            onClick={() => {
+                              // Save the current path to localStorage for the back button
+                              localStorage.setItem('cuttingRecordReturnPath', `/fabric-inventory/${variantId}`);
+                              navigate(`/cutting-record/${record.cutting_record_id}`);
+                            }}
+                            style={{
+                              cursor: 'pointer',
+                              ...styles.hoverHighlight,
+                              ':hover': { backgroundColor: '#f5f5f5' }
+                            }}
+                            className="table-hover"
+                          >
                             <td>
                               <FaCalendarAlt className="me-1 text-secondary" />
                               {formatDate(record.cutting_date)}
