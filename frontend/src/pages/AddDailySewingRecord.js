@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import Select from "react-select";
-import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from "react-bootstrap";
+import { Row, Col, Card, Form, Button, Alert, Spinner, Badge } from "react-bootstrap";
+import { FaInfoCircle, FaTshirt, FaCheck, FaExclamationTriangle, FaClipboardCheck } from "react-icons/fa";
 
 const AddDailySewingRecord = () => {
   const [products, setProducts] = useState([]);
@@ -295,94 +296,130 @@ const AddDailySewingRecord = () => {
         style={{
           marginLeft: isSidebarOpen ? "240px" : "70px",
           width: `calc(100% - ${isSidebarOpen ? "240px" : "70px"})`,
-          transition: "all 0.3s ease"
+          transition: "all 0.3s ease",
+          padding: "20px"
         }}
       >
-      <Container className="py-4">
-        <Row className="justify-content-center">
-          <Col md={10} lg={8}>
-            <Card className="shadow-sm">
-              <Card.Header className="bg-primary text-white">
-                <h4 className="mb-0">Add Daily Sewing Record</h4>
-              </Card.Header>
-              <Card.Body>
-                {message && (
-                  <Alert variant={message.startsWith("✅") ? "success" : "danger"}>
-                    {message}
-                  </Alert>
-                )}
+        <h2 className="mb-4">
+          <FaTshirt className="me-2" />
+          Add Daily Sewing Record
+        </h2>
 
-                <Form onSubmit={handleSubmit}>
-                  <Row>
-                    <Col md={12} className="mb-3">
-                      <Form.Group>
-                        <Form.Label>Product (Cutting Record):</Form.Label>
-                        <Form.Select
-                          value={selectedProduct}
-                          onChange={(e) => setSelectedProduct(e.target.value)}
-                          className="form-control"
-                        >
-                          <option value="">Select Product</option>
-                          {products.map((prod) => (
-                            <option key={prod.id} value={prod.id}>
-                              {prod.product_name ||
-                                `${prod.fabric_definition_data?.fabric_name} cut on ${prod.cutting_date}`}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                  </Row>
+        {message && message.startsWith("✅") && (
+          <Alert
+            variant="success"
+            className="d-flex align-items-center"
+          >
+            <FaCheck className="me-2" size={20} />
+            <div>{message}</div>
+          </Alert>
+        )}
 
-                  <Row>
-                    <Col md={12} className="mb-3">
-                      <Form.Group>
-                        <Form.Label>Color:</Form.Label>
-                        <Select
-                          options={productColors}
-                          components={{ Option: ColourOption }}
-                          value={
-                            productColors.find((opt) => opt.value === selectedColor) || null
-                          }
-                          onChange={(opt) => setSelectedColor(opt?.value)}
-                          placeholder="Select Color"
-                          styles={{
-                            control: (provided) => ({
-                              ...provided,
-                              borderColor: "#ddd",
-                              boxShadow: "none",
-                              "&:hover": { borderColor: "#aaa" },
-                              padding: "2px",
-                            }),
-                          }}
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
+        {message && !message.startsWith("✅") && (
+          <Alert
+            variant="danger"
+            className="d-flex align-items-center"
+          >
+            <FaExclamationTriangle className="me-2" size={20} />
+            <div>{message}</div>
+          </Alert>
+        )}
 
-                  {selectedColor && (
-                    <Card className="mb-4 mt-2 bg-light">
-                      <Card.Body>
-                        {loading ? (
-                          <div className="text-center py-3">
-                            <Spinner animation="border" size="sm" className="me-2" />
-                            Loading quantities...
-                          </div>
-                        ) : (
-                          <>
-                            <h6 className="mb-3">Quantities:</h6>
-                            <Row className="mb-3">
-                              <Col xs={12}>
-                                <div className="d-flex justify-content-between align-items-center mb-2">
-                                  <span className="fw-bold">Size</span>
-                                  <span className="fw-bold">Cut</span>
-                                  <span className="fw-bold">Already Sewn</span>
-                                  <span className="fw-bold">Available</span>
-                                </div>
-                                <hr className="my-1" />
-                              </Col>
-                            </Row>
-                            <Row>
+        <Card className="mb-4 shadow-sm" style={{ backgroundColor: "#D9EDFB", borderRadius: "10px" }}>
+          <Card.Body>
+            <Form noValidate onSubmit={handleSubmit}>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label><strong>Product (Cutting Record)</strong></Form.Label>
+                    <Form.Select
+                      value={selectedProduct}
+                      onChange={(e) => setSelectedProduct(e.target.value)}
+                      className="form-control shadow-sm"
+                      style={{
+                        borderRadius: "8px",
+                        padding: "10px",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      <option value="">Select Product</option>
+                      {products.map((prod) => (
+                        <option key={prod.id} value={prod.id}>
+                          {prod.product_name ||
+                            `${prod.fabric_definition_data?.fabric_name} cut on ${prod.cutting_date}`}
+                        </option>
+                      ))}
+                    </Form.Select>
+                    <Form.Text className="text-muted">
+                      Select the product from cutting records
+                    </Form.Text>
+                  </Form.Group>
+                </Col>
+
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label><strong>Color</strong></Form.Label>
+                    <Select
+                      options={productColors}
+                      components={{ Option: ColourOption }}
+                      value={
+                        productColors.find((opt) => opt.value === selectedColor) || null
+                      }
+                      onChange={(opt) => setSelectedColor(opt?.value)}
+                      placeholder="Select Color"
+                      isDisabled={!selectedProduct}
+                      styles={{
+                        control: (provided) => ({
+                          ...provided,
+                          borderColor: "#ddd",
+                          boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+                          borderRadius: "8px",
+                          "&:hover": { borderColor: "#aaa" },
+                          padding: "5px",
+                          transition: "all 0.2s ease"
+                        }),
+                        option: (provided, state) => ({
+                          ...provided,
+                          backgroundColor: state.isSelected ? "#0d6efd" : state.isFocused ? "#e9ecef" : "white",
+                          color: state.isSelected ? "white" : "#333",
+                          cursor: "pointer"
+                        })
+                      }}
+                    />
+                    <Form.Text className="text-muted">
+                      {!selectedProduct ? "Please select a product first" : "Select the color variant"}
+                    </Form.Text>
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              {selectedColor && (
+                <Card className="mb-4 mt-3 border-0 shadow-sm">
+                  <Card.Header className="bg-light">
+                    <div className="d-flex align-items-center">
+                      <FaClipboardCheck className="me-2 text-primary" />
+                      <h5 className="mb-0">Available Quantities</h5>
+                    </div>
+                  </Card.Header>
+                  <Card.Body>
+                    {loading ? (
+                      <div className="text-center py-3">
+                        <Spinner animation="border" variant="primary" className="me-2" />
+                        <span className="text-muted">Loading quantities...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="table-responsive">
+                          <table className="table table-hover">
+                            <thead className="table-light">
+                              <tr>
+                                <th className="text-center">Size</th>
+                                <th className="text-center">Cut</th>
+                                <th className="text-center">Already Sewn</th>
+                                <th className="text-center">Available</th>
+                              </tr>
+                            </thead>
+                            <tbody>
                               {["XS", "S", "M", "L", "XL"].map((size) => {
                                 const selectedOption = productColors.find(
                                   (opt) => opt.value === selectedColor
@@ -394,139 +431,180 @@ const AddDailySewingRecord = () => {
                                   Math.max(0, selectedOption[cutKey] - alreadySewnQty) : 0;
 
                                 return (
-                                  <Col key={`avail-${size}`} xs={12} className="mb-2">
-                                    <div className="d-flex justify-content-between align-items-center">
-                                      <div className="fw-bold">{size}</div>
-                                      <div className="badge bg-secondary">
+                                  <tr key={`avail-${size}`}>
+                                    <td className="text-center">
+                                      <Badge bg="secondary" className="px-3 py-2">{size}</Badge>
+                                    </td>
+                                    <td className="text-center">
+                                      <Badge bg="secondary" pill className="px-3">
                                         {selectedOption ? selectedOption[cutKey] : 0}
-                                      </div>
-                                      <div className="badge bg-info">
+                                      </Badge>
+                                    </td>
+                                    <td className="text-center">
+                                      <Badge bg="info" pill className="px-3">
                                         {alreadySewnQty}
-                                      </div>
-                                      <div className={`badge ${availableQty > 0 ? 'bg-success' : 'bg-danger'}`}>
+                                      </Badge>
+                                    </td>
+                                    <td className="text-center">
+                                      <Badge
+                                        bg={availableQty > 0 ? 'success' : 'danger'}
+                                        pill
+                                        className="px-3"
+                                      >
                                         {availableQty}
-                                      </div>
-                                    </div>
-                                  </Col>
+                                      </Badge>
+                                    </td>
+                                  </tr>
                                 );
                               })}
-                            </Row>
-                          </>
-                        )}
-                      </Card.Body>
-                    </Card>
-                  )}
+                            </tbody>
+                          </table>
+                        </div>
 
-                  <Row className="mb-3">
-                    {["XS", "S", "M", "L", "XL"].map((size) => {
-                      const sizeMap = { XS: xs, S: s, M: m, L: l, XL: xl };
-                      const sizeKey = size.toLowerCase();
+                        <div className="mt-3 p-2 bg-light rounded border">
+                          <small className="text-muted d-block mb-1">
+                            <FaInfoCircle className="me-1" />
+                            The quantities above show how many items are available for sewing in each size.
+                          </small>
+                          <small className="text-muted d-block">
+                            You cannot add more than the available quantity for each size.
+                          </small>
+                        </div>
+                      </>
+                    )}
+                  </Card.Body>
+                </Card>
+              )}
 
-                      return (
-                        <Col key={size} xs={6} md={4} lg={2} className="mb-3">
-                          <Form.Group>
-                            <Form.Label>{size}:</Form.Label>
-                            <Form.Control
-                              type="number"
-                              min="0"
-                              value={sizeMap[size]}
-                              onChange={(e) => {
-                                // Ensure value is not negative
-                                const val = Math.max(0, parseInt(e.target.value || 0));
-                                switch (size) {
-                                  case "XS":
-                                    setXs(val);
-                                    break;
-                                  case "S":
-                                    setS(val);
-                                    break;
-                                  case "M":
-                                    setM(val);
-                                    break;
-                                  case "L":
-                                    setL(val);
-                                    break;
-                                  case "XL":
-                                    setXl(val);
-                                    break;
-                                  default:
-                                    break;
-                                }
-                              }}
-                              className={remainingQuantities && remainingQuantities[sizeKey] < 0 ? 'border-danger' : ''}
-                            />
-                            {remainingQuantities && remainingQuantities[sizeKey] < 0 && (
-                              <div className="text-danger small mt-1">Exceeds limit</div>
-                            )}
-                          </Form.Group>
-                        </Col>
-                      );
-                    })}
+              <h4 className="mt-4 mb-3 border-bottom pb-2">Size Quantities</h4>
+              <Row className="mb-3">
+                {["XS", "S", "M", "L", "XL"].map((size) => {
+                  const sizeMap = { XS: xs, S: s, M: m, L: l, XL: xl };
+                  const sizeKey = size.toLowerCase();
+                  const isExceeded = remainingQuantities && remainingQuantities[sizeKey] < 0;
 
-                    <Col xs={6} md={4} lg={2} className="mb-3">
+                  return (
+                    <Col key={size} xs={6} sm={4} md={2} className="mb-3">
                       <Form.Group>
-                        <Form.Label>Damage:</Form.Label>
+                        <Form.Label className="text-center d-block">{size}</Form.Label>
                         <Form.Control
                           type="number"
                           min="0"
-                          value={damageCount}
+                          value={sizeMap[size]}
                           onChange={(e) => {
                             // Ensure value is not negative
                             const val = Math.max(0, parseInt(e.target.value || 0));
-                            setDamageCount(val);
+                            switch (size) {
+                              case "XS":
+                                setXs(val);
+                                break;
+                              case "S":
+                                setS(val);
+                                break;
+                              case "M":
+                                setM(val);
+                                break;
+                              case "L":
+                                setL(val);
+                                break;
+                              case "XL":
+                                setXl(val);
+                                break;
+                              default:
+                                break;
+                            }
                           }}
+                          className={`text-center ${isExceeded ? 'border-danger' : ''}`}
+                          disabled={!selectedColor}
                         />
+                        {isExceeded && (
+                          <div className="text-danger small mt-1 text-center">
+                            <FaExclamationTriangle className="me-1" size={12} />
+                            Exceeds limit
+                          </div>
+                        )}
                       </Form.Group>
                     </Col>
-                  </Row>
+                  );
+                })}
 
-                  {totalSewn > 0 && (
-                    <Card className="mb-4 bg-light">
-                      <Card.Body>
-                        <h6>Summary:</h6>
-                        <Row className="text-center">
-                          <Col>
-                            <div className="fw-bold">Total Sewn</div>
-                            <div className="badge bg-primary">{totalSewn}</div>
-                          </Col>
-                          {damageCount > 0 && (
-                            <Col>
-                              <div className="fw-bold">Damage</div>
-                              <div className="badge bg-warning">{damageCount}</div>
-                            </Col>
-                          )}
-                          <Col>
-                            <div className="fw-bold">Good Items</div>
-                            <div className="badge bg-success">{totalSewn - damageCount}</div>
-                          </Col>
-                        </Row>
-                      </Card.Body>
-                    </Card>
-                  )}
+                <Col xs={6} sm={4} md={2} className="mb-3">
+                  <Form.Group>
+                    <Form.Label className="text-center d-block">Damage</Form.Label>
+                    <Form.Control
+                      type="number"
+                      min="0"
+                      value={damageCount}
+                      onChange={(e) => {
+                        // Ensure value is not negative
+                        const val = Math.max(0, parseInt(e.target.value || 0));
+                        setDamageCount(val);
+                      }}
+                      className="text-center"
+                      disabled={!selectedColor}
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
 
-                  <div className="d-grid gap-2">
-                    <Button
-                      variant="primary"
-                      type="submit"
-                      size="lg"
-                      disabled={!formValid || isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
-                          Submitting...
-                        </>
-                      ) : (
-                        "Submit Daily Sewing Record"
+              {totalSewn > 0 && (
+                <Card className="border-0 mb-4" style={{ backgroundColor: "#e8f4fe" }}>
+                  <Card.Body className="py-2">
+                    <div className="d-flex flex-column">
+                      <div className="d-flex align-items-center mb-2">
+                        <strong className="me-2">Total Quantities:</strong>
+                        <Badge bg="primary" className="me-1">XS: {xs}</Badge>
+                        <Badge bg="primary" className="me-1">S: {s}</Badge>
+                        <Badge bg="primary" className="me-1">M: {m}</Badge>
+                        <Badge bg="primary" className="me-1">L: {l}</Badge>
+                        <Badge bg="primary" className="me-1">XL: {xl}</Badge>
+                        <Badge bg="success" className="ms-2">Total: {totalSewn}</Badge>
+                      </div>
+                      {damageCount > 0 && (
+                        <div className="d-flex align-items-center">
+                          <strong className="me-2">Damage Count:</strong>
+                          <Badge bg="warning" text="dark">{damageCount}</Badge>
+                          <strong className="mx-2">Good Items:</strong>
+                          <Badge bg="success">{totalSewn - damageCount}</Badge>
+                        </div>
                       )}
-                    </Button>
-                  </div>
-                </Form>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
+                    </div>
+                  </Card.Body>
+                </Card>
+              )}
+
+              <div className="d-flex justify-content-center mt-4">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  disabled={!formValid || isSubmitting}
+                  className="px-5"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Daily Sewing Record'
+                  )}
+                </Button>
+              </div>
+
+              {!formValid && (
+                <div className="text-center mt-3">
+                  <small className="text-muted">
+                    <FaInfoCircle className="me-1" />
+                    {!selectedProduct ? "Please select a product" :
+                     !selectedColor ? "Please select a color" :
+                     "Please enter at least one size quantity"}
+                  </small>
+                </div>
+              )}
+            </Form>
+          </Card.Body>
+        </Card>
       </div>
     </>
   );

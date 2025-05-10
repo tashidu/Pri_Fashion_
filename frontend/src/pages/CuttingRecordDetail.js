@@ -4,13 +4,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import RoleBasedNavBar from '../components/RoleBasedNavBar';
 import {
   Container, Row, Col, Card, Table, Badge, Spinner,
-  Alert, Button, ListGroup
+  Alert, Button, ListGroup, Modal
 } from 'react-bootstrap';
 import {
   FaArrowLeft, FaCalendarAlt, FaCut, FaTshirt,
   FaInfoCircle, FaRulerHorizontal, FaClipboardList,
-  FaMoneyBillWave
+  FaMoneyBillWave, FaDownload, FaFilePdf, FaCheck, FaTimes
 } from 'react-icons/fa';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const CuttingRecordDetail = () => {
   const { recordId } = useParams();
@@ -20,6 +22,7 @@ const CuttingRecordDetail = () => {
   const [error, setError] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
   const [returnPath, setReturnPath] = useState('');
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   // Add resize event listener to update sidebar state
   useEffect(() => {
@@ -113,6 +116,132 @@ const CuttingRecordDetail = () => {
     navigate(returnPath);
   };
 
+  // Open PDF confirmation modal
+  const openPdfModal = () => {
+    setShowPdfModal(true);
+  };
+
+  // Close PDF confirmation modal
+  const closePdfModal = () => {
+    setShowPdfModal(false);
+  };
+
+  // Generate PDF report
+  const generatePDF = () => {
+    if (!cuttingRecord) return;
+
+    try {
+      const productName = cuttingRecord.product_name || "N/A";
+      const fabricName = cuttingRecord.fabric_definition_data?.fabric_name || "N/A";
+
+      // Create PDF document with orientation and unit specifications
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Add title and company info
+      doc.setFontSize(20);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Cutting Record Report", 105, 15, { align: 'center' });
+
+      doc.setFontSize(12);
+      doc.text("Fashion Garment Management System", 105, 25, { align: 'center' });
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 30, { align: 'center' });
+
+      // Add cutting record details
+      doc.setFontSize(14);
+      doc.text("Cutting Record Details", 14, 40);
+
+      doc.setFontSize(10);
+      const details = [
+        ["Product Name:", productName],
+        ["Fabric Name:", fabricName],
+        ["Cutting Date:", cuttingRecord.cutting_date],
+        ["Total Quantity:", calculateTotalAllPieces().toString()],
+        ["Total Yard Usage:", calculateTotalYardUsage().toString()],
+        ["Color Variants Used:", cuttingRecord.details?.length.toString() || "0"],
+        ["Total Fabric Cost:", `Rs. ${calculateTotalCuttingValue()}`]
+      ];
+
+      // First table
+      let finalY = 45;
+      autoTable(doc, {
+        startY: finalY,
+        head: [["Property", "Value"]],
+        body: details,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        styles: { fontSize: 10 }
+      });
+
+      // Get the final Y position after the first table
+      finalY = (doc.lastAutoTable || doc.previousAutoTable).finalY + 10;
+
+      // Add color usage details
+      doc.setFontSize(14);
+      doc.text("Color Usage Details", 14, finalY);
+
+      if (cuttingRecord.details && cuttingRecord.details.length > 0) {
+        const colorDetails = cuttingRecord.details.map(detail => [
+          detail.fabric_variant_data?.color_name || detail.fabric_variant_data?.color || "N/A",
+          `${parseFloat(detail.yard_usage).toFixed(2)} yards`,
+          `Rs. ${detail.fabric_variant_data?.price_per_yard.toFixed(2)}`,
+          `Rs. ${calculateCuttingValue(detail)}`,
+          detail.xs || 0,
+          detail.s || 0,
+          detail.m || 0,
+          detail.l || 0,
+          detail.xl || 0,
+          calculateTotalPieces(detail)
+        ]);
+
+        // Second table
+        autoTable(doc, {
+          startY: finalY + 5,
+          head: [["Color", "Yard Usage", "Price/Yard", "Fabric Cost", "XS", "S", "M", "L", "XL", "Total"]],
+          body: colorDetails,
+          theme: 'grid',
+          headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+          styles: { fontSize: 9 },
+          columnStyles: {
+            0: { cellWidth: 25 },
+            1: { cellWidth: 20 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 20 },
+          }
+        });
+      } else {
+        doc.text("No color details available", 14, finalY + 5);
+      }
+
+      // Add footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(
+          `Page ${i} of ${pageCount} - Fashion Garment Management System`,
+          105,
+          doc.internal.pageSize.height - 10,
+          { align: 'center' }
+        );
+      }
+
+      // Save the PDF with a clean filename
+      const cleanProductName = productName.replace(/[^a-zA-Z0-9]/g, '_');
+      doc.save(`Cutting_Record_${cuttingRecord.id}_${cleanProductName}.pdf`);
+
+      // Close the modal
+      closePdfModal();
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again: " + error.message);
+      closePdfModal();
+    }
+  };
+
   return (
     <>
       <RoleBasedNavBar />
@@ -124,14 +253,23 @@ const CuttingRecordDetail = () => {
           padding: "20px"
         }}
       >
-        {/* Back button */}
-        <Button
-          variant="outline-secondary"
-          className="mb-3"
-          onClick={handleBack}
-        >
-          <FaArrowLeft className="me-2" /> Back
-        </Button>
+        {/* Back button and PDF button */}
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <Button
+            variant="outline-secondary"
+            onClick={handleBack}
+          >
+            <FaArrowLeft className="me-2" /> Back
+          </Button>
+          {!loading && cuttingRecord && (
+            <Button
+              variant="outline-success"
+              onClick={openPdfModal}
+            >
+              <FaDownload className="me-2" /> Download PDF
+            </Button>
+          )}
+        </div>
 
         {error && <Alert variant="danger" className="text-center">{error}</Alert>}
 
@@ -327,6 +465,35 @@ const CuttingRecordDetail = () => {
           </>
         )}
       </Container>
+
+      {/* PDF Confirmation Modal */}
+      <Modal show={showPdfModal} onHide={closePdfModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FaFilePdf className="text-danger me-2" />
+            Generate PDF Report
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to generate a PDF report for this cutting record?</p>
+          {cuttingRecord && (
+            <div className="bg-light p-3 rounded">
+              <p className="mb-1"><strong>Product:</strong> {cuttingRecord.product_name || "N/A"}</p>
+              <p className="mb-1"><strong>Fabric:</strong> {cuttingRecord.fabric_definition_data?.fabric_name || "N/A"}</p>
+              <p className="mb-1"><strong>Date:</strong> {cuttingRecord.cutting_date}</p>
+              <p className="mb-0"><strong>Total Cost:</strong> Rs. {calculateTotalCuttingValue()}</p>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closePdfModal}>
+            <FaTimes className="me-1" /> Cancel
+          </Button>
+          <Button variant="success" onClick={generatePDF}>
+            <FaCheck className="me-1" /> Generate PDF
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };
