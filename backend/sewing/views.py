@@ -7,6 +7,7 @@ from .serializers import DailySewingRecordSerializer, DailySewingRecordHistorySe
 from cutting.models import CuttingRecord, CuttingRecordFabric
 from django.db.models import Sum, Max
 from sewing.models import DailySewingRecord
+from datetime import date
 
 
 class AddDailySewingRecordView(APIView):
@@ -151,4 +152,52 @@ class AlreadySewnQuantitiesView(APIView):
             return Response(
                 {"error": "Cutting record fabric not found"},
                 status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class TodaySewingCountView(APIView):
+    """
+    Returns the total sewing count for today.
+    """
+    def get(self, request, format=None):
+        try:
+            # Get today's date
+            today = date.today()
+
+            # Get all sewing records for today
+            today_records = DailySewingRecord.objects.filter(date=today)
+
+            # Aggregate the quantities
+            aggregates = today_records.aggregate(
+                xs_sum=Sum('xs'),
+                s_sum=Sum('s'),
+                m_sum=Sum('m'),
+                l_sum=Sum('l'),
+                xl_sum=Sum('xl')
+            )
+
+            # Calculate total sewn today
+            total_sewn_today = sum([
+                aggregates.get('xs_sum') or 0,
+                aggregates.get('s_sum') or 0,
+                aggregates.get('m_sum') or 0,
+                aggregates.get('l_sum') or 0,
+                aggregates.get('xl_sum') or 0
+            ])
+
+            # Prepare the response
+            response_data = {
+                'total_sewn_today': total_sewn_today,
+                'xs': aggregates.get('xs_sum') or 0,
+                's': aggregates.get('s_sum') or 0,
+                'm': aggregates.get('m_sum') or 0,
+                'l': aggregates.get('l_sum') or 0,
+                'xl': aggregates.get('xl_sum') or 0
+            }
+
+            return Response(response_data)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

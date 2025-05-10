@@ -64,7 +64,8 @@ function OwnerDashboard() {
     pendingInvoiceCount: 0,
     paymentsOverdueCount: 0,
     totalSalesValue: 0,
-    fabricStockValue: 0
+    fabricStockValue: 0,
+    todaySewingCount: 0
   });
   const [recentOrders, setRecentOrders] = useState([]);
   const [remainingFabrics, setRemainingFabrics] = useState([]);
@@ -121,6 +122,10 @@ function OwnerDashboard() {
         const fabricResponse = await axios.get('http://localhost:8000/api/reports/dashboard/fabric-stock/');
         setRemainingFabrics(fabricResponse.data);
 
+        // Fetch today's sewing count
+        const todaySewingResponse = await axios.get('http://localhost:8000/api/sewing/today-count/');
+        const todaySewingCount = todaySewingResponse.data.total_sewn_today;
+
         // Fetch orders data - we'll simulate this for now
         try {
           const ordersResponse = await axios.get('http://localhost:8000/api/orders/orders/create/');
@@ -140,7 +145,8 @@ function OwnerDashboard() {
             paymentsOverdueCount: paymentsOverdue,
             totalSalesValue: totalSales,
             fabricStockValue: remainingFabrics.reduce((sum, fabric) =>
-              sum + (fabric.availableYards * fabric.pricePerYard), 0)
+              sum + (fabric.availableYards * fabric.pricePerYard), 0),
+            todaySewingCount: todaySewingCount
           });
 
           // Get recent orders
@@ -155,7 +161,8 @@ function OwnerDashboard() {
             paymentsOverdueCount: 2,
             totalSalesValue: 250000,
             fabricStockValue: remainingFabrics.reduce((sum, fabric) =>
-              sum + (fabric.availableYards * fabric.pricePerYard), 0)
+              sum + (fabric.availableYards * fabric.pricePerYard), 0),
+            todaySewingCount: 250 // Default fallback value
           });
 
           // Sample recent orders
@@ -542,8 +549,9 @@ function OwnerDashboard() {
                         axios.get('http://localhost:8000/api/reports/dashboard/fabric-stock/'),
                         axios.get('http://localhost:8000/api/orders/orders/create/'),
                         axios.get(`http://localhost:8000/api/reports/sales/performance/?months=${timeFrame}`),
-                        axios.get(`http://localhost:8000/api/reports/sales/product-income-percentage/?months=${timeFrame}`)
-                      ]).then(([packingResponse, fabricResponse, ordersResponse, salesResponse, incomeResponse]) => {
+                        axios.get(`http://localhost:8000/api/reports/sales/product-income-percentage/?months=${timeFrame}`),
+                        axios.get('http://localhost:8000/api/sewing/today-count/')
+                      ]).then(([packingResponse, fabricResponse, ordersResponse, salesResponse, incomeResponse, todaySewingResponse]) => {
                         setPackingData(packingResponse.data);
                         setRemainingFabrics(fabricResponse.data);
 
@@ -558,7 +566,8 @@ function OwnerDashboard() {
                           pendingInvoiceCount: pendingInvoice,
                           paymentsOverdueCount: paymentsOverdue,
                           totalSalesValue: totalSales,
-                          fabricStockValue: fabricResponse.data.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0)
+                          fabricStockValue: fabricResponse.data.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0),
+                          todaySewingCount: todaySewingResponse.data.total_sewn_today
                         });
 
                         setRecentOrders(ordersResponse.data.slice(0, 5));
@@ -645,7 +654,7 @@ function OwnerDashboard() {
                                 {loading ? (
                                   <Spinner animation="border" size="sm" />
                                 ) : (
-                                  `${packingData.reduce((acc, item) => acc + item.total_sewn, 0)} units`
+                                  `${stats.todaySewingCount} units`
                                 )}
                               </h3>
                               <small className="text-primary">
