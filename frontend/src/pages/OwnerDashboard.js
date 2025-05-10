@@ -59,6 +59,7 @@ function OwnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [salesLoading, setSalesLoading] = useState(true);
   const [timeFrame, setTimeFrame] = useState(6); // Default to 6 months
+  // Initialize stats with default values
   const [stats, setStats] = useState({
     pendingApprovalCount: 0,
     pendingInvoiceCount: 0,
@@ -139,6 +140,7 @@ function OwnerDashboard() {
           const totalSales = ordersResponse.data.reduce((sum, order) =>
             sum + (order.total_amount || 0), 0);
 
+          // Set stats with real values from API
           setStats({
             pendingApprovalCount: pendingApproval,
             pendingInvoiceCount: pendingInvoice,
@@ -154,33 +156,25 @@ function OwnerDashboard() {
 
         } catch (error) {
           console.error('Error fetching orders:', error);
-          // Fallback to sample data
+          // Set empty recent orders if there's an error
+          setRecentOrders([]);
+
+          // Set default stats in case of error
           setStats({
-            pendingApprovalCount: 3,
-            pendingInvoiceCount: 5,
-            paymentsOverdueCount: 2,
-            totalSalesValue: 250000,
+            pendingApprovalCount: 0,
+            pendingInvoiceCount: 0,
+            paymentsOverdueCount: 0,
+            totalSalesValue: 0,
             fabricStockValue: remainingFabrics.reduce((sum, fabric) =>
               sum + (fabric.availableYards * fabric.pricePerYard), 0),
-            todaySewingCount: 250 // Default fallback value
+            todaySewingCount: 0
           });
-
-          // Sample recent orders
-          setRecentOrders([
-            { id: 1, shop_name: 'Fashion Store', status: 'submitted', created_at: '2023-06-15T10:30:00Z', total_amount: 45000 },
-            { id: 2, shop_name: 'Trendy Boutique', status: 'approved', created_at: '2023-06-14T14:20:00Z', total_amount: 32000 },
-            { id: 3, shop_name: 'Style Hub', status: 'invoiced', created_at: '2023-06-13T09:15:00Z', total_amount: 28500 }
-          ]);
         }
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        // Set fallback data for fabric stock
-        setRemainingFabrics([
-          { id: 1, name: 'Cotton - Blue', colorCode: '#0000FF', availableYards: 120, pricePerYard: 450 },
-          { id: 2, name: 'Linen - White', colorCode: '#FFFFFF', availableYards: 85, pricePerYard: 650 },
-          { id: 3, name: 'Silk - Red', colorCode: '#FF0000', availableYards: 40, pricePerYard: 1200 }
-        ]);
+        // Set empty fabric stock in case of error
+        setRemainingFabrics([]);
       } finally {
         setLoading(false);
       }
@@ -207,53 +201,25 @@ function OwnerDashboard() {
       } catch (error) {
         console.error('Error fetching sales performance data:', error);
 
-        // Get current year for sample data
-        const currentYear = new Date().getFullYear();
-
-        // Set fallback sample data with current year
+        // Set empty data for sales performance in case of error
         setSalesPerformance({
-          monthly_sales: [
-            { month: `Jan ${currentYear}`, total_sales: 125000, order_count: 12 },
-            { month: `Feb ${currentYear}`, total_sales: 145000, order_count: 15 },
-            { month: `Mar ${currentYear}`, total_sales: 165000, order_count: 18 },
-            { month: `Apr ${currentYear}`, total_sales: 185000, order_count: 20 },
-            { month: `May ${currentYear}`, total_sales: 205000, order_count: 22 },
-            { month: `Jun ${currentYear}`, total_sales: 225000, order_count: 25 }
-          ],
-          top_products: [
-            { product_name: 'Men\'s T-Shirt', total_units: 450, total_sales: 90000 },
-            { product_name: 'Women\'s Blouse', total_units: 320, total_sales: 80000 },
-            { product_name: 'Kids Shirt', total_units: 280, total_sales: 56000 },
-            { product_name: 'Polo Shirt', total_units: 220, total_sales: 55000 },
-            { product_name: 'Formal Shirt', total_units: 180, total_sales: 54000 }
-          ],
-          shop_sales: [
-            { shop_name: 'Fashion Store', total_sales: 250000, order_count: 25 },
-            { shop_name: 'Trendy Boutique', total_sales: 180000, order_count: 18 },
-            { shop_name: 'Style Hub', total_sales: 150000, order_count: 15 },
-            { shop_name: 'Clothing Outlet', total_sales: 120000, order_count: 12 },
-            { shop_name: 'Fashion World', total_sales: 100000, order_count: 10 }
-          ],
+          monthly_sales: [],
+          top_products: [],
+          shop_sales: [],
           payment_status: {
-            paid_count: 45,
-            partially_paid_count: 15,
-            payment_due_count: 10,
-            total_paid: 850000,
-            total_amount: 1000000,
-            payment_rate: 85
+            paid_count: 0,
+            partially_paid_count: 0,
+            payment_due_count: 0,
+            total_paid: 0,
+            total_amount: 0,
+            payment_rate: 0
           }
         });
 
-        // Set fallback sample data for product income percentage
+        // Set empty data for product income percentage in case of error
         setProductIncomeData({
-          total_sales_amount: 1000000,
-          products: [
-            { product_id: 1, product_name: 'Men\'s T-Shirt', total_units: 450, total_sales: 90000, income_percentage: 30, profit_margin: 45 },
-            { product_id: 2, product_name: 'Women\'s Blouse', total_units: 320, total_sales: 80000, income_percentage: 25, profit_margin: 50 },
-            { product_id: 3, product_name: 'Kids Shirt', total_units: 280, total_sales: 56000, income_percentage: 15, profit_margin: 40 },
-            { product_id: 4, product_name: 'Polo Shirt', total_units: 220, total_sales: 55000, income_percentage: 15, profit_margin: 35 },
-            { product_id: 5, product_name: 'Formal Shirt', total_units: 180, total_sales: 54000, income_percentage: 15, profit_margin: 30 }
-          ]
+          total_sales_amount: 0,
+          products: []
         });
       } finally {
         setSalesLoading(false);
@@ -561,6 +527,7 @@ function OwnerDashboard() {
                         const paymentsOverdue = ordersResponse.data.filter(order => order.is_payment_overdue).length;
                         const totalSales = ordersResponse.data.reduce((sum, order) => sum + (order.total_amount || 0), 0);
 
+                        // Set stats with real values
                         setStats({
                           pendingApprovalCount: pendingApproval,
                           pendingInvoiceCount: pendingInvoice,
@@ -627,7 +594,7 @@ function OwnerDashboard() {
                                 {loading ? (
                                   <Spinner animation="border" size="sm" />
                                 ) : (
-                                  remainingFabrics.filter(f => f.availableYards < 50).length
+                                  remainingFabrics.filter(fabric => fabric.availableYards < fabric.totalYards * 0.2).length
                                 )}
                               </h3>
                               <small className="text-warning">
@@ -681,7 +648,7 @@ function OwnerDashboard() {
                                 {loading ? (
                                   <Spinner animation="border" size="sm" />
                                 ) : (
-                                  `Rs. ${remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toLocaleString()}`
+                                  `Rs. ${Math.round(stats.fabricStockValue).toLocaleString()}`
                                 )}
                               </h3>
                               <small className="text-info">
@@ -717,8 +684,10 @@ function OwnerDashboard() {
                                 {loading ? (
                                   <Spinner animation="border" size="sm" />
                                 ) : (
-                                  `${Math.round((packingData.reduce((acc, item) => acc + item.total_packed, 0) /
-                                    Math.max(1, packingData.reduce((acc, item) => acc + item.total_sewn, 0))) * 100)}%`
+                                  `${Math.round(
+                                    (packingData.reduce((sum, item) => sum + item.total_packed, 0) /
+                                    Math.max(1, packingData.reduce((sum, item) => sum + item.total_sewn, 0)) * 100)
+                                  )}%`
                                 )}
                               </h3>
                               <small className="text-success">
@@ -751,10 +720,10 @@ function OwnerDashboard() {
                                 {salesLoading ? (
                                   <Spinner animation="border" size="sm" />
                                 ) : (
-                                  `${salesPerformance.payment_status.payment_rate}%`
+                                  `${salesPerformance.payment_status.payment_rate.toFixed(1)}%`
                                 )}
                               </h3>
-                              <small className={salesPerformance.payment_status.payment_rate > 80 ? "text-success" : "text-warning"}>
+                              <small className="text-warning">
                                 <FaShoppingBag className="me-1" />
                                 Collection rate
                               </small>
@@ -777,7 +746,7 @@ function OwnerDashboard() {
             <Col md={4} lg={2} sm={6} className="mb-4">
               <DashboardCard
                 title="Pending Approval"
-                value={loading ? "..." : stats.pendingApprovalCount}
+                value={loading ? "..." : stats.pendingApprovalCount.toString()}
                 icon={<FaClipboardCheck />}
                 linkTo="/owner-orders"
               />
@@ -786,7 +755,7 @@ function OwnerDashboard() {
             <Col md={4} lg={2} sm={6} className="mb-4">
               <DashboardCard
                 title="Pending Invoice"
-                value={loading ? "..." : stats.pendingInvoiceCount}
+                value={loading ? "..." : stats.pendingInvoiceCount.toString()}
                 icon={<FaFileInvoice />}
                 linkTo="/owner-orders"
               />
@@ -795,7 +764,7 @@ function OwnerDashboard() {
             <Col md={4} lg={2} sm={6} className="mb-4">
               <DashboardCard
                 title="Payments Due"
-                value={loading ? "..." : stats.paymentsOverdueCount}
+                value={loading ? "..." : stats.paymentsOverdueCount.toString()}
                 icon={<FaMoneyBillWave />}
                 linkTo="/owner-orders"
                 color="#FFE0E0"
@@ -814,7 +783,7 @@ function OwnerDashboard() {
             <Col md={4} lg={2} sm={6} className="mb-4">
               <DashboardCard
                 title="Fabric Value"
-                value={loading ? "..." : `Rs. ${remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toLocaleString()}`}
+                value={loading ? "..." : `Rs. ${Math.round(stats.fabricStockValue).toLocaleString()}`}
                 icon={<FaTshirt />}
                 linkTo="/viewfabric"
               />
@@ -822,10 +791,10 @@ function OwnerDashboard() {
 
             <Col md={4} lg={2} sm={6} className="mb-4">
               <DashboardCard
-                title="Products"
-                value={loading ? "..." : packingData.length}
+                title="Today's Sewing"
+                value={loading ? "..." : stats.todaySewingCount.toString()}
                 icon={<FaBoxes />}
-                linkTo="/approveproduct-list"
+                linkTo="/sewing-history"
               />
             </Col>
           </Row>
@@ -994,19 +963,19 @@ function OwnerDashboard() {
                         <div className="stat px-4 py-2 rounded" style={{ backgroundColor: '#D9EDFB' }}>
                           <h5 className="mb-1">Total Sewn</h5>
                           <p className="mb-0 fs-4">
-                            {packingData.reduce((acc, item) => acc + item.total_sewn, 0)} units
+                            {packingData.reduce((sum, item) => sum + item.total_sewn, 0)} units
                           </p>
                         </div>
                         <div className="stat px-4 py-2 rounded" style={{ backgroundColor: '#D9EDFB' }}>
                           <h5 className="mb-1">Total Packed</h5>
                           <p className="mb-0 fs-4">
-                            {packingData.reduce((acc, item) => acc + item.total_packed, 0)} units
+                            {packingData.reduce((sum, item) => sum + item.total_packed, 0)} units
                           </p>
                         </div>
                         <div className="stat px-4 py-2 rounded" style={{ backgroundColor: '#D9EDFB' }}>
                           <h5 className="mb-1">Available Left</h5>
                           <p className="mb-0 fs-4">
-                            {packingData.reduce((acc, item) => acc + item.available_quantity, 0)} units
+                            {packingData.reduce((sum, item) => sum + item.available_quantity, 0)} units
                           </p>
                         </div>
                       </div>
@@ -1150,19 +1119,19 @@ function OwnerDashboard() {
                             <div className="stat px-4 py-2 rounded" style={{ backgroundColor: '#D9EDFB' }}>
                               <h5 className="mb-1">Payment Rate</h5>
                               <p className="mb-0 fs-4">
-                                {salesPerformance.payment_status.payment_rate}%
+                                {salesPerformance.payment_status.payment_rate.toFixed(1)}%
                               </p>
                             </div>
                             <div className="stat px-4 py-2 rounded" style={{ backgroundColor: '#D9EDFB' }}>
                               <h5 className="mb-1">Total Paid</h5>
                               <p className="mb-0 fs-4">
-                                Rs. {salesPerformance.payment_status.total_paid.toLocaleString()}
+                                Rs. {Math.round(salesPerformance.payment_status.total_paid).toLocaleString()}
                               </p>
                             </div>
                             <div className="stat px-4 py-2 rounded" style={{ backgroundColor: '#D9EDFB' }}>
                               <h5 className="mb-1">Total Amount</h5>
                               <p className="mb-0 fs-4">
-                                Rs. {salesPerformance.payment_status.total_amount.toLocaleString()}
+                                Rs. {Math.round(salesPerformance.payment_status.total_amount).toLocaleString()}
                               </p>
                             </div>
                           </div>
