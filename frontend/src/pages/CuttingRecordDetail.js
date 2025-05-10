@@ -37,8 +37,14 @@ const CuttingRecordDetail = () => {
     if (savedReturnPath) {
       setReturnPath(savedReturnPath);
     } else {
+      // Default to the cutting records list
       setReturnPath('/viewcutting');
     }
+
+    // Clean up the localStorage when component unmounts
+    return () => {
+      localStorage.removeItem('cuttingRecordReturnPath');
+    };
   }, []);
 
   // Fetch cutting record data

@@ -1,20 +1,34 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from 'react-router-dom';
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import {
   Container, Row, Col, Card, Table, Button,
   Form, InputGroup, Badge, Spinner, Alert,
   Modal
 } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
 import {
   FaSearch, FaSort, FaSortUp, FaSortDown,
   FaEye, FaEyeSlash, FaTshirt, FaCut,
   FaCalendarAlt, FaFilter, FaPlus, FaDownload,
-  FaFilePdf, FaCheck, FaTimes
+  FaFilePdf, FaCheck, FaTimes, FaInfoCircle
 } from 'react-icons/fa';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+// Add global CSS for hover effect
+const addGlobalStyle = () => {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .hover-row:hover {
+      background-color: #f0f8ff !important;
+    }
+  `;
+  document.head.appendChild(style);
+};
+
+// Add the global style once when component loads
+addGlobalStyle();
 
 const ViewCutting = () => {
   const navigate = useNavigate();
@@ -393,6 +407,11 @@ const ViewCutting = () => {
               {filteredRecords.length} {filteredRecords.length === 1 ? 'Record' : 'Records'} Found
             </Badge>
           </div>
+          <div>
+            <small className="text-muted">
+              <FaInfoCircle className="me-1" /> Click on any row for detailed view
+            </small>
+          </div>
         </div>
 
         {/* Main Table */}
@@ -456,7 +475,15 @@ const ViewCutting = () => {
 
                       return (
                         <React.Fragment key={record.id}>
-                          <tr className={expandedRows[record.id] ? "bg-light" : ""}>
+                          <tr
+                            className={`${expandedRows[record.id] ? "bg-light" : ""} hover-row`}
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => {
+                              // Prevent navigation if clicking on the action buttons
+                              if (e.target.closest('.action-buttons')) return;
+                              navigate(`/cutting-record/${record.id}`);
+                            }}
+                          >
                             <td>{productName}</td>
                             <td>
                               <div className="d-flex align-items-center">
@@ -486,11 +513,14 @@ const ViewCutting = () => {
                               </Badge>
                             </td>
                             <td>
-                              <div className="d-flex">
+                              <div className="d-flex action-buttons">
                                 <Button
                                   variant={expandedRows[record.id] ? "outline-danger" : "outline-primary"}
                                   size="sm"
-                                  onClick={() => toggleRow(record.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent row click event
+                                    toggleRow(record.id);
+                                  }}
                                   className="me-2"
                                 >
                                   {expandedRows[record.id] ? (
@@ -500,9 +530,23 @@ const ViewCutting = () => {
                                   )}
                                 </Button>
                                 <Button
+                                  variant="outline-info"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent row click event
+                                    navigate(`/cutting-record/${record.id}`);
+                                  }}
+                                  className="me-2"
+                                >
+                                  <FaInfoCircle className="me-1" /> Details
+                                </Button>
+                                <Button
                                   variant="outline-success"
                                   size="sm"
-                                  onClick={() => openPdfModal(record)}
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent row click event
+                                    openPdfModal(record);
+                                  }}
                                 >
                                   <FaDownload className="me-1" /> PDF
                                 </Button>
@@ -515,10 +559,15 @@ const ViewCutting = () => {
                                 <div className="p-3 bg-light border-top">
                                   <Card className="mb-0 shadow-sm">
                                     <Card.Header className="bg-white">
-                                      <h5 className="mb-0">
-                                        <FaTshirt className="text-primary me-2" />
-                                        Color Usage Details
-                                      </h5>
+                                      <div className="d-flex justify-content-between align-items-center">
+                                        <h5 className="mb-0">
+                                          <FaTshirt className="text-primary me-2" />
+                                          Color Usage Details
+                                        </h5>
+                                        <small className="text-muted">
+                                          <FaInfoCircle className="me-1" /> Click on a row for detailed view
+                                        </small>
+                                      </div>
                                     </Card.Header>
                                     <Card.Body className="p-0">
                                       <div className="table-responsive">
@@ -536,7 +585,12 @@ const ViewCutting = () => {
                                           </thead>
                                           <tbody>
                                             {record.details?.map((detail, idx) => (
-                                              <tr key={idx}>
+                                              <tr
+                                                key={idx}
+                                                onClick={() => navigate(`/cutting-record/${record.id}`)}
+                                                style={{ cursor: 'pointer' }}
+                                                className="hover-row"
+                                              >
                                                 <td>
                                                   <div className="d-flex align-items-center">
                                                     <div
