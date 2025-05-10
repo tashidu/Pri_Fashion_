@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import {
   Container, Row, Col, Card, Table, Button,
-  Badge, Alert, Spinner, ListGroup
+  Badge, Alert, Spinner, ListGroup, ProgressBar
 } from 'react-bootstrap';
 import {
   FaTshirt, FaArrowLeft, FaPalette,
@@ -206,8 +206,8 @@ const ViewFabricVariants = () => {
                 <Table hover bordered responsive className="align-middle">
                   <thead className="bg-light">
                     <tr>
-                      <th style={{ width: '25%' }}>Color</th>
-                      <th style={{ width: '25%' }} className="text-center">Total Yard</th>
+                      <th style={{ width: '20%' }}>Color</th>
+                      <th style={{ width: '30%' }} className="text-center">Yard Information</th>
                       <th style={{ width: '25%' }} className="text-center">Price per Yard</th>
                       <th style={{ width: '25%' }} className="text-center">Total Price</th>
                     </tr>
@@ -230,7 +230,38 @@ const ViewFabricVariants = () => {
                             <span>{variant.color}</span>
                           </div>
                         </td>
-                        <td className="text-center">{variant.total_yard} yards</td>
+                        <td className="text-center">
+                          <div className="mb-1">
+                            <strong>Total:</strong> {variant.total_yard} yards
+                          </div>
+                          <div className="mb-2">
+                            <strong>Current Stock:</strong>{' '}
+                            <span className={variant.available_yard < 10 ? 'text-danger fw-bold' : ''}>
+                              {variant.available_yard !== null ? `${variant.available_yard} yards` : 'N/A'}
+                            </span>
+                            {variant.available_yard !== null && variant.total_yard > 0 && (
+                              <div className="mt-1">
+                                <ProgressBar
+                                  now={Math.min(100, (variant.available_yard / variant.total_yard) * 100)}
+                                  variant={
+                                    variant.available_yard < 0.1 * variant.total_yard ? 'danger' :
+                                    variant.available_yard < 0.3 * variant.total_yard ? 'warning' : 'success'
+                                  }
+                                  style={{ height: '8px' }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <Button
+                              size="sm"
+                              variant="outline-info"
+                              onClick={() => navigate(`/fabric-inventory/${variant.id}`)}
+                            >
+                              View Inventory
+                            </Button>
+                          </div>
+                        </td>
                         <td className="text-center">Rs. {variant.price_per_yard}/yard</td>
                         <td className="text-center fw-bold">
                           Rs. {(variant.total_yard * variant.price_per_yard).toFixed(2)}

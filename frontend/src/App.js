@@ -15,6 +15,7 @@ import EditFabric from "./pages/EditFabric";
 import ViewFabrics from "./pages/ViewFabrics";
 import ViewCutting from "./pages/ViewCutting.js";
 import ViewFabricVariants from "./pages/ViewFabricVariants";
+import FabricInventoryDetail from "./pages/FabricInventoryDetail";
 import AddCutting  from "./pages/AddCutting.js"
 import AddDailySewingRecord from "./pages/AddDailySewingRecord";
 import ViewDailySewingHistory from './pages/ViewDailySewingHistory';
@@ -55,6 +56,10 @@ function App() {
         <Route
           path="/fabric-definitions/:id"
           element={<ViewFabricVariants />}
+        />
+        <Route
+          path="/fabric-inventory/:variantId"
+          element={<FabricInventoryDetail />}
         />
         <Route path="/viewcutting" element={<ViewCutting />} />
         <Route path="/addcutting" element={<AddCutting />} />
