@@ -65,7 +65,7 @@ function OwnerDashboard() {
     pendingInvoiceCount: 0,
     paymentsOverdueCount: 0,
     totalSalesValue: 0,
-    fabricStockValue: 0,
+    fabricStockValue: 0, // This will be calculated from remainingFabrics
     todaySewingCount: 0
   });
   const [recentOrders, setRecentOrders] = useState([]);
@@ -123,6 +123,10 @@ function OwnerDashboard() {
         const fabricResponse = await axios.get('http://localhost:8000/api/reports/dashboard/fabric-stock/');
         setRemainingFabrics(fabricResponse.data);
 
+        // Calculate fabric stock value
+        const fabricStockValue = fabricResponse.data.reduce((sum, fabric) =>
+          sum + (fabric.availableYards * fabric.pricePerYard), 0);
+
         // Fetch today's sewing count
         const todaySewingResponse = await axios.get('http://localhost:8000/api/sewing/today-count/');
         const todaySewingCount = todaySewingResponse.data.total_sewn_today;
@@ -146,8 +150,7 @@ function OwnerDashboard() {
             pendingInvoiceCount: pendingInvoice,
             paymentsOverdueCount: paymentsOverdue,
             totalSalesValue: totalSales,
-            fabricStockValue: remainingFabrics.reduce((sum, fabric) =>
-              sum + (fabric.availableYards * fabric.pricePerYard), 0),
+            fabricStockValue: fabricStockValue,
             todaySewingCount: todaySewingCount
           });
 
@@ -165,8 +168,7 @@ function OwnerDashboard() {
             pendingInvoiceCount: 0,
             paymentsOverdueCount: 0,
             totalSalesValue: 0,
-            fabricStockValue: remainingFabrics.reduce((sum, fabric) =>
-              sum + (fabric.availableYards * fabric.pricePerYard), 0),
+            fabricStockValue: fabricStockValue,
             todaySewingCount: 0
           });
         }
@@ -527,13 +529,17 @@ function OwnerDashboard() {
                         const paymentsOverdue = ordersResponse.data.filter(order => order.is_payment_overdue).length;
                         const totalSales = ordersResponse.data.reduce((sum, order) => sum + (order.total_amount || 0), 0);
 
+                        // Calculate fabric stock value
+                        const fabricStockValue = fabricResponse.data.reduce((sum, fabric) =>
+                          sum + (fabric.availableYards * fabric.pricePerYard), 0);
+
                         // Set stats with real values
                         setStats({
                           pendingApprovalCount: pendingApproval,
                           pendingInvoiceCount: pendingInvoice,
                           paymentsOverdueCount: paymentsOverdue,
                           totalSalesValue: totalSales,
-                          fabricStockValue: fabricResponse.data.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0),
+                          fabricStockValue: fabricStockValue,
                           todaySewingCount: todaySewingResponse.data.total_sewn_today
                         });
 
