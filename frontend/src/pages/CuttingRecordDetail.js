@@ -241,6 +241,7 @@ const CuttingRecordDetail = () => {
                     <tr>
                       <th>Color</th>
                       <th>Yard Usage</th>
+                      <th>Price per Yard</th>
                       <th>Fabric Cost</th>
                       <th>XS</th>
                       <th>S</th>
@@ -274,6 +275,11 @@ const CuttingRecordDetail = () => {
                           </Badge>
                         </td>
                         <td>
+                          <Badge bg="secondary" pill>
+                            Rs. {detail.fabric_variant_data?.price_per_yard.toFixed(2)}
+                          </Badge>
+                        </td>
+                        <td>
                           <Badge bg="warning" text="dark" pill>
                             Rs. {calculateCuttingValue(detail)}
                           </Badge>
@@ -295,6 +301,7 @@ const CuttingRecordDetail = () => {
                     <tr>
                       <td className="fw-bold">Total</td>
                       <td className="fw-bold">{calculateTotalYardUsage()} yards</td>
+                      <td className="fw-bold">-</td>
                       <td className="fw-bold">Rs. {calculateTotalCuttingValue()}</td>
                       <td className="fw-bold">
                         {cuttingRecord.details.reduce((sum, detail) => sum + detail.xs, 0)}
