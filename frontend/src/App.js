@@ -7,6 +7,7 @@ import OrdersDashboard from "./pages/OrdersDashboard";
 import SalesDashboard from "./pages/SalesDashboard";
 import SalesProductView from "./pages/SalesProductView";
 import SalesProductImageViewer from "./pages/SalesProductImageViewer";
+import ProductSalesRecords from "./pages/ProductSalesRecords";
 import AddSupplier from "./pages/AddSupplier";
 import ViewSuppliers from "./pages/ViewSuppliers";
 import AddFabric from "./pages/AddFabric";
@@ -81,6 +82,7 @@ function App() {
         <Route path="/owner-orders" element={<OwnerOrdersPage />} />
         <Route path="/sales-team-orders" element={<SalesTeamOrdersPage />} />
         <Route path="/order-analysis" element={<OrderAnalysisPage />} />
+        <Route path="/product-sales-records" element={<ProductSalesRecords />} />
       </Routes>
     </Router>
   );
