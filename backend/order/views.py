@@ -88,15 +88,59 @@ class OrderItemCreateView(generics.CreateAPIView):
         twelve_packs = int(self.request.data.get('quantity_12_packs', 0))
         extras = int(self.request.data.get('quantity_extra_items', 0))
 
-        # Optional: Validate stock before deduction
-        if (inventory.number_of_6_packs < six_packs or
-            inventory.number_of_12_packs < twelve_packs or
-            inventory.extra_items < extras):
-            raise serializers.ValidationError({'error': 'Not enough inventory to fulfill the order.'})
+        # Check user role for validation
+        user_role = self.request.user.role.name if hasattr(self.request.user, 'role') else None
 
-        # Save order item and deduct inventory
+        # For Order Coordinators, strictly validate inventory
+        # For Sales Team, allow orders even if inventory is insufficient
+        if user_role != 'Sales Team':
+            # Validate stock before deduction for non-Sales Team users
+            if (inventory.number_of_6_packs < six_packs or
+                inventory.number_of_12_packs < twelve_packs or
+                inventory.extra_items < extras):
+                raise serializers.ValidationError({'error': 'Not enough inventory to fulfill the order.'})
+        else:
+            # For Sales Team, check if there are items in production
+            total_requested = six_packs * 6 + twelve_packs * 12 + extras
+            total_available = inventory.number_of_6_packs * 6 + inventory.number_of_12_packs * 12 + inventory.extra_items
+
+            # Calculate total sewn items
+            total_sewn = (
+                finished_product.total_sewn_xs +
+                finished_product.total_sewn_s +
+                finished_product.total_sewn_m +
+                finished_product.total_sewn_l +
+                finished_product.total_sewn_xl
+            )
+
+            # Items in production = total sewn - items in inventory
+            in_production = max(0, total_sewn - total_available)
+
+            # If there's not enough in stock AND no items in production, reject the order
+            if total_requested > total_available and in_production == 0:
+                raise serializers.ValidationError({
+                    'error': 'Not enough inventory to fulfill the order and no items in production.'
+                })
+
+            # If there's not enough in stock but there are items in production,
+            # allow the order but add a note
+            if total_requested > total_available and in_production > 0:
+                # Add a note to the order about using items from production
+                if not order.owner_notes:
+                    order.owner_notes = ""
+                order.owner_notes += f"\n[Note: This order includes {total_requested - total_available} items from production]"
+                order.save()
+
+        # Save order item and deduct inventory (or mark as pending)
         serializer.save(order=order, finished_product=finished_product)
-        inventory.deduct_for_order(six_packs, twelve_packs, extras)
+
+        # Only deduct from inventory what's available
+        deduct_six_packs = min(six_packs, inventory.number_of_6_packs)
+        deduct_twelve_packs = min(twelve_packs, inventory.number_of_12_packs)
+        deduct_extras = min(extras, inventory.extra_items)
+
+        if deduct_six_packs > 0 or deduct_twelve_packs > 0 or deduct_extras > 0:
+            inventory.deduct_for_order(deduct_six_packs, deduct_twelve_packs, deduct_extras)
 
 
 

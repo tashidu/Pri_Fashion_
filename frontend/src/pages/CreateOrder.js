@@ -76,6 +76,7 @@ const AddOrderForm = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [stockWarnings, setStockWarnings] = useState([]);
+  const [isInfoModal, setIsInfoModal] = useState(false);
   const [activeTab, setActiveTab] = useState("order-details");
 
   // Get the current user ID from the JWT token
@@ -118,17 +119,32 @@ const AddOrderForm = () => {
 
       console.log('Fetch Data - Headers:', headers);
 
-      const [shopsRes, productsRes, inventoryRes] = await Promise.all([
+      // Define API endpoints based on user role
+      const apiEndpoints = [
         axios.get("http://localhost:8000/api/orders/shops/", { headers }),
         axios.get("http://localhost:8000/api/finished_product/report", { headers }),
-        axios.get("http://localhost:8000/api/packing/inventory/", { headers })
-      ]);
+      ];
+
+      // Order Coordinators need detailed packing inventory
+      // Sales Team needs approved products and production information
+      if (userRole === 'Order Coordinator') {
+        apiEndpoints.push(axios.get("http://localhost:8000/api/packing/inventory/", { headers }));
+      } else {
+        // For Sales Team, get approved products and production information
+        apiEndpoints.push(axios.get("http://localhost:8000/api/packing/inventory/", { headers }));
+        // We'll use the finished_product/report endpoint which already includes available_quantity
+      }
+
+      const responses = await Promise.all(apiEndpoints);
+      const shopsRes = responses[0];
+      const productsRes = responses[1];
+      const inventoryRes = responses[2];
 
       setShops(shopsRes.data);
 
-      // Log the inventory data to debug
-      console.log("Inventory API response:", inventoryRes.data);
+      // Log the data to debug
       console.log("Products API response:", productsRes.data);
+      console.log("Inventory API response:", inventoryRes.data);
 
       // Combine product data with inventory data
       const products = productsRes.data;
@@ -141,18 +157,43 @@ const AddOrderForm = () => {
 
         console.log(`Product ID: ${product.id}, Found inventory:`, inventoryItem);
 
+        // Calculate production status for Sales Team
+        const totalSewn = (
+          (product.total_sewn_xs || 0) +
+          (product.total_sewn_s || 0) +
+          (product.total_sewn_m || 0) +
+          (product.total_sewn_l || 0) +
+          (product.total_sewn_xl || 0)
+        );
+
+        // Items in production = total sewn - items in inventory
+        const totalInventory = inventoryItem ?
+          (inventoryItem.number_of_6_packs * 6 +
+           inventoryItem.number_of_12_packs * 12 +
+           inventoryItem.extra_items) : 0;
+
+        const inProduction = Math.max(0, totalSewn - totalInventory);
+
         return {
           ...product,
           inventory: inventoryItem || {
             number_of_6_packs: 0,
             number_of_12_packs: 0,
             extra_items: 0
-          }
+          },
+          totalSewn: totalSewn,
+          inProduction: inProduction,
+          stockStatus: getStockStatus(inventoryItem)
         };
       });
 
-      setFinishedProducts(productsWithInventory);
-      setFilteredProducts(productsWithInventory);
+      // Filter out products without selling price for Sales Team
+      const filteredProducts = userRole === 'Sales Team'
+        ? productsWithInventory.filter(product => product.selling_price !== null)
+        : productsWithInventory;
+
+      setFinishedProducts(filteredProducts);
+      setFilteredProducts(filteredProducts);
 
       if (isRefresh) {
         setSuccess("Inventory data refreshed successfully!");
@@ -187,6 +228,20 @@ const AddOrderForm = () => {
     }
   };
 
+  // Helper function to determine stock status for Sales Team view
+  const getStockStatus = (inventoryItem) => {
+    if (!inventoryItem) return "out-of-stock";
+
+    const totalItems =
+      inventoryItem.number_of_6_packs * 6 +
+      inventoryItem.number_of_12_packs * 12 +
+      inventoryItem.extra_items;
+
+    if (totalItems === 0) return "out-of-stock";
+    if (totalItems < 10) return "low-stock"; // Arbitrary threshold for low stock
+    return "in-stock";
+  };
+
   // Handle refresh button click
   const handleRefreshInventory = () => {
     fetchData(true);
@@ -195,6 +250,7 @@ const AddOrderForm = () => {
   // Fetch initial data
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = (e) => {
@@ -286,35 +342,76 @@ const AddOrderForm = () => {
       };
     }
 
-    const inventory = product.inventory;
-    const warnings = [];
+    // Different validation logic based on user role
+    if (userRole === 'Order Coordinator') {
+      // Order Coordinators need to check actual inventory
+      const inventory = product.inventory;
+      const warnings = [];
 
-    // Make sure we're comparing numbers, not strings
-    const requestedSixPacks = parseInt(item.quantity_6_packs) || 0;
-    const requestedTwelvePacks = parseInt(item.quantity_12_packs) || 0;
-    const requestedExtraItems = parseInt(item.quantity_extra_items) || 0;
+      // Make sure we're comparing numbers, not strings
+      const requestedSixPacks = parseInt(item.quantity_6_packs) || 0;
+      const requestedTwelvePacks = parseInt(item.quantity_12_packs) || 0;
+      const requestedExtraItems = parseInt(item.quantity_extra_items) || 0;
 
-    const availableSixPacks = parseInt(inventory.number_of_6_packs) || 0;
-    const availableTwelvePacks = parseInt(inventory.number_of_12_packs) || 0;
-    const availableExtraItems = parseInt(inventory.extra_items) || 0;
+      const availableSixPacks = parseInt(inventory.number_of_6_packs) || 0;
+      const availableTwelvePacks = parseInt(inventory.number_of_12_packs) || 0;
+      const availableExtraItems = parseInt(inventory.extra_items) || 0;
 
-    if (requestedSixPacks > availableSixPacks) {
-      warnings.push(`Not enough 6-packs in stock (requested: ${requestedSixPacks}, available: ${availableSixPacks})`);
+      if (requestedSixPacks > availableSixPacks) {
+        warnings.push(`Not enough 6-packs in stock (requested: ${requestedSixPacks}, available: ${availableSixPacks})`);
+      }
+
+      if (requestedTwelvePacks > availableTwelvePacks) {
+        warnings.push(`Not enough 12-packs in stock (requested: ${requestedTwelvePacks}, available: ${availableTwelvePacks})`);
+      }
+
+      if (requestedExtraItems > availableExtraItems) {
+        warnings.push(`Not enough extra items in stock (requested: ${requestedExtraItems}, available: ${availableExtraItems})`);
+      }
+
+      return {
+        hasWarning: warnings.length > 0,
+        message: warnings.join(", "),
+        productName: product.product_name
+      };
+    } else {
+      // Sales Team can create orders for items in production
+      // They only need a warning if there's no stock AND no items in production
+      const inventory = product.inventory;
+      const totalRequested =
+        (parseInt(item.quantity_6_packs) || 0) * 6 +
+        (parseInt(item.quantity_12_packs) || 0) * 12 +
+        (parseInt(item.quantity_extra_items) || 0);
+
+      const totalAvailable =
+        (parseInt(inventory.number_of_6_packs) || 0) * 6 +
+        (parseInt(inventory.number_of_12_packs) || 0) * 12 +
+        (parseInt(inventory.extra_items) || 0);
+
+      // If there's not enough in stock but there are items in production, just inform
+      if (totalRequested > totalAvailable) {
+        if (product.inProduction > 0) {
+          return {
+            hasWarning: false, // Not a blocking warning for Sales Team
+            message: `This order will require ${totalRequested - totalAvailable} items from production (${product.inProduction} in production)`,
+            productName: product.product_name,
+            isInfo: true // Flag to show as info, not warning
+          };
+        } else {
+          return {
+            hasWarning: true,
+            message: `Not enough items in stock (requested: ${totalRequested}, available: ${totalAvailable}) and no items in production`,
+            productName: product.product_name
+          };
+        }
+      }
+
+      return {
+        hasWarning: false,
+        message: "",
+        productName: product.product_name
+      };
     }
-
-    if (requestedTwelvePacks > availableTwelvePacks) {
-      warnings.push(`Not enough 12-packs in stock (requested: ${requestedTwelvePacks}, available: ${availableTwelvePacks})`);
-    }
-
-    if (requestedExtraItems > availableExtraItems) {
-      warnings.push(`Not enough extra items in stock (requested: ${requestedExtraItems}, available: ${availableExtraItems})`);
-    }
-
-    return {
-      hasWarning: warnings.length > 0,
-      message: warnings.join(", "),
-      productName: product.product_name
-    };
   };
 
   // Validate the entire order
@@ -337,10 +434,20 @@ const AddOrderForm = () => {
 
     // Check stock availability
     const warnings = [];
+    const infoMessages = [];
+
     orderData.items.forEach(item => {
       const stockCheck = checkStockAvailability(item);
+
       if (stockCheck.hasWarning) {
         warnings.push({
+          productId: item.finished_product,
+          productName: stockCheck.productName,
+          message: stockCheck.message
+        });
+      } else if (stockCheck.isInfo) {
+        // For Sales Team - items that will use production stock
+        infoMessages.push({
           productId: item.finished_product,
           productName: stockCheck.productName,
           message: stockCheck.message
@@ -348,10 +455,25 @@ const AddOrderForm = () => {
       }
     });
 
+    // If there are warnings, show the confirmation modal
     if (warnings.length > 0) {
       setStockWarnings(warnings);
       setShowConfirmModal(true);
       return false;
+    }
+
+    // If there are info messages but no warnings, show them but don't block submission
+    if (infoMessages.length > 0 && warnings.length === 0) {
+      // For Sales Team, we'll show info about production items but allow the order
+      setStockWarnings(infoMessages);
+      // Set a flag to indicate these are info messages, not warnings
+      setIsInfoModal(true);
+      setShowConfirmModal(true);
+      // We return true because we want to proceed with the order
+      return true;
+    } else {
+      // Make sure isInfoModal is false for warnings
+      setIsInfoModal(false);
     }
 
     return true;
@@ -467,7 +589,17 @@ const AddOrderForm = () => {
         console.error("Response data:", err.response.data);
         console.error("Response status:", err.response.status);
 
-        if (err.response.data && err.response.data.detail) {
+        if (err.response.data && err.response.data.error) {
+          // Handle the specific error from our backend
+          const errorMsg = err.response.data.error;
+
+          // If it's the "not enough inventory" error and user is Sales Team
+          if (errorMsg.includes("Not enough inventory") && userRole === 'Sales Team') {
+            setError("Not enough items in stock and no items in production. Please select products that are in stock or in production.");
+          } else {
+            setError(`Error: ${errorMsg}`);
+          }
+        } else if (err.response.data && err.response.data.detail) {
           setError(`Error: ${err.response.data.detail}`);
         } else {
           setError(`Error ${err.response.status}: ${err.response.statusText}`);
@@ -588,7 +720,17 @@ const AddOrderForm = () => {
         console.error("Response data:", err.response.data);
         console.error("Response status:", err.response.status);
 
-        if (err.response.data && err.response.data.detail) {
+        if (err.response.data && err.response.data.error) {
+          // Handle the specific error from our backend
+          const errorMsg = err.response.data.error;
+
+          // If it's the "not enough inventory" error and user is Sales Team
+          if (errorMsg.includes("Not enough inventory") && userRole === 'Sales Team') {
+            setError("Not enough items in stock and no items in production. Please select products that are in stock or in production.");
+          } else {
+            setError(`Error: ${errorMsg}`);
+          }
+        } else if (err.response.data && err.response.data.detail) {
           setError(`Error: ${err.response.data.detail}`);
         } else {
           setError(`Error ${err.response.status}: ${err.response.statusText}`);
@@ -915,18 +1057,55 @@ const AddOrderForm = () => {
 
                                             {item.finished_product && (
                                               <Col md={12} className="mb-3">
-                                                <div className="stock-info p-2 rounded" style={{ backgroundColor: '#e9ecef' }}>
-                                                  <small className="d-flex justify-content-between">
-                                                    <span>Available 6-Packs: <strong>{inventory.number_of_6_packs || 0}</strong></span>
-                                                    <span>Available 12-Packs: <strong>{inventory.number_of_12_packs || 0}</strong></span>
-                                                    <span>Available Extra Items: <strong>{inventory.extra_items || 0}</strong></span>
-                                                  </small>
-                                                  {(!inventory.number_of_6_packs && !inventory.number_of_12_packs && !inventory.extra_items) && (
-                                                    <div className="mt-1 text-danger">
-                                                      <small>No inventory data available for this product</small>
+                                                {userRole === 'Order Coordinator' ? (
+                                                  // Detailed inventory view for Order Coordinators
+                                                  <div className="stock-info p-2 rounded" style={{ backgroundColor: '#e9ecef' }}>
+                                                    <small className="d-flex justify-content-between">
+                                                      <span>Available 6-Packs: <strong>{inventory.number_of_6_packs || 0}</strong></span>
+                                                      <span>Available 12-Packs: <strong>{inventory.number_of_12_packs || 0}</strong></span>
+                                                      <span>Available Extra Items: <strong>{inventory.extra_items || 0}</strong></span>
+                                                    </small>
+                                                    {(!inventory.number_of_6_packs && !inventory.number_of_12_packs && !inventory.extra_items) && (
+                                                      <div className="mt-1 text-danger">
+                                                        <small>No inventory data available for this product</small>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                ) : (
+                                                  // Simplified view for Sales Team
+                                                  <div className="stock-info p-2 rounded" style={{ backgroundColor: '#e9ecef' }}>
+                                                    <div className="d-flex justify-content-between align-items-center">
+                                                      <div>
+                                                        {product && (
+                                                          <div className="d-flex align-items-center">
+                                                            <span className="me-2">Stock Status:</span>
+                                                            {product.stockStatus === 'in-stock' && (
+                                                              <Badge bg="success">In Stock</Badge>
+                                                            )}
+                                                            {product.stockStatus === 'low-stock' && (
+                                                              <Badge bg="warning">Low Stock</Badge>
+                                                            )}
+                                                            {product.stockStatus === 'out-of-stock' && (
+                                                              <Badge bg="danger">Out of Stock</Badge>
+                                                            )}
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                      <div>
+                                                        {product && product.inProduction > 0 && (
+                                                          <Badge bg="info" className="ms-2">
+                                                            {product.inProduction} items in production
+                                                          </Badge>
+                                                        )}
+                                                      </div>
                                                     </div>
-                                                  )}
-                                                </div>
+                                                    {product && product.selling_price && (
+                                                      <div className="mt-2">
+                                                        <small>Selling Price: <strong>Rs. {product.selling_price.toFixed(2)}</strong></small>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                )}
                                               </Col>
                                             )}
 
@@ -1151,7 +1330,7 @@ const AddOrderForm = () => {
                       </div>
                     </Form>
 
-                    {/* Stock Warning Confirmation Modal */}
+                    {/* Stock Warning/Info Confirmation Modal */}
                     <Modal
                       show={showConfirmModal}
                       onHide={() => setShowConfirmModal(false)}
@@ -1159,30 +1338,58 @@ const AddOrderForm = () => {
                       keyboard={false}
                       centered
                     >
-                      <Modal.Header className="bg-warning">
+                      <Modal.Header className={isInfoModal ? "bg-info" : "bg-warning"}>
                         <Modal.Title>
-                          <FaExclamationTriangle className="me-2" />
-                          Stock Warning
+                          {isInfoModal ? (
+                            <>
+                              <FaInfoCircle className="me-2" />
+                              Production Information
+                            </>
+                          ) : (
+                            <>
+                              <FaExclamationTriangle className="me-2" />
+                              Stock Warning
+                            </>
+                          )}
                         </Modal.Title>
                       </Modal.Header>
                       <Modal.Body>
-                        <p>The following items have insufficient stock:</p>
+                        {isInfoModal ? (
+                          <p>The following items will use products from production:</p>
+                        ) : (
+                          <p>The following items have insufficient stock:</p>
+                        )}
                         <ul className="list-group mb-3">
                           {stockWarnings.map((warning, index) => (
-                            <li key={index} className="list-group-item list-group-item-warning">
+                            <li
+                              key={index}
+                              className={`list-group-item ${isInfoModal ?
+                                "list-group-item-info" :
+                                "list-group-item-warning"}`}
+                            >
                               <strong>{warning.productName}</strong>: {warning.message}
                             </li>
                           ))}
                         </ul>
-                        <p>Do you want to proceed with creating this order anyway?</p>
+                        {isInfoModal ? (
+                          <p>This order will be fulfilled when production is complete. Do you want to proceed?</p>
+                        ) : (
+                          <p>Do you want to proceed with creating this order anyway?</p>
+                        )}
                       </Modal.Body>
                       <Modal.Footer>
                         <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
                           Cancel
                         </Button>
-                        <Button variant="warning" onClick={handleConfirmDespiteWarnings}>
-                          Create Order Anyway
-                        </Button>
+                        {isInfoModal ? (
+                          <Button variant="primary" onClick={handleConfirmDespiteWarnings}>
+                            Create Order
+                          </Button>
+                        ) : (
+                          <Button variant="warning" onClick={handleConfirmDespiteWarnings}>
+                            Create Order Anyway
+                          </Button>
+                        )}
                       </Modal.Footer>
                     </Modal>
                   </>
