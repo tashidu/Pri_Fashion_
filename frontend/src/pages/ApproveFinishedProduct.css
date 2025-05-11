@@ -125,6 +125,44 @@
   }
 }
 
+/* Section dividers */
+.section-divider {
+  position: relative;
+  text-align: left;
+  margin: 30px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.section-title {
+  display: inline-block;
+  background-color: white;
+  padding: 0 15px 10px 0;
+  margin-bottom: 0;
+  font-size: 1.5rem;
+  color: #495057;
+}
+
+/* Stock cards */
+.stock-card {
+  transition: all 0.3s ease;
+  height: 100%;
+}
+
+.stock-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* Color cards */
+.color-card {
+  transition: all 0.3s ease;
+}
+
+.color-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
 /* Button styling */
 .btn-approve {
   background: linear-gradient(45deg, #28a745, #20c997);
