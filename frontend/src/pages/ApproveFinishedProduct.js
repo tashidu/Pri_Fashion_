@@ -6,7 +6,8 @@ import { Card, Form, Button, Alert, Row, Col, Spinner, Image, Modal, ProgressBar
 import {
   FaCheck, FaUpload, FaImage, FaTags, FaInfoCircle, FaMoneyBillWave,
   FaArrowRight, FaPercentage, FaBoxOpen, FaTshirt, FaClipboardList,
-  FaTrash, FaUndo, FaExclamationTriangle
+  FaTrash, FaUndo, FaExclamationTriangle, FaChartBar, FaCut,
+  FaShoppingBag, FaBox, FaExclamation
 } from 'react-icons/fa';
 import { useDropzone } from 'react-dropzone';
 import RoleBasedNavBar from '../components/RoleBasedNavBar';
@@ -43,6 +44,17 @@ const ApproveFinishedProduct = () => {
     xs: 0, s: 0, m: 0, l: 0, xl: 0
   });
 
+  // Stock level state
+  const [stockLevels, setStockLevels] = useState({
+    totalCut: 0,
+    totalSewn: 0,
+    notSewnYet: 0,
+    totalPacked: 0,
+    notPackedYet: 0,
+    totalSold: 0,
+    soldValue: 0
+  });
+
   // UI state
   const [activeTab, setActiveTab] = useState('details');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -65,6 +77,93 @@ const ApproveFinishedProduct = () => {
   // State for retry mechanism
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
+
+  // Function to fetch stock levels for the product
+  const fetchStockLevels = useCallback(async () => {
+    try {
+      // We'll calculate stock levels based on the cutting record data and other API calls
+
+      // 1. Get total cut quantities from cutting record
+      const totalCut =
+        sizeQuantities.xs +
+        sizeQuantities.s +
+        sizeQuantities.m +
+        sizeQuantities.l +
+        sizeQuantities.xl;
+
+      // 2. Get sewing data - we'll use the finished product API if it exists
+      let totalSewn = 0;
+      let sewingData = null;
+
+      try {
+        // Try to get data from finished product if it exists
+        if (isApproved) {
+          const finishedProductRes = await axios.get(`http://localhost:8000/api/finished_product/report/?cutting_record=${id}`);
+          if (finishedProductRes.data && finishedProductRes.data.length > 0) {
+            const product = finishedProductRes.data[0];
+            totalSewn =
+              (product.total_sewn_xs || 0) +
+              (product.total_sewn_s || 0) +
+              (product.total_sewn_m || 0) +
+              (product.total_sewn_l || 0) +
+              (product.total_sewn_xl || 0);
+            sewingData = product;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching sewing data:", error);
+      }
+
+      // 3. Get packing data if the product is approved
+      let totalPacked = 0;
+      if (isApproved && sewingData) {
+        try {
+          const packingRes = await axios.get(`http://localhost:8000/api/packing/product/${sewingData.id}/sessions/`);
+          if (packingRes.data && packingRes.data.length > 0) {
+            // Sum up all packing sessions
+            totalPacked = packingRes.data.reduce((sum, session) =>
+              sum + (session.total_packed_quantity || 0), 0);
+          }
+        } catch (error) {
+          console.error("Error fetching packing data:", error);
+        }
+      }
+
+      // 4. Calculate derived values
+      const notSewnYet = totalCut - totalSewn;
+      const notPackedYet = totalSewn - totalPacked;
+
+      // 5. Get sales data (this is a simplified approach)
+      let totalSold = 0;
+      let soldValue = 0;
+
+      if (isApproved && sewingData) {
+        try {
+          // This is a simplified approach - in a real system, you'd query orders
+          // that include this product and sum up the quantities
+          // For now, we'll assume sold = packed for demonstration
+          totalSold = totalPacked;
+          soldValue = totalSold * (sewingData.selling_price || 0);
+        } catch (error) {
+          console.error("Error calculating sales data:", error);
+        }
+      }
+
+      // Update stock levels state
+      setStockLevels({
+        totalCut,
+        totalSewn,
+        notSewnYet,
+        totalPacked,
+        notPackedYet,
+        totalSold,
+        soldValue
+      });
+
+    } catch (error) {
+      console.error("Error fetching stock levels:", error);
+    }
+  }, [id, sizeQuantities, isApproved]);
 
   // Function to fetch product data with retry mechanism
   const fetchProductData = useCallback(async () => {
@@ -101,6 +200,9 @@ const ApproveFinishedProduct = () => {
 
         // Extract fabric details
         if (cuttingRes.data.details && cuttingRes.data.details.length > 0) {
+          // Log the fabric details to see the structure
+          console.log("Fabric details:", cuttingRes.data.details);
+
           setFabricDetails(cuttingRes.data.details);
 
           // Calculate size quantities
@@ -146,6 +248,13 @@ const ApproveFinishedProduct = () => {
   useEffect(() => {
     fetchProductData();
   }, [fetchProductData]);
+
+  // Fetch stock levels after product data is loaded
+  useEffect(() => {
+    if (!loading && sizeQuantities.xs !== undefined) {
+      fetchStockLevels();
+    }
+  }, [loading, sizeQuantities, fetchStockLevels]);
 
   // Handle image selection from file input
   const handleImageChange = (e) => {
@@ -368,26 +477,89 @@ const ApproveFinishedProduct = () => {
 
   // Render color swatch
   const renderColorSwatch = (color) => {
+    // Comprehensive color mapping
     const colorMap = {
-      'red': '#dc3545',
-      'blue': '#0d6efd',
-      'green': '#198754',
-      'yellow': '#ffc107',
-      'black': '#212529',
-      'white': '#f8f9fa',
-      'purple': '#6f42c1',
-      'orange': '#fd7e14',
-      'pink': '#d63384',
-      'brown': '#8B4513',
-      'gray': '#6c757d',
+      'red': '#FF0000',
+      'blue': '#0000FF',
+      'green': '#008000',
+      'yellow': '#FFFF00',
+      'black': '#000000',
+      'white': '#FFFFFF',
+      'purple': '#800080',
+      'pink': '#FFC0CB',
+      'orange': '#FFA500',
+      'brown': '#A52A2A',
+      'grey': '#808080',
+      'gray': '#808080',
+      'navy': '#000080',
+      'teal': '#008080',
+      'maroon': '#800000',
+      'olive': '#808000',
+      'lime': '#00FF00',
+      'aqua': '#00FFFF',
+      'silver': '#C0C0C0',
+      'gold': '#FFD700',
+      'beige': '#F5F5DC',
+      'cream': '#FFFDD0',
+      'tan': '#D2B48C',
+      'khaki': '#F0E68C',
+      'lavender': '#E6E6FA',
+      'magenta': '#FF00FF',
+      'cyan': '#00FFFF',
+      'turquoise': '#40E0D0',
+      'indigo': '#4B0082',
+      'violet': '#EE82EE',
+      'crimson': '#DC143C',
+      'coral': '#FF7F50',
+      'salmon': '#FA8072',
     };
 
-    const bgColor = colorMap[color.toLowerCase()] || color;
+    // If color is undefined or null, return a default gray
+    if (!color) return '#CCCCCC';
+
+    // Check if the color is already a hex code (starts with #)
+    if (color.startsWith('#')) {
+      return (
+        <OverlayTrigger
+          placement="top"
+          overlay={<Tooltip className="custom-tooltip">{color}</Tooltip>}
+        >
+          <div
+            className="color-swatch"
+            style={{ backgroundColor: color }}
+          />
+        </OverlayTrigger>
+      );
+    }
+
+    // Try to match the color name (case insensitive)
+    const lowerCaseName = color.toLowerCase();
+
+    // Check for exact match
+    let bgColor = colorMap[lowerCaseName];
+
+    // If no exact match, check for partial match
+    if (!bgColor) {
+      for (const [key, value] of Object.entries(colorMap)) {
+        if (lowerCaseName.includes(key)) {
+          bgColor = value;
+          break;
+        }
+      }
+    }
+
+    // If still no match, use the color as is or default to gray
+    bgColor = bgColor || color || '#CCCCCC';
+
+    // Get a display name for the tooltip
+    const displayName = color.startsWith('#') ?
+      (Object.entries(colorMap).find(([_, value]) => value.toLowerCase() === color.toLowerCase())?.[0] || color) :
+      color;
 
     return (
       <OverlayTrigger
         placement="top"
-        overlay={<Tooltip className="custom-tooltip">{color}</Tooltip>}
+        overlay={<Tooltip className="custom-tooltip">{displayName}</Tooltip>}
       >
         <div
           className="color-swatch"
@@ -415,6 +587,117 @@ const ApproveFinishedProduct = () => {
         />
       </div>
     ));
+  };
+
+  // Render stock level information
+  const StockLevelInfo = () => {
+    return (
+      <div className="stock-level-info p-3 bg-white rounded mb-4">
+        <h5 className="mb-3">
+          <FaChartBar className="me-2" />
+          Real-Time Stock Levels
+        </h5>
+
+        <Row>
+          <Col md={6}>
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                  <FaCut className="me-2 text-primary" />
+                  <strong>Total Cut:</strong>
+                </div>
+                <Badge bg="primary" className="fs-6">{stockLevels.totalCut} pcs</Badge>
+              </div>
+              <ProgressBar
+                now={100}
+                variant="primary"
+                className="mb-2"
+              />
+            </div>
+
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                  <FaTshirt className="me-2 text-success" />
+                  <strong>Total Sewn:</strong>
+                </div>
+                <Badge bg="success" className="fs-6">{stockLevels.totalSewn} pcs</Badge>
+              </div>
+              <ProgressBar
+                now={stockLevels.totalCut ? (stockLevels.totalSewn / stockLevels.totalCut) * 100 : 0}
+                variant="success"
+                className="mb-2"
+              />
+            </div>
+
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                  <FaExclamation className="me-2 text-warning" />
+                  <strong>Not Sewn Yet:</strong>
+                </div>
+                <Badge bg="warning" className="fs-6">{stockLevels.notSewnYet} pcs</Badge>
+              </div>
+              <ProgressBar
+                now={stockLevels.totalCut ? (stockLevels.notSewnYet / stockLevels.totalCut) * 100 : 0}
+                variant="warning"
+                className="mb-2"
+              />
+            </div>
+          </Col>
+
+          <Col md={6}>
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                  <FaBoxOpen className="me-2 text-info" />
+                  <strong>Total Packed:</strong>
+                </div>
+                <Badge bg="info" className="fs-6">{stockLevels.totalPacked} pcs</Badge>
+              </div>
+              <ProgressBar
+                now={stockLevels.totalSewn ? (stockLevels.totalPacked / stockLevels.totalSewn) * 100 : 0}
+                variant="info"
+                className="mb-2"
+              />
+            </div>
+
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                  <FaBox className="me-2 text-secondary" />
+                  <strong>Not Packed Yet:</strong>
+                </div>
+                <Badge bg="secondary" className="fs-6">{stockLevels.notPackedYet} pcs</Badge>
+              </div>
+              <ProgressBar
+                now={stockLevels.totalSewn ? (stockLevels.notPackedYet / stockLevels.totalSewn) * 100 : 0}
+                variant="secondary"
+                className="mb-2"
+              />
+            </div>
+
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                  <FaShoppingBag className="me-2 text-danger" />
+                  <strong>Total Sold:</strong>
+                </div>
+                <Badge bg="danger" className="fs-6">
+                  {stockLevels.totalSold} pcs
+                  {stockLevels.soldValue > 0 && ` (LKR ${stockLevels.soldValue.toFixed(2)})`}
+                </Badge>
+              </div>
+              <ProgressBar
+                now={stockLevels.totalPacked ? (stockLevels.totalSold / stockLevels.totalPacked) * 100 : 0}
+                variant="danger"
+                className="mb-2"
+              />
+            </div>
+          </Col>
+        </Row>
+      </div>
+    );
   };
 
   // Confirmation Modal
@@ -603,8 +886,8 @@ const ApproveFinishedProduct = () => {
                               {fabricDetails.length > 0 ? (
                                 fabricDetails.map((detail, index) => (
                                   <div key={index} className="mb-2">
-                                    {renderColorSwatch(detail.color || 'gray')}
-                                    <span className="ms-2">{detail.color}</span>
+                                    {renderColorSwatch(detail.fabric_variant_data?.color || detail.color || 'gray')}
+                                    <span className="ms-2">{detail.fabric_variant_data?.color_name || detail.fabric_variant_data?.color || detail.color || 'Unknown'}</span>
                                   </div>
                                 ))
                               ) : (
@@ -618,6 +901,12 @@ const ApproveFinishedProduct = () => {
                             {renderSizeQuantityBars()}
                           </Col>
                         </Row>
+                      </Tab>
+
+                      <Tab eventKey="stock" title={<span><FaChartBar className="me-2" />Stock Levels</span>}>
+                        <div className="mt-3">
+                          <StockLevelInfo />
+                        </div>
                       </Tab>
                     </Tabs>
                   </div>
@@ -637,8 +926,8 @@ const ApproveFinishedProduct = () => {
                               {fabricDetails.length > 0 ? (
                                 fabricDetails.map((detail, index) => (
                                   <div key={index} className="mb-2">
-                                    {renderColorSwatch(detail.color || 'gray')}
-                                    <span className="ms-2">{detail.color}</span>
+                                    {renderColorSwatch(detail.fabric_variant_data?.color || detail.color || 'gray')}
+                                    <span className="ms-2">{detail.fabric_variant_data?.color_name || detail.fabric_variant_data?.color || detail.color || 'Unknown'}</span>
                                   </div>
                                 ))
                               ) : (
@@ -856,6 +1145,12 @@ const ApproveFinishedProduct = () => {
                             </Button>
                           </div>
                         </Form>
+                      </Tab>
+
+                      <Tab eventKey="stock" title={<span><FaChartBar className="me-2" />Stock Levels</span>}>
+                        <div className="mt-3">
+                          <StockLevelInfo />
+                        </div>
                       </Tab>
                     </Tabs>
                   </div>

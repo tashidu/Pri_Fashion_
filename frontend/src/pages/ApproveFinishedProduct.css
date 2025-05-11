@@ -176,6 +176,27 @@
   border-top: 1px solid #e9ecef;
 }
 
+/* Stock level info styling */
+.stock-level-info {
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.stock-level-info:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stock-level-info .progress {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.stock-level-info .badge {
+  font-weight: 500;
+  padding: 6px 10px;
+}
+
 /* Multiple image display styling */
 .product-images-container {
   margin-bottom: 20px;

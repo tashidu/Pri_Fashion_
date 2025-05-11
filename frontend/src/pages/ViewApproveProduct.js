@@ -13,6 +13,7 @@ import {
 } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { useDropzone } from "react-dropzone";
+import './ViewApproveProduct.css';
 
 const ViewApproveProduct = () => {
   // State for products and UI
@@ -102,11 +103,10 @@ const ViewApproveProduct = () => {
     setFilteredProducts(sortedProducts);
   };
 
-  // Open product detail modal
+  // Navigate to product detail page
   const handleViewDetails = (product) => {
-    setSelectedProduct(product);
-    setActiveImageIndex(0); // Reset to first image
-    setShowDetailModal(true);
+    // Navigate to the ApproveFinishedProduct page with the product ID
+    window.location.href = `/approve-finished-product/${product.id}`;
   };
 
   // Open image upload modal
@@ -314,7 +314,7 @@ const ViewApproveProduct = () => {
   return (
     <>
       <RoleBasedNavBar />
-      <div 
+      <div
         className="main-content"
         style={{
           marginLeft: isSidebarOpen ? "240px" : "70px",
@@ -444,7 +444,12 @@ const ViewApproveProduct = () => {
                           (product.total_sewn_xl || 0);
 
                         return (
-                          <tr key={product.id}>
+                          <tr
+                            key={product.id}
+                            onClick={() => handleViewDetails(product)}
+                            style={{ cursor: 'pointer' }}
+                            className="product-row"
+                          >
                             <td className="text-center">
                               {product.product_images && product.product_images.length > 0 ? (
                                 <div className="position-relative">
@@ -493,7 +498,7 @@ const ViewApproveProduct = () => {
                                     borderRadius: '4px',
                                     cursor: 'pointer'
                                   }}
-                                  onClick={() => handleAddImage(product)}
+                                  onClick={() => handleViewDetails(product)}
                                 >
                                   <FaImage size={20} className="text-secondary" />
                                 </div>
