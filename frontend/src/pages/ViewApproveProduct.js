@@ -1,15 +1,16 @@
 // src/pages/ViewApproveProduct.js
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import {
   Card, Container, Row, Col, Table, Button, Form,
   Modal, Badge, Spinner, Alert, Image, InputGroup,
-  Tabs, Tab
+  Tabs, Tab, ProgressBar
 } from "react-bootstrap";
 import {
   FaSearch, FaSort, FaImage, FaUpload, FaTrash, FaUndo,
   FaInfoCircle, FaMoneyBillWave, FaTshirt, FaCalendarAlt,
-  FaCheck, FaExclamationTriangle, FaEye, FaArrowLeft, FaArrowRight
+  FaCheck, FaExclamationTriangle, FaEye, FaArrowLeft, FaArrowRight,
+  FaShoppingCart, FaBoxOpen, FaWarehouse
 } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { useDropzone } from "react-dropzone";
@@ -37,6 +38,21 @@ const ViewApproveProduct = () => {
   const [uploadError, setUploadError] = useState("");
   const [uploadSuccess, setUploadSuccess] = useState("");
 
+  // State for product order history
+  const [productSales, setProductSales] = useState([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [salesError, setSalesError] = useState("");
+
+  // State for product packing sessions
+  const [packingSessions, setPackingSessions] = useState([]);
+  const [packingSessionsLoading, setPackingSessionsLoading] = useState(false);
+  const [packingSessionsError, setPackingSessionsError] = useState("");
+
+  // State for product packing inventory
+  const [packingInventory, setPackingInventory] = useState(null);
+  const [packingInventoryLoading, setPackingInventoryLoading] = useState(false);
+  const [packingInventoryError, setPackingInventoryError] = useState("");
+
   const fileInputRef = useRef(null);
 
   // Filter products based on search term
@@ -59,8 +75,22 @@ const ViewApproveProduct = () => {
     setError("");
 
     try {
-      const response = await axios.get("http://localhost:8000/api/finished_product/report/");
-      setProducts(response.data);
+      // Fetch products
+      const productsResponse = await axios.get("http://localhost:8000/api/finished_product/report/");
+
+      // Fetch inventory data
+      const inventoryResponse = await axios.get("http://localhost:8000/api/packing/inventory/");
+
+      // Map inventory data to products
+      const productsWithInventory = productsResponse.data.map(product => {
+        const inventoryItem = inventoryResponse.data.find(item => item.product_id === product.id);
+        return {
+          ...product,
+          inventory_status: inventoryItem || null
+        };
+      });
+
+      setProducts(productsWithInventory);
     } catch (err) {
       console.error("Error fetching approved product report:", err);
       setError("Failed to load approved product report. Please try again.");
@@ -107,6 +137,63 @@ const ViewApproveProduct = () => {
     setSelectedProduct(product);
     setActiveImageIndex(0); // Reset to first image
     setShowDetailModal(true);
+
+    // Fetch additional data for the product
+    fetchProductSales(product.id);
+    fetchProductPackingSessions(product.id);
+    fetchProductPackingInventory(product.id);
+  };
+
+  // Fetch product sales data
+  const fetchProductSales = async (productId) => {
+    setSalesLoading(true);
+    setSalesError("");
+
+    try {
+      // Using the correct endpoint from the order app
+      const response = await axios.get(`http://localhost:8000/api/orders/product/${productId}/sales/`);
+      setProductSales(response.data);
+    } catch (err) {
+      console.error("Error fetching product sales data:", err);
+      setSalesError("Failed to load sales data. Please try again.");
+    } finally {
+      setSalesLoading(false);
+    }
+  };
+
+  // Fetch product packing sessions
+  const fetchProductPackingSessions = async (productId) => {
+    setPackingSessionsLoading(true);
+    setPackingSessionsError("");
+
+    try {
+      // Using the correct endpoint from the packing app
+      const response = await axios.get(`http://localhost:8000/api/packing/product/${productId}/sessions/`);
+      setPackingSessions(response.data);
+    } catch (err) {
+      console.error("Error fetching product packing sessions:", err);
+      setPackingSessionsError("Failed to load packing sessions. Please try again.");
+    } finally {
+      setPackingSessionsLoading(false);
+    }
+  };
+
+  // Fetch product packing inventory
+  const fetchProductPackingInventory = async (productId) => {
+    setPackingInventoryLoading(true);
+    setPackingInventoryError("");
+
+    try {
+      // Get all inventory items and filter for the current product
+      const response = await axios.get(`http://localhost:8000/api/packing/inventory/`);
+      const inventoryItem = response.data.find(item => item.product_id === productId);
+      setPackingInventory(inventoryItem || null);
+    } catch (err) {
+      console.error("Error fetching product packing inventory:", err);
+      setPackingInventoryError("Failed to load packing inventory. Please try again.");
+    } finally {
+      setPackingInventoryLoading(false);
+    }
   };
 
   // Open image upload modal
@@ -301,6 +388,326 @@ const ViewApproveProduct = () => {
     return `LKR ${parseFloat(value).toFixed(2)}`;
   };
 
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  // Render order status badge
+  const renderOrderStatusBadge = (status) => {
+    let variant = "secondary";
+
+    switch (status) {
+      case "draft":
+        variant = "secondary";
+        break;
+      case "submitted":
+        variant = "info";
+        break;
+      case "approved":
+        variant = "primary";
+        break;
+      case "invoiced":
+        variant = "warning";
+        break;
+      case "delivered":
+        variant = "success";
+        break;
+      case "paid":
+        variant = "success";
+        break;
+      case "partially_paid":
+        variant = "warning";
+        break;
+      case "payment_due":
+        variant = "danger";
+        break;
+      default:
+        variant = "secondary";
+    }
+
+    return (
+      <Badge bg={variant}>
+        {status.replace("_", " ").toUpperCase()}
+      </Badge>
+    );
+  };
+
+  // Render product sales history
+  const renderSalesHistory = () => {
+    if (salesLoading) {
+      return (
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status" className="me-2">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+          <span>Loading sales data...</span>
+        </div>
+      );
+    }
+
+    if (salesError) {
+      return (
+        <Alert variant="danger">
+          <FaExclamationTriangle className="me-2" />
+          {salesError}
+        </Alert>
+      );
+    }
+
+    if (!productSales || productSales.length === 0) {
+      return (
+        <div className="text-center py-4 bg-light rounded">
+          <FaShoppingCart size={40} className="mb-3 text-secondary" />
+          <p>No sales records found for this product</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="table-responsive">
+        <Table hover bordered>
+          <thead>
+            <tr className="bg-light">
+              <th>Order ID</th>
+              <th>Shop</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Quantity</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {productSales.map((sale, index) => (
+              <tr key={index}>
+                <td>#{sale.order_id}</td>
+                <td>{sale.shop_name}</td>
+                <td>{formatDate(sale.order_date)}</td>
+                <td>{renderOrderStatusBadge(sale.order_status)}</td>
+                <td>
+                  {sale.total_units} units
+                  <div className="small text-muted">
+                    {sale.quantity_6_packs > 0 && `${sale.quantity_6_packs} × 6-packs, `}
+                    {sale.quantity_12_packs > 0 && `${sale.quantity_12_packs} × 12-packs, `}
+                    {sale.quantity_extra_items > 0 && `${sale.quantity_extra_items} extra items`}
+                  </div>
+                </td>
+                <td>{formatCurrency(sale.subtotal)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="bg-light">
+            <tr>
+              <td colSpan="4" className="text-end"><strong>Total Sales:</strong></td>
+              <td>
+                <strong>
+                  {productSales.reduce((sum, sale) => sum + sale.total_units, 0)} units
+                </strong>
+              </td>
+              <td>
+                <strong>
+                  {formatCurrency(productSales.reduce((sum, sale) => sum + sale.subtotal, 0))}
+                </strong>
+              </td>
+            </tr>
+          </tfoot>
+        </Table>
+      </div>
+    );
+  };
+
+  // Render packing sessions
+  const renderPackingSessions = () => {
+    if (packingSessionsLoading) {
+      return (
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status" className="me-2">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+          <span>Loading packing sessions...</span>
+        </div>
+      );
+    }
+
+    if (packingSessionsError) {
+      return (
+        <Alert variant="danger">
+          <FaExclamationTriangle className="me-2" />
+          {packingSessionsError}
+        </Alert>
+      );
+    }
+
+    if (!packingSessions || packingSessions.length === 0) {
+      return (
+        <div className="text-center py-4 bg-light rounded">
+          <FaBoxOpen size={40} className="mb-3 text-secondary" />
+          <p>No packing sessions found for this product</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="table-responsive">
+        <Table hover bordered>
+          <thead>
+            <tr className="bg-light">
+              <th>Date</th>
+              <th>6-Packs</th>
+              <th>12-Packs</th>
+              <th>Extra Items</th>
+              <th>Total Packed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {packingSessions.map((session) => (
+              <tr key={session.id}>
+                <td>{formatDate(session.date)}</td>
+                <td>{session.number_of_6_packs}</td>
+                <td>{session.number_of_12_packs}</td>
+                <td>{session.extra_items}</td>
+                <td>{session.total_packed_quantity}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="bg-light">
+            <tr>
+              <td className="text-end"><strong>Total:</strong></td>
+              <td>
+                <strong>
+                  {packingSessions.reduce((sum, session) => sum + session.number_of_6_packs, 0)}
+                </strong>
+              </td>
+              <td>
+                <strong>
+                  {packingSessions.reduce((sum, session) => sum + session.number_of_12_packs, 0)}
+                </strong>
+              </td>
+              <td>
+                <strong>
+                  {packingSessions.reduce((sum, session) => sum + session.extra_items, 0)}
+                </strong>
+              </td>
+              <td>
+                <strong>
+                  {packingSessions.reduce((sum, session) => sum + session.total_packed_quantity, 0)}
+                </strong>
+              </td>
+            </tr>
+          </tfoot>
+        </Table>
+      </div>
+    );
+  };
+
+  // Render packing inventory
+  const renderPackingInventory = () => {
+    if (packingInventoryLoading) {
+      return (
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status" className="me-2">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+          <span>Loading inventory data...</span>
+        </div>
+      );
+    }
+
+    if (packingInventoryError) {
+      return (
+        <Alert variant="danger">
+          <FaExclamationTriangle className="me-2" />
+          {packingInventoryError}
+        </Alert>
+      );
+    }
+
+    if (!packingInventory || packingInventory.total_quantity === 0) {
+      return (
+        <div className="text-center py-4 bg-light rounded">
+          <FaWarehouse size={40} className="mb-3 text-secondary" />
+          <p>No inventory data found for this product</p>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <Row>
+          <Col md={6}>
+            <Card className="mb-3">
+              <Card.Header className="bg-light">
+                <h6 className="mb-0">Current Inventory</h6>
+              </Card.Header>
+              <Card.Body>
+                <Table bordered hover>
+                  <tbody>
+                    <tr>
+                      <td><strong>6-Packs:</strong></td>
+                      <td>{packingInventory.number_of_6_packs} packs ({packingInventory.number_of_6_packs * 6} units)</td>
+                    </tr>
+                    <tr>
+                      <td><strong>12-Packs:</strong></td>
+                      <td>{packingInventory.number_of_12_packs} packs ({packingInventory.number_of_12_packs * 12} units)</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Extra Items:</strong></td>
+                      <td>{packingInventory.extra_items} units</td>
+                    </tr>
+                    <tr className="bg-light">
+                      <td><strong>Total Quantity:</strong></td>
+                      <td><strong>{packingInventory.total_quantity} units</strong></td>
+                    </tr>
+                  </tbody>
+                </Table>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={6}>
+            <Card>
+              <Card.Header className="bg-light">
+                <h6 className="mb-0">Inventory Distribution</h6>
+              </Card.Header>
+              <Card.Body>
+                <div className="mb-3">
+                  <div className="d-flex justify-content-between mb-1">
+                    <span>6-Packs ({packingInventory.number_of_6_packs * 6} units)</span>
+                    <span>{Math.round((packingInventory.number_of_6_packs * 6 / packingInventory.total_quantity) * 100)}%</span>
+                  </div>
+                  <ProgressBar
+                    now={(packingInventory.number_of_6_packs * 6 / packingInventory.total_quantity) * 100}
+                    variant="info"
+                  />
+                </div>
+                <div className="mb-3">
+                  <div className="d-flex justify-content-between mb-1">
+                    <span>12-Packs ({packingInventory.number_of_12_packs * 12} units)</span>
+                    <span>{Math.round((packingInventory.number_of_12_packs * 12 / packingInventory.total_quantity) * 100)}%</span>
+                  </div>
+                  <ProgressBar
+                    now={(packingInventory.number_of_12_packs * 12 / packingInventory.total_quantity) * 100}
+                    variant="primary"
+                  />
+                </div>
+                <div>
+                  <div className="d-flex justify-content-between mb-1">
+                    <span>Extra Items ({packingInventory.extra_items} units)</span>
+                    <span>{Math.round((packingInventory.extra_items / packingInventory.total_quantity) * 100)}%</span>
+                  </div>
+                  <ProgressBar
+                    now={(packingInventory.extra_items / packingInventory.total_quantity) * 100}
+                    variant="success"
+                  />
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </div>
+    );
+  };
+
   // Add this useEffect for handling responsive sidebar
   useEffect(() => {
     const handleResize = () => {
@@ -350,6 +757,67 @@ const ViewApproveProduct = () => {
               </Row>
             </Card.Body>
           </Card>
+
+          {/* Summary Statistics */}
+          {!loading && products.length > 0 && (
+            <Row className="mb-4">
+              <Col md={3}>
+                <Card className="shadow-sm h-100">
+                  <Card.Body className="text-center">
+                    <h6 className="text-muted mb-2">Total Products</h6>
+                    <h3>{products.length}</h3>
+                    <div className="small text-muted">Approved Products</div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={3}>
+                <Card className="shadow-sm h-100">
+                  <Card.Body className="text-center">
+                    <h6 className="text-muted mb-2">Total Inventory</h6>
+                    <h3>
+                      {products.reduce((sum, product) => {
+                        return sum + (product.inventory_status ? product.inventory_status.total_quantity : 0);
+                      }, 0)}
+                    </h3>
+                    <div className="small text-muted">Units in Stock</div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={3}>
+                <Card className="shadow-sm h-100">
+                  <Card.Body className="text-center">
+                    <h6 className="text-muted mb-2">Products with Images</h6>
+                    <h3>
+                      {products.filter(product =>
+                        (product.product_images && product.product_images.length > 0) || product.product_image
+                      ).length}
+                    </h3>
+                    <div className="small text-muted">
+                      {Math.round((products.filter(product =>
+                        (product.product_images && product.product_images.length > 0) || product.product_image
+                      ).length / products.length) * 100)}% of Products
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={3}>
+                <Card className="shadow-sm h-100">
+                  <Card.Body className="text-center">
+                    <h6 className="text-muted mb-2">Average Profit Margin</h6>
+                    <h3>
+                      {Math.round(products.reduce((sum, product) => {
+                        return sum + parseFloat(calculateProfitMargin(
+                          product.manufacture_price,
+                          product.selling_price
+                        ));
+                      }, 0) / products.length)}%
+                    </h3>
+                    <div className="small text-muted">Across All Products</div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+          )}
 
           {/* Error Alert */}
           {error && (
@@ -411,6 +879,7 @@ const ViewApproveProduct = () => {
                         Selling Price <FaSort className="ms-1" />
                       </th>
                       <th>Size Distribution</th>
+                      <th>Inventory Status</th>
                       <th onClick={() => requestSort('approval_date')} style={{ cursor: 'pointer' }}>
                         Approval Date <FaSort className="ms-1" />
                       </th>
@@ -420,7 +889,7 @@ const ViewApproveProduct = () => {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="7" className="text-center py-5">
+                        <td colSpan="8" className="text-center py-5">
                           <Spinner animation="border" role="status" className="me-2">
                             <span className="visually-hidden">Loading...</span>
                           </Spinner>
@@ -429,7 +898,7 @@ const ViewApproveProduct = () => {
                       </tr>
                     ) : filteredProducts.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="text-center py-5">
+                        <td colSpan="8" className="text-center py-5">
                           <FaExclamationTriangle className="text-warning mb-3" size={30} />
                           <p className="mb-0">No products found matching your search criteria</p>
                         </td>
@@ -513,6 +982,24 @@ const ViewApproveProduct = () => {
                               <div className="mt-1">
                                 <small>Total: {total}</small>
                               </div>
+                            </td>
+                            <td>
+                              {product.inventory_status ? (
+                                <div>
+                                  <Badge bg={product.inventory_status.total_quantity > 0 ? "success" : "danger"}>
+                                    {product.inventory_status.total_quantity} units in stock
+                                  </Badge>
+                                  {product.inventory_status.total_quantity > 0 && (
+                                    <div className="mt-1 small text-muted">
+                                      <div>{product.inventory_status.number_of_6_packs} × 6-packs</div>
+                                      <div>{product.inventory_status.number_of_12_packs} × 12-packs</div>
+                                      <div>{product.inventory_status.extra_items} extra items</div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <Badge bg="warning">No inventory data</Badge>
+                              )}
                             </td>
                             <td>{new Date(product.approval_date).toLocaleDateString()}</td>
                             <td>
@@ -607,6 +1094,24 @@ const ViewApproveProduct = () => {
                       {renderSizeDistribution(selectedProduct)}
                     </Col>
                   </Row>
+                </Tab>
+                <Tab eventKey="orders" title={<span><FaShoppingCart className="me-2" />Order History</span>}>
+                  <div className="p-2">
+                    <h5 className="mb-3">Order History</h5>
+                    {renderSalesHistory()}
+                  </div>
+                </Tab>
+                <Tab eventKey="packing" title={<span><FaBoxOpen className="me-2" />Packing Sessions</span>}>
+                  <div className="p-2">
+                    <h5 className="mb-3">Packing Sessions History</h5>
+                    {renderPackingSessions()}
+                  </div>
+                </Tab>
+                <Tab eventKey="inventory" title={<span><FaWarehouse className="me-2" />Inventory</span>}>
+                  <div className="p-2">
+                    <h5 className="mb-3">Current Packing Inventory</h5>
+                    {renderPackingInventory()}
+                  </div>
                 </Tab>
                 <Tab eventKey="image" title={<span><FaImage className="me-2" />Product Images</span>}>
                   <div className="text-center p-4">
