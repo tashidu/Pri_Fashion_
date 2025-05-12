@@ -390,3 +390,68 @@ class ProductSalesView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class OrderSummaryView(APIView):
+    """
+    Returns summary data for orders, including counts by status and total units sold.
+    """
+    permission_classes = [IsAuthenticated]  # Any authenticated user can view order summary
+
+    def get(self, request):
+        try:
+            # Get all orders
+            orders = Order.objects.all()
+
+            # Count orders by status
+            draft_count = orders.filter(status='draft').count()
+            submitted_count = orders.filter(status='submitted').count()
+            approved_count = orders.filter(status='approved').count()
+            invoiced_count = orders.filter(status='invoiced').count()
+            delivered_count = orders.filter(status='delivered').count()
+            paid_count = orders.filter(status='paid').count()
+            partially_paid_count = orders.filter(status='partially_paid').count()
+            payment_due_count = orders.filter(status='payment_due').count()
+
+            # Calculate total units sold (delivered)
+            delivered_orders = orders.filter(status__in=['delivered', 'paid', 'partially_paid', 'payment_due'])
+
+            # Get all order items for delivered orders
+            order_items = OrderItem.objects.filter(order__in=delivered_orders)
+
+            # Calculate total units
+            total_sold = 0
+            for item in order_items:
+                total_sold += item.total_units
+
+            # Calculate total pending (approved + invoiced)
+            pending_orders = orders.filter(status__in=['approved', 'invoiced'])
+            pending_items = OrderItem.objects.filter(order__in=pending_orders)
+            total_pending = 0
+            for item in pending_items:
+                total_pending += item.total_units
+
+            # Format the response
+            summary_data = {
+                'order_counts': {
+                    'draft': draft_count,
+                    'submitted': submitted_count,
+                    'approved': approved_count,
+                    'invoiced': invoiced_count,
+                    'delivered': delivered_count,
+                    'paid': paid_count,
+                    'partially_paid': partially_paid_count,
+                    'payment_due': payment_due_count,
+                    'total': orders.count()
+                },
+                'total_sold': total_sold,
+                'total_pending': total_pending,
+                'delivered': delivered_count,
+                'pending': approved_count + invoiced_count,
+                'cancelled': 0  # Add this field if you have a cancelled status
+            }
+
+            return Response(summary_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

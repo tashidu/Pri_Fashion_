@@ -95,3 +95,33 @@ class ProductPackingSessionsView(generics.ListAPIView):
         return PackingSession.objects.filter(
             finished_product_id=product_id
         ).order_by('-date')
+
+
+class ProductPackingInventoryView(generics.RetrieveAPIView):
+    """
+    Returns the packing inventory for a specific product.
+    """
+    serializer_class = PackingInventorySerializer
+
+    def get_object(self):
+        """
+        Get the packing inventory for a specific product.
+        """
+        product_id = self.kwargs.get('product_id')
+        if not product_id:
+            return None
+
+        try:
+            # Try to get the inventory for this product
+            inventory = PackingInventory.objects.get(finished_product_id=product_id)
+            return inventory
+        except PackingInventory.DoesNotExist:
+            # If no inventory exists, create a default response
+            # We'll handle this in the serializer
+            return {
+                'finished_product_id': product_id,
+                'number_of_6_packs': 0,
+                'number_of_12_packs': 0,
+                'extra_items': 0,
+                'total_quantity': 0
+            }

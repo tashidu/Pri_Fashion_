@@ -12,7 +12,8 @@ from .views import (
     MarkOrderDeliveredView,
     RecordPaymentView,
     OrderPaymentsListView,
-    ProductSalesView
+    ProductSalesView,
+    OrderSummaryView
 )
 
 urlpatterns = [
@@ -30,6 +31,7 @@ urlpatterns = [
     path('orders/<int:pk>/record-payment/', RecordPaymentView.as_view(), name='record-payment'),
     path('orders/<int:pk>/payments/', OrderPaymentsListView.as_view(), name='order-payments-list'),
     path('product/<int:product_id>/sales/', ProductSalesView.as_view(), name='product-sales'),
+    path('summary/', OrderSummaryView.as_view(), name='order-summary'),
 
     # Duplicate paths to match frontend expectations
     path('orders/orders/create/', OrderListCreateView.as_view(), name='order-list-create-alt'),

@@ -239,3 +239,59 @@ class FinishedProductCuttingRecordView(APIView):
             return Response({"error": "Finished product not found."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class FinishedProductDetailView(APIView):
+    """
+    API endpoint to get details for a specific finished product.
+    """
+    def get(self, request, pk, format=None):
+        try:
+            # Get the finished product
+            finished_product = get_object_or_404(FinishedProduct, pk=pk)
+
+            # Prepare the response data
+            response_data = {
+                "id": finished_product.id,
+                "cutting_record_id": finished_product.cutting_record.id,
+                "product_name": finished_product.cutting_record.product_name or f"Product #{finished_product.id}",
+                "manufacture_price": finished_product.manufacture_price,
+                "selling_price": finished_product.selling_price,
+                "approval_date": finished_product.approval_date,
+                "is_provisional": finished_product.is_provisional,
+                "available_quantity": finished_product.available_quantity,
+                "notes": finished_product.notes,
+                "total_sewn_xs": finished_product.total_sewn_xs,
+                "total_sewn_s": finished_product.total_sewn_s,
+                "total_sewn_m": finished_product.total_sewn_m,
+                "total_sewn_l": finished_product.total_sewn_l,
+                "total_sewn_xl": finished_product.total_sewn_xl,
+                "total_sewn": (
+                    finished_product.total_sewn_xs +
+                    finished_product.total_sewn_s +
+                    finished_product.total_sewn_m +
+                    finished_product.total_sewn_l +
+                    finished_product.total_sewn_xl
+                )
+            }
+
+            # Add product image URLs
+            if finished_product.product_image:
+                response_data["product_image"] = request.build_absolute_uri(finished_product.product_image.url)
+
+            # Add multiple product images if available
+            product_images = []
+            for image in finished_product.images.all():
+                if image.image:
+                    product_images.append(request.build_absolute_uri(image.image.url))
+                elif image.external_url:
+                    product_images.append(image.external_url)
+
+            response_data["product_images"] = product_images
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except FinishedProduct.DoesNotExist:
+            return Response({"error": "Finished product not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
