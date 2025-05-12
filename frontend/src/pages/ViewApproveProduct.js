@@ -53,6 +53,11 @@ const ViewApproveProduct = () => {
   const [packingInventoryLoading, setPackingInventoryLoading] = useState(false);
   const [packingInventoryError, setPackingInventoryError] = useState("");
 
+  // State for cutting and sewing data
+  const [cuttingData, setCuttingData] = useState(null);
+  const [cuttingDataLoading, setCuttingDataLoading] = useState(false);
+  const [cuttingDataError, setCuttingDataError] = useState("");
+
   const fileInputRef = useRef(null);
 
   // Filter products based on search term
@@ -69,6 +74,22 @@ const ViewApproveProduct = () => {
     setFilteredProducts(filtered);
   }, [products, searchTerm]);
 
+  // Fetch cutting record ID for a product
+  const fetchCuttingRecordId = async (productId) => {
+    try {
+      const response = await axios.get(`http://localhost:8000/api/finished_product/${productId}/cutting_record/`);
+      if (response.data && response.data.cutting_record_id) {
+        return response.data.cutting_record_id;
+      } else {
+        console.error("No cutting record ID in response:", response.data);
+        return null;
+      }
+    } catch (err) {
+      console.error("Error fetching cutting record ID:", err);
+      return null;
+    }
+  };
+
   // Fetch products from API
   const fetchProducts = async () => {
     setLoading(true);
@@ -82,13 +103,18 @@ const ViewApproveProduct = () => {
       const inventoryResponse = await axios.get("http://localhost:8000/api/packing/inventory/");
 
       // Map inventory data to products
-      const productsWithInventory = productsResponse.data.map(product => {
+      const productsWithInventory = await Promise.all(productsResponse.data.map(async (product) => {
         const inventoryItem = inventoryResponse.data.find(item => item.product_id === product.id);
+
+        // Since cutting_record_id is not directly available in the API response,
+        // we'll use a placeholder for now and fetch it when the user views the details
         return {
           ...product,
-          inventory_status: inventoryItem || null
+          inventory_status: inventoryItem || null,
+          // We'll fetch the actual cutting_record_id when the user views the details
+          cutting_record_id: null
         };
-      });
+      }));
 
       setProducts(productsWithInventory);
     } catch (err) {
@@ -133,7 +159,7 @@ const ViewApproveProduct = () => {
   };
 
   // Open product detail modal
-  const handleViewDetails = (product) => {
+  const handleViewDetails = async (product) => {
     setSelectedProduct(product);
     setActiveImageIndex(0); // Reset to first image
     setShowDetailModal(true);
@@ -142,6 +168,59 @@ const ViewApproveProduct = () => {
     fetchProductSales(product.id);
     fetchProductPackingSessions(product.id);
     fetchProductPackingInventory(product.id);
+
+    // Fetch the cutting record ID if not already available
+    try {
+      setCuttingDataLoading(true);
+
+      // Check if we already have the cutting record ID
+      if (product.cutting_record_id) {
+        // Fetch cutting data using the existing ID
+        fetchCuttingData(product.cutting_record_id);
+      } else {
+        // Try to fetch the cutting record ID from the API
+        const cuttingRecordId = await fetchCuttingRecordId(product.id);
+
+        if (cuttingRecordId) {
+          // Update the product with the cutting record ID
+          const updatedProduct = { ...product, cutting_record_id: cuttingRecordId };
+          setSelectedProduct(updatedProduct);
+
+          // Fetch cutting data
+          fetchCuttingData(cuttingRecordId);
+        } else {
+          console.log("No cutting record ID available for product:", product);
+          setCuttingDataError("No cutting record ID available for this product. This may be because the product was created without a cutting record.");
+          setCuttingDataLoading(false);
+        }
+      }
+    } catch (err) {
+      console.error("Error in handleViewDetails:", err);
+      setCuttingDataError("Failed to load cutting data. Please try again.");
+      setCuttingDataLoading(false);
+    }
+  };
+
+  // Fetch cutting data for a product
+  const fetchCuttingData = async (cuttingRecordId) => {
+    if (!cuttingRecordId) {
+      setCuttingDataError("No cutting record ID available");
+      return;
+    }
+
+    setCuttingDataLoading(true);
+    setCuttingDataError("");
+
+    try {
+      // Fetch cutting record details
+      const response = await axios.get(`http://localhost:8000/api/cutting/records/${cuttingRecordId}/`);
+      setCuttingData(response.data);
+    } catch (err) {
+      console.error("Error fetching cutting data:", err);
+      setCuttingDataError("Failed to load cutting data. Please try again.");
+    } finally {
+      setCuttingDataLoading(false);
+    }
   };
 
   // Fetch product sales data
@@ -152,10 +231,27 @@ const ViewApproveProduct = () => {
     try {
       // Using the correct endpoint from the order app
       const response = await axios.get(`http://localhost:8000/api/orders/product/${productId}/sales/`);
-      setProductSales(response.data);
+
+      // Make sure we're setting an array
+      if (Array.isArray(response.data)) {
+        setProductSales(response.data);
+      } else if (response.data && typeof response.data === 'object') {
+        // If it's an object but not an array, check if it has results property
+        if (Array.isArray(response.data.results)) {
+          setProductSales(response.data.results);
+        } else {
+          // If it's just a single object, wrap it in an array
+          setProductSales([response.data]);
+        }
+      } else {
+        // If it's neither an array nor an object, set an empty array
+        setProductSales([]);
+        setSalesError("Received unexpected data format from the server");
+      }
     } catch (err) {
       console.error("Error fetching product sales data:", err);
       setSalesError("Failed to load sales data. Please try again.");
+      setProductSales([]); // Set empty array on error
     } finally {
       setSalesLoading(false);
     }
@@ -169,10 +265,27 @@ const ViewApproveProduct = () => {
     try {
       // Using the correct endpoint from the packing app
       const response = await axios.get(`http://localhost:8000/api/packing/product/${productId}/sessions/`);
-      setPackingSessions(response.data);
+
+      // Make sure we're setting an array
+      if (Array.isArray(response.data)) {
+        setPackingSessions(response.data);
+      } else if (response.data && typeof response.data === 'object') {
+        // If it's an object but not an array, check if it has results property
+        if (Array.isArray(response.data.results)) {
+          setPackingSessions(response.data.results);
+        } else {
+          // If it's just a single object, wrap it in an array
+          setPackingSessions([response.data]);
+        }
+      } else {
+        // If it's neither an array nor an object, set an empty array
+        setPackingSessions([]);
+        setPackingSessionsError("Received unexpected data format from the server");
+      }
     } catch (err) {
       console.error("Error fetching product packing sessions:", err);
       setPackingSessionsError("Failed to load packing sessions. Please try again.");
+      setPackingSessions([]); // Set empty array on error
     } finally {
       setPackingSessionsLoading(false);
     }
@@ -456,7 +569,10 @@ const ViewApproveProduct = () => {
       );
     }
 
-    if (!productSales || productSales.length === 0) {
+    // Make sure productSales is an array
+    const salesData = Array.isArray(productSales) ? productSales : [];
+
+    if (!salesData || salesData.length === 0) {
       return (
         <div className="text-center py-4 bg-light rounded">
           <FaShoppingCart size={40} className="mb-3 text-secondary" />
@@ -479,21 +595,21 @@ const ViewApproveProduct = () => {
             </tr>
           </thead>
           <tbody>
-            {productSales.map((sale, index) => (
+            {salesData.map((sale, index) => (
               <tr key={index}>
-                <td>#{sale.order_id}</td>
-                <td>{sale.shop_name}</td>
+                <td>#{sale.order_id || 'N/A'}</td>
+                <td>{sale.shop_name || 'N/A'}</td>
                 <td>{formatDate(sale.order_date)}</td>
-                <td>{renderOrderStatusBadge(sale.order_status)}</td>
+                <td>{renderOrderStatusBadge(sale.order_status || 'unknown')}</td>
                 <td>
-                  {sale.total_units} units
+                  {sale.total_units || 0} units
                   <div className="small text-muted">
-                    {sale.quantity_6_packs > 0 && `${sale.quantity_6_packs} × 6-packs, `}
-                    {sale.quantity_12_packs > 0 && `${sale.quantity_12_packs} × 12-packs, `}
-                    {sale.quantity_extra_items > 0 && `${sale.quantity_extra_items} extra items`}
+                    {(sale.quantity_6_packs > 0) && `${sale.quantity_6_packs} × 6-packs, `}
+                    {(sale.quantity_12_packs > 0) && `${sale.quantity_12_packs} × 12-packs, `}
+                    {(sale.quantity_extra_items > 0) && `${sale.quantity_extra_items} extra items`}
                   </div>
                 </td>
-                <td>{formatCurrency(sale.subtotal)}</td>
+                <td>{formatCurrency(sale.subtotal || 0)}</td>
               </tr>
             ))}
           </tbody>
@@ -502,12 +618,12 @@ const ViewApproveProduct = () => {
               <td colSpan="4" className="text-end"><strong>Total Sales:</strong></td>
               <td>
                 <strong>
-                  {productSales.reduce((sum, sale) => sum + sale.total_units, 0)} units
+                  {salesData.reduce((sum, sale) => sum + (sale.total_units || 0), 0)} units
                 </strong>
               </td>
               <td>
                 <strong>
-                  {formatCurrency(productSales.reduce((sum, sale) => sum + sale.subtotal, 0))}
+                  {formatCurrency(salesData.reduce((sum, sale) => sum + (sale.subtotal || 0), 0))}
                 </strong>
               </td>
             </tr>
@@ -539,7 +655,10 @@ const ViewApproveProduct = () => {
       );
     }
 
-    if (!packingSessions || packingSessions.length === 0) {
+    // Make sure packingSessions is an array
+    const sessionsData = Array.isArray(packingSessions) ? packingSessions : [];
+
+    if (!sessionsData || sessionsData.length === 0) {
       return (
         <div className="text-center py-4 bg-light rounded">
           <FaBoxOpen size={40} className="mb-3 text-secondary" />
@@ -561,13 +680,13 @@ const ViewApproveProduct = () => {
             </tr>
           </thead>
           <tbody>
-            {packingSessions.map((session) => (
-              <tr key={session.id}>
+            {sessionsData.map((session, index) => (
+              <tr key={session.id || index}>
                 <td>{formatDate(session.date)}</td>
-                <td>{session.number_of_6_packs}</td>
-                <td>{session.number_of_12_packs}</td>
-                <td>{session.extra_items}</td>
-                <td>{session.total_packed_quantity}</td>
+                <td>{session.number_of_6_packs || 0}</td>
+                <td>{session.number_of_12_packs || 0}</td>
+                <td>{session.extra_items || 0}</td>
+                <td>{session.total_packed_quantity || 0}</td>
               </tr>
             ))}
           </tbody>
@@ -576,27 +695,369 @@ const ViewApproveProduct = () => {
               <td className="text-end"><strong>Total:</strong></td>
               <td>
                 <strong>
-                  {packingSessions.reduce((sum, session) => sum + session.number_of_6_packs, 0)}
+                  {sessionsData.reduce((sum, session) => sum + (session.number_of_6_packs || 0), 0)}
                 </strong>
               </td>
               <td>
                 <strong>
-                  {packingSessions.reduce((sum, session) => sum + session.number_of_12_packs, 0)}
+                  {sessionsData.reduce((sum, session) => sum + (session.number_of_12_packs || 0), 0)}
                 </strong>
               </td>
               <td>
                 <strong>
-                  {packingSessions.reduce((sum, session) => sum + session.extra_items, 0)}
+                  {sessionsData.reduce((sum, session) => sum + (session.extra_items || 0), 0)}
                 </strong>
               </td>
               <td>
                 <strong>
-                  {packingSessions.reduce((sum, session) => sum + session.total_packed_quantity, 0)}
+                  {sessionsData.reduce((sum, session) => sum + (session.total_packed_quantity || 0), 0)}
                 </strong>
               </td>
             </tr>
           </tfoot>
         </Table>
+      </div>
+    );
+  };
+
+  // Render cutting and sewing data
+  const renderCuttingAndSewingData = () => {
+    if (cuttingDataLoading) {
+      return (
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status" className="me-2">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+          <span>Loading cutting and sewing data...</span>
+        </div>
+      );
+    }
+
+    if (cuttingDataError) {
+      return (
+        <Alert variant="danger">
+          <FaExclamationTriangle className="me-2" />
+          {cuttingDataError}
+        </Alert>
+      );
+    }
+
+    if (!cuttingData || !cuttingData.details || cuttingData.details.length === 0) {
+      return (
+        <div className="text-center py-4 bg-light rounded">
+          <FaTshirt size={40} className="mb-3 text-secondary" />
+          <p>No cutting data found for this product</p>
+          <Alert variant="info" className="mt-3 mb-3">
+            <FaInfoCircle className="me-2" />
+            This product may have been created without a cutting record, or the cutting record may not be available.
+          </Alert>
+          <div className="mt-3">
+            <h6>Sewing Data Available:</h6>
+            <Table bordered hover className="mt-2 mx-auto" style={{ maxWidth: "400px" }}>
+              <thead className="bg-light">
+                <tr>
+                  <th>Size</th>
+                  <th>Quantity Sewn</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>XS</td>
+                  <td>{selectedProduct.total_sewn_xs || 0}</td>
+                </tr>
+                <tr>
+                  <td>S</td>
+                  <td>{selectedProduct.total_sewn_s || 0}</td>
+                </tr>
+                <tr>
+                  <td>M</td>
+                  <td>{selectedProduct.total_sewn_m || 0}</td>
+                </tr>
+                <tr>
+                  <td>L</td>
+                  <td>{selectedProduct.total_sewn_l || 0}</td>
+                </tr>
+                <tr>
+                  <td>XL</td>
+                  <td>{selectedProduct.total_sewn_xl || 0}</td>
+                </tr>
+                <tr className="bg-light">
+                  <td><strong>Total</strong></td>
+                  <td><strong>
+                    {(selectedProduct.total_sewn_xs || 0) +
+                     (selectedProduct.total_sewn_s || 0) +
+                     (selectedProduct.total_sewn_m || 0) +
+                     (selectedProduct.total_sewn_l || 0) +
+                     (selectedProduct.total_sewn_xl || 0)}
+                  </strong></td>
+                </tr>
+              </tbody>
+            </Table>
+          </div>
+        </div>
+      );
+    }
+
+    // Calculate totals from cutting details
+    const totalCut = {
+      xs: cuttingData.details.reduce((sum, detail) => sum + (detail.xs || 0), 0),
+      s: cuttingData.details.reduce((sum, detail) => sum + (detail.s || 0), 0),
+      m: cuttingData.details.reduce((sum, detail) => sum + (detail.m || 0), 0),
+      l: cuttingData.details.reduce((sum, detail) => sum + (detail.l || 0), 0),
+      xl: cuttingData.details.reduce((sum, detail) => sum + (detail.xl || 0), 0)
+    };
+
+    // Get sewn quantities from the selected product
+    const totalSewn = {
+      xs: selectedProduct.total_sewn_xs || 0,
+      s: selectedProduct.total_sewn_s || 0,
+      m: selectedProduct.total_sewn_m || 0,
+      l: selectedProduct.total_sewn_l || 0,
+      xl: selectedProduct.total_sewn_xl || 0
+    };
+
+    // Calculate remaining quantities
+    const remaining = {
+      xs: Math.max(0, totalCut.xs - totalSewn.xs),
+      s: Math.max(0, totalCut.s - totalSewn.s),
+      m: Math.max(0, totalCut.m - totalSewn.m),
+      l: Math.max(0, totalCut.l - totalSewn.l),
+      xl: Math.max(0, totalCut.xl - totalSewn.xl)
+    };
+
+    // Calculate completion percentages
+    const completion = {
+      xs: totalCut.xs > 0 ? Math.round((totalSewn.xs / totalCut.xs) * 100) : 0,
+      s: totalCut.s > 0 ? Math.round((totalSewn.s / totalCut.s) * 100) : 0,
+      m: totalCut.m > 0 ? Math.round((totalSewn.m / totalCut.m) * 100) : 0,
+      l: totalCut.l > 0 ? Math.round((totalSewn.l / totalCut.l) * 100) : 0,
+      xl: totalCut.xl > 0 ? Math.round((totalSewn.xl / totalCut.xl) * 100) : 0
+    };
+
+    // Calculate totals
+    const totalCutAll = totalCut.xs + totalCut.s + totalCut.m + totalCut.l + totalCut.xl;
+    const totalSewnAll = totalSewn.xs + totalSewn.s + totalSewn.m + totalSewn.l + totalSewn.xl;
+    const totalRemainingAll = remaining.xs + remaining.s + remaining.m + remaining.l + remaining.xl;
+    const totalCompletionPercentage = totalCutAll > 0 ? Math.round((totalSewnAll / totalCutAll) * 100) : 0;
+
+    return (
+      <div>
+        <Row>
+          <Col md={12}>
+            <Card className="mb-4">
+              <Card.Header className="bg-light">
+                <h6 className="mb-0">Cutting & Sewing Summary</h6>
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={6}>
+                    <div className="mb-3">
+                      <h6>Total Cut: {totalCutAll} pieces</h6>
+                      <h6>Total Sewn: {totalSewnAll} pieces</h6>
+                      <h6>Remaining: {totalRemainingAll} pieces</h6>
+                    </div>
+                    <div className="mb-3">
+                      <div className="d-flex justify-content-between mb-1">
+                        <span>Sewing Completion</span>
+                        <span>{totalCompletionPercentage}%</span>
+                      </div>
+                      <ProgressBar
+                        now={totalCompletionPercentage}
+                        variant={
+                          totalCompletionPercentage < 30 ? "danger" :
+                          totalCompletionPercentage < 70 ? "warning" :
+                          "success"
+                        }
+                      />
+                    </div>
+                  </Col>
+                  <Col md={6}>
+                    <div className="text-center">
+                      <h6>Cutting Date: {new Date(cuttingData.cutting_date).toLocaleDateString()}</h6>
+                      <p className="text-muted">
+                        {cuttingData.description || "No description available"}
+                      </p>
+                    </div>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        <h6 className="mb-3">Size Breakdown</h6>
+        <Table bordered hover responsive>
+          <thead className="bg-light">
+            <tr>
+              <th>Size</th>
+              <th>Cut</th>
+              <th>Sewn</th>
+              <th>Remaining</th>
+              <th>Completion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>XS</strong></td>
+              <td>{totalCut.xs}</td>
+              <td>{totalSewn.xs}</td>
+              <td>{remaining.xs}</td>
+              <td>
+                <div className="d-flex align-items-center">
+                  <div className="me-2" style={{ width: '60px' }}>{completion.xs}%</div>
+                  <ProgressBar
+                    now={completion.xs}
+                    variant={
+                      completion.xs < 30 ? "danger" :
+                      completion.xs < 70 ? "warning" :
+                      "success"
+                    }
+                    style={{ width: '100%', height: '10px' }}
+                  />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>S</strong></td>
+              <td>{totalCut.s}</td>
+              <td>{totalSewn.s}</td>
+              <td>{remaining.s}</td>
+              <td>
+                <div className="d-flex align-items-center">
+                  <div className="me-2" style={{ width: '60px' }}>{completion.s}%</div>
+                  <ProgressBar
+                    now={completion.s}
+                    variant={
+                      completion.s < 30 ? "danger" :
+                      completion.s < 70 ? "warning" :
+                      "success"
+                    }
+                    style={{ width: '100%', height: '10px' }}
+                  />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>M</strong></td>
+              <td>{totalCut.m}</td>
+              <td>{totalSewn.m}</td>
+              <td>{remaining.m}</td>
+              <td>
+                <div className="d-flex align-items-center">
+                  <div className="me-2" style={{ width: '60px' }}>{completion.m}%</div>
+                  <ProgressBar
+                    now={completion.m}
+                    variant={
+                      completion.m < 30 ? "danger" :
+                      completion.m < 70 ? "warning" :
+                      "success"
+                    }
+                    style={{ width: '100%', height: '10px' }}
+                  />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>L</strong></td>
+              <td>{totalCut.l}</td>
+              <td>{totalSewn.l}</td>
+              <td>{remaining.l}</td>
+              <td>
+                <div className="d-flex align-items-center">
+                  <div className="me-2" style={{ width: '60px' }}>{completion.l}%</div>
+                  <ProgressBar
+                    now={completion.l}
+                    variant={
+                      completion.l < 30 ? "danger" :
+                      completion.l < 70 ? "warning" :
+                      "success"
+                    }
+                    style={{ width: '100%', height: '10px' }}
+                  />
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>XL</strong></td>
+              <td>{totalCut.xl}</td>
+              <td>{totalSewn.xl}</td>
+              <td>{remaining.xl}</td>
+              <td>
+                <div className="d-flex align-items-center">
+                  <div className="me-2" style={{ width: '60px' }}>{completion.xl}%</div>
+                  <ProgressBar
+                    now={completion.xl}
+                    variant={
+                      completion.xl < 30 ? "danger" :
+                      completion.xl < 70 ? "warning" :
+                      "success"
+                    }
+                    style={{ width: '100%', height: '10px' }}
+                  />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+          <tfoot className="bg-light">
+            <tr>
+              <td><strong>Total</strong></td>
+              <td><strong>{totalCutAll}</strong></td>
+              <td><strong>{totalSewnAll}</strong></td>
+              <td><strong>{totalRemainingAll}</strong></td>
+              <td>
+                <div className="d-flex align-items-center">
+                  <div className="me-2" style={{ width: '60px' }}><strong>{totalCompletionPercentage}%</strong></div>
+                  <ProgressBar
+                    now={totalCompletionPercentage}
+                    variant={
+                      totalCompletionPercentage < 30 ? "danger" :
+                      totalCompletionPercentage < 70 ? "warning" :
+                      "success"
+                    }
+                    style={{ width: '100%', height: '10px' }}
+                  />
+                </div>
+              </td>
+            </tr>
+          </tfoot>
+        </Table>
+
+        <h6 className="mb-3 mt-4">Color Breakdown</h6>
+        <div className="table-responsive">
+          <Table bordered hover>
+            <thead className="bg-light">
+              <tr>
+                <th>Color</th>
+                <th>XS</th>
+                <th>S</th>
+                <th>M</th>
+                <th>L</th>
+                <th>XL</th>
+                <th>Total</th>
+                <th>Yard Usage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cuttingData.details.map((detail, index) => {
+                const detailTotal = (detail.xs || 0) + (detail.s || 0) + (detail.m || 0) + (detail.l || 0) + (detail.xl || 0);
+                return (
+                  <tr key={index}>
+                    <td>
+                      {detail.fabric_variant_data ? detail.fabric_variant_data.color : "Unknown"}
+                    </td>
+                    <td>{detail.xs || 0}</td>
+                    <td>{detail.s || 0}</td>
+                    <td>{detail.m || 0}</td>
+                    <td>{detail.l || 0}</td>
+                    <td>{detail.xl || 0}</td>
+                    <td>{detailTotal}</td>
+                    <td>{detail.yard_usage} yards</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </div>
       </div>
     );
   };
@@ -983,6 +1444,7 @@ const ViewApproveProduct = () => {
                                 <small>Total: {total}</small>
                               </div>
                             </td>
+
                             <td>
                               {product.inventory_status ? (
                                 <div>
@@ -1094,6 +1556,12 @@ const ViewApproveProduct = () => {
                       {renderSizeDistribution(selectedProduct)}
                     </Col>
                   </Row>
+                </Tab>
+                <Tab eventKey="cutting" title={<span><FaTshirt className="me-2" />Cutting & Sewing</span>}>
+                  <div className="p-2">
+                    <h5 className="mb-3">Cutting & Sewing Data</h5>
+                    {renderCuttingAndSewingData()}
+                  </div>
                 </Tab>
                 <Tab eventKey="orders" title={<span><FaShoppingCart className="me-2" />Order History</span>}>
                   <div className="p-2">

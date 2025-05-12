@@ -219,3 +219,23 @@ class UploadMultipleProductImagesView(APIView):
             return Response({"error": "Finished product not found."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class FinishedProductCuttingRecordView(APIView):
+    """
+    API endpoint to get the cutting record ID for a finished product.
+    """
+    def get(self, request, pk, format=None):
+        try:
+            # Get the finished product
+            finished_product = get_object_or_404(FinishedProduct, pk=pk)
+
+            # Return the cutting record ID
+            return Response({
+                "cutting_record_id": finished_product.cutting_record.id
+            }, status=status.HTTP_200_OK)
+
+        except FinishedProduct.DoesNotExist:
+            return Response({"error": "Finished product not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

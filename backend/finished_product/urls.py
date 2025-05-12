@@ -7,7 +7,8 @@ from .views import (
     UpdateProductImageView,
     SalesProductListView,
     UploadProductImageView,
-    UploadMultipleProductImagesView
+    UploadMultipleProductImagesView,
+    FinishedProductCuttingRecordView
 )
 
 urlpatterns = [
@@ -19,4 +20,5 @@ urlpatterns = [
     path('sales-products/', SalesProductListView.as_view(), name='sales-products'),
     path('upload-image/<int:pk>/', UploadProductImageView.as_view(), name='upload-product-image'),
     path('upload-multiple-images/<int:pk>/', UploadMultipleProductImagesView.as_view(), name='upload-multiple-product-images'),
+    path('<int:pk>/cutting_record/', FinishedProductCuttingRecordView.as_view(), name='finished-product-cutting-record'),
 ]
