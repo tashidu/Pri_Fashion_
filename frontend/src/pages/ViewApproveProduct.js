@@ -314,7 +314,7 @@ const ViewApproveProduct = () => {
   return (
     <>
       <RoleBasedNavBar />
-      <div 
+      <div
         className="main-content"
         style={{
           marginLeft: isSidebarOpen ? "240px" : "70px",
@@ -558,191 +558,200 @@ const ViewApproveProduct = () => {
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>Product Details</Modal.Title>
+          <Modal.Title>
+            {selectedProduct ? `${selectedProduct.product_name} - Details` : 'Product Details'}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {selectedProduct && (
-            <Tabs defaultActiveKey="details" className="mb-3">
-              <Tab eventKey="details" title={<span><FaInfoCircle className="me-2" />Details</span>}>
-                <Row>
-                  <Col md={6}>
-                    <h5 className="mb-3"><FaMoneyBillWave className="me-2" />Pricing Information</h5>
-                    <Table bordered hover>
-                      <tbody>
-                        <tr>
-                          <td><strong>Manufacture Price:</strong></td>
-                          <td>{formatCurrency(selectedProduct.manufacture_price)}</td>
-                        </tr>
-                        <tr>
-                          <td><strong>Selling Price:</strong></td>
-                          <td>{formatCurrency(selectedProduct.selling_price)}</td>
-                        </tr>
-                        <tr>
-                          <td><strong>Profit Margin:</strong></td>
-                          <td>
-                            {calculateProfitMargin(
-                              selectedProduct.manufacture_price,
-                              selectedProduct.selling_price
-                            )}%
-                          </td>
-                        </tr>
-                      </tbody>
-                    </Table>
+            <>
+              {/* Product Name Display */}
+              <div className="mb-4 text-center">
+                <h4 className="fw-bold">{selectedProduct.product_name}</h4>
+              </div>
 
-                    <h5 className="mb-3 mt-4"><FaCalendarAlt className="me-2" />Approval Information</h5>
-                    <p>
-                      <strong>Approval Date:</strong> {new Date(selectedProduct.approval_date).toLocaleDateString()}
-                    </p>
-                  </Col>
-                  <Col md={6}>
-                    <h5 className="mb-3"><FaTshirt className="me-2" />Size Distribution</h5>
-                    {renderSizeDistribution(selectedProduct)}
-                  </Col>
-                </Row>
-              </Tab>
-              <Tab eventKey="image" title={<span><FaImage className="me-2" />Product Images</span>}>
-                <div className="text-center p-4">
-                  {selectedProduct.product_images && selectedProduct.product_images.length > 0 ? (
-                    <div>
-                      <div className="position-relative mb-4" style={{ maxWidth: '500px', margin: '0 auto' }}>
-                        {/* Main Image Display */}
-                        <Image
-                          src={selectedProduct.product_images[activeImageIndex]}
-                          alt={`${selectedProduct.product_name} - Image ${activeImageIndex + 1}`}
-                          fluid
-                          className="shadow-sm"
-                          style={{
-                            maxHeight: '400px',
-                            borderRadius: '8px',
-                            objectFit: 'contain',
-                            backgroundColor: '#f8f9fa'
-                          }}
-                        />
+              <Tabs defaultActiveKey="details" className="mb-3">
+                <Tab eventKey="details" title={<span><FaInfoCircle className="me-2" />Details</span>}>
+                  <Row>
+                    <Col md={6}>
+                      <h5 className="mb-3"><FaMoneyBillWave className="me-2" />Pricing Information</h5>
+                      <Table bordered hover>
+                        <tbody>
+                          <tr>
+                            <td><strong>Manufacture Price:</strong></td>
+                            <td>{formatCurrency(selectedProduct.manufacture_price)}</td>
+                          </tr>
+                          <tr>
+                            <td><strong>Selling Price:</strong></td>
+                            <td>{formatCurrency(selectedProduct.selling_price)}</td>
+                          </tr>
+                          <tr>
+                            <td><strong>Profit Margin:</strong></td>
+                            <td>
+                              {calculateProfitMargin(
+                                selectedProduct.manufacture_price,
+                                selectedProduct.selling_price
+                              )}%
+                            </td>
+                          </tr>
+                        </tbody>
+                      </Table>
 
-                        {/* Image Navigation Controls */}
+                      <h5 className="mb-3 mt-4"><FaCalendarAlt className="me-2" />Approval Information</h5>
+                      <p>
+                        <strong>Approval Date:</strong> {new Date(selectedProduct.approval_date).toLocaleDateString()}
+                      </p>
+                    </Col>
+                    <Col md={6}>
+                      <h5 className="mb-3"><FaTshirt className="me-2" />Size Distribution</h5>
+                      {renderSizeDistribution(selectedProduct)}
+                    </Col>
+                  </Row>
+                </Tab>
+                <Tab eventKey="image" title={<span><FaImage className="me-2" />Product Images</span>}>
+                  <div className="text-center p-4">
+                    {selectedProduct.product_images && selectedProduct.product_images.length > 0 ? (
+                      <div>
+                        <div className="position-relative mb-4" style={{ maxWidth: '500px', margin: '0 auto' }}>
+                          {/* Main Image Display */}
+                          <Image
+                            src={selectedProduct.product_images[activeImageIndex]}
+                            alt={`${selectedProduct.product_name} - Image ${activeImageIndex + 1}`}
+                            fluid
+                            className="shadow-sm"
+                            style={{
+                              maxHeight: '400px',
+                              borderRadius: '8px',
+                              objectFit: 'contain',
+                              backgroundColor: '#f8f9fa'
+                            }}
+                          />
+
+                          {/* Image Navigation Controls */}
+                          {selectedProduct.product_images.length > 1 && (
+                            <>
+                              <Button
+                                variant="light"
+                                size="sm"
+                                className="position-absolute top-50 start-0 translate-middle-y"
+                                style={{ opacity: 0.8 }}
+                                onClick={() => setActiveImageIndex(prev => (prev === 0 ? selectedProduct.product_images.length - 1 : prev - 1))}
+                              >
+                                <FaArrowLeft />
+                              </Button>
+                              <Button
+                                variant="light"
+                                size="sm"
+                                className="position-absolute top-50 end-0 translate-middle-y"
+                                style={{ opacity: 0.8 }}
+                                onClick={() => setActiveImageIndex(prev => (prev === selectedProduct.product_images.length - 1 ? 0 : prev + 1))}
+                              >
+                                <FaArrowRight />
+                              </Button>
+                            </>
+                          )}
+
+                          {/* Add/Change Image Button */}
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            className="position-absolute top-0 end-0 m-2"
+                            onClick={() => {
+                              setShowDetailModal(false);
+                              handleAddImage(selectedProduct);
+                            }}
+                          >
+                            <FaUpload className="me-1" /> Add More
+                          </Button>
+                        </div>
+
+                        {/* Thumbnail Navigation */}
                         {selectedProduct.product_images.length > 1 && (
-                          <>
-                            <Button
-                              variant="light"
-                              size="sm"
-                              className="position-absolute top-50 start-0 translate-middle-y"
-                              style={{ opacity: 0.8 }}
-                              onClick={() => setActiveImageIndex(prev => (prev === 0 ? selectedProduct.product_images.length - 1 : prev - 1))}
-                            >
-                              <FaArrowLeft />
-                            </Button>
-                            <Button
-                              variant="light"
-                              size="sm"
-                              className="position-absolute top-50 end-0 translate-middle-y"
-                              style={{ opacity: 0.8 }}
-                              onClick={() => setActiveImageIndex(prev => (prev === selectedProduct.product_images.length - 1 ? 0 : prev + 1))}
-                            >
-                              <FaArrowRight />
-                            </Button>
-                          </>
+                          <div className="d-flex justify-content-center flex-wrap mt-3 mb-3">
+                            {selectedProduct.product_images.map((img, index) => (
+                              <div
+                                key={index}
+                                onClick={() => setActiveImageIndex(index)}
+                                className={`m-1 border ${activeImageIndex === index ? 'border-primary' : 'border-light'}`}
+                                style={{
+                                  width: '60px',
+                                  height: '60px',
+                                  cursor: 'pointer',
+                                  borderRadius: '4px',
+                                  borderWidth: activeImageIndex === index ? '2px' : '1px'
+                                }}
+                              >
+                                <Image
+                                  src={img}
+                                  alt={`Thumbnail ${index + 1}`}
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    borderRadius: '3px'
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
                         )}
 
-                        {/* Add/Change Image Button */}
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="position-absolute top-0 end-0 m-2"
-                          onClick={() => {
-                            setShowDetailModal(false);
-                            handleAddImage(selectedProduct);
-                          }}
-                        >
-                          <FaUpload className="me-1" /> Add More
-                        </Button>
+                        <p className="text-muted">
+                          {selectedProduct.product_images.length > 1
+                            ? `Image ${activeImageIndex + 1} of ${selectedProduct.product_images.length} for ${selectedProduct.product_name}`
+                            : `Product image for ${selectedProduct.product_name}`
+                          }
+                        </p>
                       </div>
-
-                      {/* Thumbnail Navigation */}
-                      {selectedProduct.product_images.length > 1 && (
-                        <div className="d-flex justify-content-center flex-wrap mt-3 mb-3">
-                          {selectedProduct.product_images.map((img, index) => (
-                            <div
-                              key={index}
-                              onClick={() => setActiveImageIndex(index)}
-                              className={`m-1 border ${activeImageIndex === index ? 'border-primary' : 'border-light'}`}
-                              style={{
-                                width: '60px',
-                                height: '60px',
-                                cursor: 'pointer',
-                                borderRadius: '4px',
-                                borderWidth: activeImageIndex === index ? '2px' : '1px'
-                              }}
-                            >
-                              <Image
-                                src={img}
-                                alt={`Thumbnail ${index + 1}`}
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'cover',
-                                  borderRadius: '3px'
-                                }}
-                              />
-                            </div>
-                          ))}
+                    ) : selectedProduct.product_image ? (
+                      <div>
+                        <div className="position-relative mb-4" style={{ maxWidth: '500px', margin: '0 auto' }}>
+                          <Image
+                            src={selectedProduct.product_image}
+                            alt={selectedProduct.product_name}
+                            fluid
+                            className="shadow-sm"
+                            style={{
+                              maxHeight: '400px',
+                              borderRadius: '8px',
+                              objectFit: 'contain',
+                              backgroundColor: '#f8f9fa'
+                            }}
+                          />
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            className="position-absolute top-0 end-0 m-2"
+                            onClick={() => {
+                              setShowDetailModal(false);
+                              handleAddImage(selectedProduct);
+                            }}
+                          >
+                            <FaUpload className="me-1" /> Change
+                          </Button>
                         </div>
-                      )}
-
-                      <p className="text-muted">
-                        {selectedProduct.product_images.length > 1
-                          ? `Image ${activeImageIndex + 1} of ${selectedProduct.product_images.length} for ${selectedProduct.product_name}`
-                          : `Product image for ${selectedProduct.product_name}`
-                        }
-                      </p>
-                    </div>
-                  ) : selectedProduct.product_image ? (
-                    <div>
-                      <div className="position-relative mb-4" style={{ maxWidth: '500px', margin: '0 auto' }}>
-                        <Image
-                          src={selectedProduct.product_image}
-                          alt={selectedProduct.product_name}
-                          fluid
-                          className="shadow-sm"
-                          style={{
-                            maxHeight: '400px',
-                            borderRadius: '8px',
-                            objectFit: 'contain',
-                            backgroundColor: '#f8f9fa'
-                          }}
-                        />
+                        <p className="text-muted">Product image for {selectedProduct.product_name}</p>
+                      </div>
+                    ) : (
+                      <div className="p-5 bg-light rounded shadow-sm" style={{ maxWidth: '500px', margin: '0 auto' }}>
+                        <FaImage size={60} className="mb-3 text-secondary" />
+                        <p>No image available for this product</p>
                         <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="position-absolute top-0 end-0 m-2"
+                          variant="primary"
                           onClick={() => {
                             setShowDetailModal(false);
                             handleAddImage(selectedProduct);
                           }}
                         >
-                          <FaUpload className="me-1" /> Change
+                          <FaUpload className="me-2" />
+                          Add Product Image
                         </Button>
                       </div>
-                      <p className="text-muted">Product image for {selectedProduct.product_name}</p>
-                    </div>
-                  ) : (
-                    <div className="p-5 bg-light rounded shadow-sm" style={{ maxWidth: '500px', margin: '0 auto' }}>
-                      <FaImage size={60} className="mb-3 text-secondary" />
-                      <p>No image available for this product</p>
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          setShowDetailModal(false);
-                          handleAddImage(selectedProduct);
-                        }}
-                      >
-                        <FaUpload className="me-2" />
-                        Add Product Image
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </Tab>
-            </Tabs>
+                    )}
+                  </div>
+                </Tab>
+              </Tabs>
+            </>
           )}
         </Modal.Body>
         <Modal.Footer>

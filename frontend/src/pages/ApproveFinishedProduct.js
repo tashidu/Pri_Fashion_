@@ -433,6 +433,12 @@ const ApproveFinishedProduct = () => {
         <Table bordered hover size="sm" className="mt-3">
           <tbody>
             <tr>
+              <td><strong>Product Name:</strong></td>
+              <td>{productDetails && productDetails.fabric_definition_data ?
+                productDetails.fabric_definition_data.fabric_name :
+                `Batch ID: ${id}`}</td>
+            </tr>
+            <tr>
               <td><strong>Manufacture Price:</strong></td>
               <td>LKR {manufacturePrice}</td>
             </tr>
@@ -485,7 +491,11 @@ const ApproveFinishedProduct = () => {
             <Card className="shadow product-card slide-in" style={{ backgroundColor: "#D9EDFB", borderRadius: "10px" }}>
               <Card.Body>
                 <h2 className="text-center mb-3">Approve Finished Product</h2>
-                <p className="text-center text-muted mb-4">Batch ID: {id}</p>
+                <p className="text-center text-muted mb-4">
+                  {productDetails && productDetails.fabric_definition_data ?
+                    `${productDetails.fabric_definition_data.fabric_name}` :
+                    `Batch ID: ${id}`}
+                </p>
 
                 {error && (
                   <Alert variant="danger" className="mb-4 fade-in">
@@ -518,6 +528,14 @@ const ApproveFinishedProduct = () => {
                       <FaCheck className="me-2" />
                       Product Already Approved
                     </h4>
+
+                    <div className="text-center mb-4">
+                      <h5>
+                        {productDetails && productDetails.fabric_definition_data ?
+                          productDetails.fabric_definition_data.fabric_name :
+                          `Batch ID: ${id}`}
+                      </h5>
+                    </div>
 
                     <Tabs
                       defaultActiveKey="details"
@@ -632,6 +650,15 @@ const ApproveFinishedProduct = () => {
                       <Tab eventKey="details" title={<span><FaInfoCircle className="me-2" />Product Details</span>}>
                         <Row className="mt-3">
                           <Col md={6}>
+                            <h5 className="mb-3"><FaInfoCircle className="me-2" />Product Name</h5>
+                            <div className="p-3 bg-light rounded mb-4">
+                              <strong>
+                                {productDetails && productDetails.fabric_definition_data ?
+                                  productDetails.fabric_definition_data.fabric_name :
+                                  `Batch ID: ${id}`}
+                              </strong>
+                            </div>
+
                             <h5 className="mb-3"><FaTags className="me-2" />Colors</h5>
                             <div className="mb-4">
                               {fabricDetails.length > 0 ? (
