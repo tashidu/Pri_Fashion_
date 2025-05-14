@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { useDropzone } from "react-dropzone";
+import './ViewApproveProduct.css';
 
 const ViewApproveProduct = () => {
   // State for products and UI
@@ -633,92 +634,7 @@ const ViewApproveProduct = () => {
     );
   };
 
-  // Render packing sessions
-  const renderPackingSessions = () => {
-    if (packingSessionsLoading) {
-      return (
-        <div className="text-center py-4">
-          <Spinner animation="border" role="status" className="me-2">
-            <span className="visually-hidden">Loading...</span>
-          </Spinner>
-          <span>Loading packing sessions...</span>
-        </div>
-      );
-    }
 
-    if (packingSessionsError) {
-      return (
-        <Alert variant="danger">
-          <FaExclamationTriangle className="me-2" />
-          {packingSessionsError}
-        </Alert>
-      );
-    }
-
-    // Make sure packingSessions is an array
-    const sessionsData = Array.isArray(packingSessions) ? packingSessions : [];
-
-    if (!sessionsData || sessionsData.length === 0) {
-      return (
-        <div className="text-center py-4 bg-light rounded">
-          <FaBoxOpen size={40} className="mb-3 text-secondary" />
-          <p>No packing sessions found for this product</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="table-responsive">
-        <Table hover bordered>
-          <thead>
-            <tr className="bg-light">
-              <th>Date</th>
-              <th>6-Packs</th>
-              <th>12-Packs</th>
-              <th>Extra Items</th>
-              <th>Total Packed</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sessionsData.map((session, index) => (
-              <tr key={session.id || index}>
-                <td>{formatDate(session.date)}</td>
-                <td>{session.number_of_6_packs || 0}</td>
-                <td>{session.number_of_12_packs || 0}</td>
-                <td>{session.extra_items || 0}</td>
-                <td>{session.total_packed_quantity || 0}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot className="bg-light">
-            <tr>
-              <td className="text-end"><strong>Total:</strong></td>
-              <td>
-                <strong>
-                  {sessionsData.reduce((sum, session) => sum + (session.number_of_6_packs || 0), 0)}
-                </strong>
-              </td>
-              <td>
-                <strong>
-                  {sessionsData.reduce((sum, session) => sum + (session.number_of_12_packs || 0), 0)}
-                </strong>
-              </td>
-              <td>
-                <strong>
-                  {sessionsData.reduce((sum, session) => sum + (session.extra_items || 0), 0)}
-                </strong>
-              </td>
-              <td>
-                <strong>
-                  {sessionsData.reduce((sum, session) => sum + (session.total_packed_quantity || 0), 0)}
-                </strong>
-              </td>
-            </tr>
-          </tfoot>
-        </Table>
-      </div>
-    );
-  };
 
   // Render cutting and sewing data
   const renderCuttingAndSewingData = () => {
@@ -1062,109 +978,317 @@ const ViewApproveProduct = () => {
     );
   };
 
-  // Render packing inventory
+  // Render enhanced packing inventory with packing sessions
   const renderPackingInventory = () => {
-    if (packingInventoryLoading) {
+    // Loading states for both inventory and packing sessions
+    if (packingInventoryLoading || packingSessionsLoading) {
       return (
         <div className="text-center py-4">
           <Spinner animation="border" role="status" className="me-2">
             <span className="visually-hidden">Loading...</span>
           </Spinner>
-          <span>Loading inventory data...</span>
+          <span>Loading inventory and packing data...</span>
         </div>
       );
     }
 
-    if (packingInventoryError) {
+    // Error states for both inventory and packing sessions
+    if (packingInventoryError || packingSessionsError) {
       return (
         <Alert variant="danger">
           <FaExclamationTriangle className="me-2" />
-          {packingInventoryError}
+          {packingInventoryError || packingSessionsError}
         </Alert>
       );
     }
 
-    if (!packingInventory || packingInventory.total_quantity === 0) {
+    // Make sure packingSessions is an array
+    const sessionsData = Array.isArray(packingSessions) ? packingSessions : [];
+
+    // Calculate total packed quantities from all sessions
+    const totalPackedStats = {
+      sixPacks: sessionsData.reduce((sum, session) => sum + (session.number_of_6_packs || 0), 0),
+      twelvePacks: sessionsData.reduce((sum, session) => sum + (session.number_of_12_packs || 0), 0),
+      extraItems: sessionsData.reduce((sum, session) => sum + (session.extra_items || 0), 0),
+      totalQuantity: sessionsData.reduce((sum, session) => sum + (session.total_packed_quantity || 0), 0)
+    };
+
+    // Calculate total sold quantities (if we have sales data)
+    const totalSoldUnits = Array.isArray(productSales)
+      ? productSales.reduce((sum, sale) => sum + (sale.total_units || 0), 0)
+      : 0;
+
+    // Calculate inventory status
+    const inventoryStatus = {
+      inStock: packingInventory ? packingInventory.total_quantity : 0,
+      totalPacked: totalPackedStats.totalQuantity,
+      soldOut: totalSoldUnits,
+      percentInStock: 0
+    };
+
+    // Calculate percentage in stock
+    if (totalPackedStats.totalQuantity > 0) {
+      inventoryStatus.percentInStock = Math.round((inventoryStatus.inStock / totalPackedStats.totalQuantity) * 100);
+    }
+
+    // If no inventory data and no packing sessions, show empty state
+    if ((!packingInventory || packingInventory.total_quantity === 0) && sessionsData.length === 0) {
       return (
         <div className="text-center py-4 bg-light rounded">
           <FaWarehouse size={40} className="mb-3 text-secondary" />
-          <p>No inventory data found for this product</p>
+          <p>No inventory or packing data found for this product</p>
         </div>
       );
     }
 
     return (
       <div>
+        {/* Inventory Summary Card */}
+        <Card className="mb-4 shadow-sm">
+          <Card.Header className="bg-light">
+            <h6 className="mb-0">Inventory Summary</h6>
+          </Card.Header>
+          <Card.Body>
+            <Row>
+              <Col md={4}>
+                <div className="text-center p-3 border rounded mb-3">
+                  <h3 className="mb-1">{inventoryStatus.inStock}</h3>
+                  <div className="text-muted">Units in Stock</div>
+                  <Badge
+                    bg={inventoryStatus.inStock > 0 ? "success" : "danger"}
+                    className="mt-2"
+                  >
+                    {inventoryStatus.inStock > 0 ? "Available" : "Out of Stock"}
+                  </Badge>
+                </div>
+              </Col>
+              <Col md={4}>
+                <div className="text-center p-3 border rounded mb-3">
+                  <h3 className="mb-1">{totalPackedStats.totalQuantity}</h3>
+                  <div className="text-muted">Total Packed</div>
+                  <div className="mt-2 small">
+                    From {sessionsData.length} packing session{sessionsData.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+              </Col>
+              <Col md={4}>
+                <div className="text-center p-3 border rounded mb-3">
+                  <h3 className="mb-1">{totalSoldUnits}</h3>
+                  <div className="text-muted">Units Sold</div>
+                  <div className="mt-2 small">
+                    {totalSoldUnits > 0
+                      ? `${Math.round((totalSoldUnits / totalPackedStats.totalQuantity) * 100)}% of total packed`
+                      : 'No sales yet'}
+                  </div>
+                </div>
+              </Col>
+            </Row>
+
+            {/* Inventory Status Progress */}
+            {totalPackedStats.totalQuantity > 0 && (
+              <div className="mt-3">
+                <h6 className="mb-2">Inventory Status</h6>
+                <div className="d-flex justify-content-between mb-1">
+                  <span>In Stock vs Sold</span>
+                  <span>{inventoryStatus.percentInStock}% in stock</span>
+                </div>
+                <div className="d-flex" style={{ height: '24px' }}>
+                  <div
+                    className="bg-success d-flex align-items-center justify-content-center text-white"
+                    style={{
+                      width: `${inventoryStatus.percentInStock}%`,
+                      minWidth: inventoryStatus.percentInStock > 0 ? '40px' : '0px'
+                    }}
+                  >
+                    {inventoryStatus.percentInStock > 10 && 'In Stock'}
+                  </div>
+                  <div
+                    className="bg-danger d-flex align-items-center justify-content-center text-white"
+                    style={{
+                      width: `${100 - inventoryStatus.percentInStock}%`,
+                      minWidth: (100 - inventoryStatus.percentInStock) > 0 ? '40px' : '0px'
+                    }}
+                  >
+                    {(100 - inventoryStatus.percentInStock) > 10 && 'Sold'}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Card.Body>
+        </Card>
+
         <Row>
-          <Col md={6}>
-            <Card className="mb-3">
+          {/* Current Inventory Details */}
+          {packingInventory && packingInventory.total_quantity > 0 && (
+            <Col md={6}>
+              <Card className="mb-4 shadow-sm">
+                <Card.Header className="bg-light">
+                  <h6 className="mb-0">Current Inventory Details</h6>
+                </Card.Header>
+                <Card.Body>
+                  <Table bordered hover>
+                    <tbody>
+                      <tr>
+                        <td><strong>6-Packs:</strong></td>
+                        <td>{packingInventory.number_of_6_packs} packs ({packingInventory.number_of_6_packs * 6} units)</td>
+                      </tr>
+                      <tr>
+                        <td><strong>12-Packs:</strong></td>
+                        <td>{packingInventory.number_of_12_packs} packs ({packingInventory.number_of_12_packs * 12} units)</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Extra Items:</strong></td>
+                        <td>{packingInventory.extra_items} units</td>
+                      </tr>
+                      <tr className="bg-light">
+                        <td><strong>Total Quantity:</strong></td>
+                        <td><strong>{packingInventory.total_quantity} units</strong></td>
+                      </tr>
+                    </tbody>
+                  </Table>
+
+                  {/* Inventory Distribution */}
+                  {packingInventory.total_quantity > 0 && (
+                    <div className="mt-3">
+                      <h6 className="mb-2">Inventory Distribution</h6>
+                      <div className="mb-3">
+                        <div className="d-flex justify-content-between mb-1">
+                          <span>6-Packs ({packingInventory.number_of_6_packs * 6} units)</span>
+                          <span>{Math.round((packingInventory.number_of_6_packs * 6 / packingInventory.total_quantity) * 100)}%</span>
+                        </div>
+                        <ProgressBar
+                          now={(packingInventory.number_of_6_packs * 6 / packingInventory.total_quantity) * 100}
+                          variant="info"
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <div className="d-flex justify-content-between mb-1">
+                          <span>12-Packs ({packingInventory.number_of_12_packs * 12} units)</span>
+                          <span>{Math.round((packingInventory.number_of_12_packs * 12 / packingInventory.total_quantity) * 100)}%</span>
+                        </div>
+                        <ProgressBar
+                          now={(packingInventory.number_of_12_packs * 12 / packingInventory.total_quantity) * 100}
+                          variant="primary"
+                        />
+                      </div>
+                      <div>
+                        <div className="d-flex justify-content-between mb-1">
+                          <span>Extra Items ({packingInventory.extra_items} units)</span>
+                          <span>{Math.round((packingInventory.extra_items / packingInventory.total_quantity) * 100)}%</span>
+                        </div>
+                        <ProgressBar
+                          now={(packingInventory.extra_items / packingInventory.total_quantity) * 100}
+                          variant="success"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          )}
+
+          {/* Packing Sessions History */}
+          <Col md={packingInventory && packingInventory.total_quantity > 0 ? 6 : 12}>
+            <Card className="mb-4 shadow-sm">
               <Card.Header className="bg-light">
-                <h6 className="mb-0">Current Inventory</h6>
+                <h6 className="mb-0">Packing Sessions History</h6>
               </Card.Header>
               <Card.Body>
-                <Table bordered hover>
-                  <tbody>
-                    <tr>
-                      <td><strong>6-Packs:</strong></td>
-                      <td>{packingInventory.number_of_6_packs} packs ({packingInventory.number_of_6_packs * 6} units)</td>
-                    </tr>
-                    <tr>
-                      <td><strong>12-Packs:</strong></td>
-                      <td>{packingInventory.number_of_12_packs} packs ({packingInventory.number_of_12_packs * 12} units)</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Extra Items:</strong></td>
-                      <td>{packingInventory.extra_items} units</td>
-                    </tr>
-                    <tr className="bg-light">
-                      <td><strong>Total Quantity:</strong></td>
-                      <td><strong>{packingInventory.total_quantity} units</strong></td>
-                    </tr>
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={6}>
-            <Card>
-              <Card.Header className="bg-light">
-                <h6 className="mb-0">Inventory Distribution</h6>
-              </Card.Header>
-              <Card.Body>
-                <div className="mb-3">
-                  <div className="d-flex justify-content-between mb-1">
-                    <span>6-Packs ({packingInventory.number_of_6_packs * 6} units)</span>
-                    <span>{Math.round((packingInventory.number_of_6_packs * 6 / packingInventory.total_quantity) * 100)}%</span>
+                {sessionsData.length === 0 ? (
+                  <div className="text-center py-4 bg-light rounded">
+                    <FaBoxOpen size={40} className="mb-3 text-secondary" />
+                    <p>No packing sessions found for this product</p>
                   </div>
-                  <ProgressBar
-                    now={(packingInventory.number_of_6_packs * 6 / packingInventory.total_quantity) * 100}
-                    variant="info"
-                  />
-                </div>
-                <div className="mb-3">
-                  <div className="d-flex justify-content-between mb-1">
-                    <span>12-Packs ({packingInventory.number_of_12_packs * 12} units)</span>
-                    <span>{Math.round((packingInventory.number_of_12_packs * 12 / packingInventory.total_quantity) * 100)}%</span>
+                ) : (
+                  <div className="table-responsive">
+                    <Table hover bordered>
+                      <thead>
+                        <tr className="bg-light">
+                          <th>Date</th>
+                          <th>6-Packs</th>
+                          <th>12-Packs</th>
+                          <th>Extra Items</th>
+                          <th>Total Packed</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sessionsData.map((session, index) => (
+                          <tr key={session.id || index}>
+                            <td>{formatDate(session.date)}</td>
+                            <td>{session.number_of_6_packs || 0}</td>
+                            <td>{session.number_of_12_packs || 0}</td>
+                            <td>{session.extra_items || 0}</td>
+                            <td>{session.total_packed_quantity || 0}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-light">
+                        <tr>
+                          <td className="text-end"><strong>Total:</strong></td>
+                          <td>
+                            <strong>
+                              {totalPackedStats.sixPacks}
+                            </strong>
+                          </td>
+                          <td>
+                            <strong>
+                              {totalPackedStats.twelvePacks}
+                            </strong>
+                          </td>
+                          <td>
+                            <strong>
+                              {totalPackedStats.extraItems}
+                            </strong>
+                          </td>
+                          <td>
+                            <strong>
+                              {totalPackedStats.totalQuantity}
+                            </strong>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </Table>
                   </div>
-                  <ProgressBar
-                    now={(packingInventory.number_of_12_packs * 12 / packingInventory.total_quantity) * 100}
-                    variant="primary"
-                  />
-                </div>
-                <div>
-                  <div className="d-flex justify-content-between mb-1">
-                    <span>Extra Items ({packingInventory.extra_items} units)</span>
-                    <span>{Math.round((packingInventory.extra_items / packingInventory.total_quantity) * 100)}%</span>
-                  </div>
-                  <ProgressBar
-                    now={(packingInventory.extra_items / packingInventory.total_quantity) * 100}
-                    variant="success"
-                  />
-                </div>
+                )}
               </Card.Body>
             </Card>
           </Col>
         </Row>
+
+        {/* Inventory Timeline */}
+        {sessionsData.length > 0 && (
+          <Card className="mb-4 shadow-sm">
+            <Card.Header className="bg-light">
+              <h6 className="mb-0">Inventory Timeline</h6>
+            </Card.Header>
+            <Card.Body>
+              <div className="timeline">
+                {sessionsData.map((session, index) => (
+                  <div key={index} className="timeline-item">
+                    <div className="timeline-date">
+                      {formatDate(session.date)}
+                    </div>
+                    <div className="timeline-content">
+                      <div className="d-flex align-items-center">
+                        <FaBoxOpen className="me-2 text-primary" />
+                        <strong>Packing Session</strong>
+                      </div>
+                      <div className="mt-2">
+                        <Badge bg="info" className="me-2">6-Packs: {session.number_of_6_packs || 0}</Badge>
+                        <Badge bg="primary" className="me-2">12-Packs: {session.number_of_12_packs || 0}</Badge>
+                        <Badge bg="success">Extra Items: {session.extra_items || 0}</Badge>
+                      </div>
+                      <div className="mt-2 text-muted">
+                        Total: {session.total_packed_quantity || 0} units
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card.Body>
+          </Card>
+        )}
       </div>
     );
   };
@@ -1571,15 +1695,9 @@ const ViewApproveProduct = () => {
                     {renderSalesHistory()}
                   </div>
                 </Tab>
-                <Tab eventKey="packing" title={<span><FaBoxOpen className="me-2" />Packing Sessions</span>}>
+                <Tab eventKey="inventory" title={<span><FaWarehouse className="me-2" />Inventory & Packing</span>}>
                   <div className="p-2">
-                    <h5 className="mb-3">Packing Sessions History</h5>
-                    {renderPackingSessions()}
-                  </div>
-                </Tab>
-                <Tab eventKey="inventory" title={<span><FaWarehouse className="me-2" />Inventory</span>}>
-                  <div className="p-2">
-                    <h5 className="mb-3">Current Packing Inventory</h5>
+                    <h5 className="mb-3">Inventory & Packing History</h5>
                     {renderPackingInventory()}
                   </div>
                 </Tab>
