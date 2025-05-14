@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Form, Button, Alert, Row, Col, Spinner, Image, Modal, ProgressBar, Badge, Tabs, Tab, Table, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import {
   FaCheck, FaUpload, FaImage, FaTags, FaInfoCircle, FaMoneyBillWave,
-  FaArrowRight, FaPercentage, FaBoxOpen, FaTshirt, FaClipboardList,
+  FaArrowRight, FaPercentage, FaBoxOpen, FaClipboardList,
   FaTrash, FaUndo, FaExclamationTriangle
 } from 'react-icons/fa';
 import { useDropzone } from 'react-dropzone';
@@ -537,11 +537,7 @@ const ApproveFinishedProduct = () => {
                       </h5>
                     </div>
 
-                    <Tabs
-                      defaultActiveKey="details"
-                      className="mb-4"
-                    >
-                      <Tab eventKey="details" title={<span><FaInfoCircle className="me-2" />Details</span>}>
+                    <div className="p-4 bg-white rounded mb-3">
                         <Row className="mt-3">
                           <Col md={6}>
                             <h5 className="mb-3"><FaMoneyBillWave className="me-2" />Pricing Information</h5>
@@ -570,6 +566,23 @@ const ApproveFinishedProduct = () => {
                                 </div>
                               </div>
                             )}
+
+                            <h5 className="mb-3 mt-4"><FaTags className="me-2" />Colors</h5>
+                            <div className="mb-4">
+                              {fabricDetails.length > 0 ? (
+                                fabricDetails.map((detail, index) => (
+                                  <div key={index} className="mb-2">
+                                    {renderColorSwatch(detail.color || 'gray')}
+                                    <span className="ms-2">{detail.color}</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-muted">No color information available</p>
+                              )}
+                            </div>
+
+                            <h5 className="mb-3"><FaBoxOpen className="me-2" />Size Distribution</h5>
+                            {renderSizeQuantityBars()}
                           </Col>
 
                           <Col md={6} className="text-center">
@@ -611,33 +624,7 @@ const ApproveFinishedProduct = () => {
                             )}
                           </Col>
                         </Row>
-                      </Tab>
-
-                      <Tab eventKey="fabric" title={<span><FaTshirt className="me-2" />Fabric Details</span>}>
-                        <Row className="mt-3">
-                          <Col md={6}>
-                            <h5 className="mb-3"><FaTags className="me-2" />Colors</h5>
-                            <div className="mb-4">
-                              {fabricDetails.length > 0 ? (
-                                fabricDetails.map((detail, index) => (
-                                  <div key={index} className="mb-2">
-                                    {renderColorSwatch(detail.color || 'gray')}
-                                    <span className="ms-2">{detail.color}</span>
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-muted">No color information available</p>
-                              )}
-                            </div>
-                          </Col>
-
-                          <Col md={6}>
-                            <h5 className="mb-3"><FaBoxOpen className="me-2" />Size Distribution</h5>
-                            {renderSizeQuantityBars()}
-                          </Col>
-                        </Row>
-                      </Tab>
-                    </Tabs>
+                    </div>
                   </div>
                 ) : (
                   <div className="slide-in">

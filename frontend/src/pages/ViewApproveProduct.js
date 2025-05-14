@@ -1,6 +1,5 @@
 // src/pages/ViewApproveProduct.js
 import { useState, useEffect, useRef, useCallback } from "react";
-import SingleProductAnalysis from "../components/SingleProductAnalysis";
 import axios from "axios";
 import {
   Card, Container, Row, Col, Table, Button, Form,
@@ -11,7 +10,7 @@ import {
   FaSearch, FaSort, FaImage, FaUpload, FaTrash, FaUndo,
   FaInfoCircle, FaMoneyBillWave, FaTshirt, FaCalendarAlt,
   FaCheck, FaExclamationTriangle, FaEye, FaArrowLeft, FaArrowRight,
-  FaShoppingCart, FaBoxOpen, FaWarehouse, FaChartPie
+  FaShoppingCart, FaBoxOpen, FaWarehouse
 } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { useDropzone } from "react-dropzone";
@@ -1559,11 +1558,6 @@ const ViewApproveProduct = () => {
                       {renderSizeDistribution(selectedProduct)}
                     </Col>
                   </Row>
-                </Tab>
-                <Tab eventKey="analysis" title={<span><FaChartPie className="me-2" />Analysis</span>}>
-                  <div className="p-2">
-                    <SingleProductAnalysis productId={selectedProduct.id} />
-                  </div>
                 </Tab>
                 <Tab eventKey="cutting" title={<span><FaTshirt className="me-2" />Cutting & Sewing</span>}>
                   <div className="p-2">
