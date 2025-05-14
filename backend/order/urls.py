@@ -35,6 +35,7 @@ urlpatterns = [
 
     # Duplicate paths to match frontend expectations
     path('orders/orders/create/', OrderListCreateView.as_view(), name='order-list-create-alt'),
+    path('orders/orders/items/', OrderItemCreateView.as_view(), name='orderitem-list-create-alt'),
     path('orders/orders/<int:pk>/', OrderDetailView.as_view(), name='order-detail-alt'),
     path('orders/orders/<int:pk>/approve/', OrderApproveView.as_view(), name='order-approve-alt'),
     path('orders/orders/<int:pk>/submit/', OrderSubmitView.as_view(), name='order-submit-alt'),
@@ -42,4 +43,5 @@ urlpatterns = [
     path('orders/orders/<int:pk>/mark-delivered/', MarkOrderDeliveredView.as_view(), name='mark-delivered-alt'),
     path('orders/orders/<int:pk>/record-payment/', RecordPaymentView.as_view(), name='record-payment-alt'),
     path('orders/orders/<int:pk>/payments/', OrderPaymentsListView.as_view(), name='order-payments-list-alt'),
+    path('orders/orders/<int:order_id>/items/', OrderItemCreateView.as_view(), name='orderitem-create-alt'),
 ]

@@ -44,14 +44,20 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class OrderApproveView(APIView):
     """
-    Allows owners to approve submitted orders.
+    Allows owners or sales team to approve submitted orders.
     """
-    permission_classes = [IsAuthenticated, IsOwner]  # Only owners can approve orders
+    permission_classes = [IsAuthenticated]  # Allow any authenticated user to approve orders
     def post(self, request, pk):
         try:
             order = Order.objects.get(pk=pk)
 
-            if order.status != 'submitted':
+            # Check if the user is from the sales team
+            user_role = request.user.role.name if hasattr(request.user, 'role') else None
+            is_sales_team = user_role == 'Sales Team'
+
+            # For sales team, allow any status to be approved
+            # For other roles, enforce the submitted-to-approved workflow
+            if not is_sales_team and order.status != 'submitted':
                 return Response({"error": "Only submitted orders can be approved."}, status=status.HTTP_400_BAD_REQUEST)
 
             order.status = 'approved'
@@ -147,15 +153,21 @@ class OrderItemCreateView(generics.CreateAPIView):
 
 class OrderSubmitView(APIView):
     """
-    Lets Order Coordinator mark an order as 'submitted' (finished preparing).
+    Lets Order Coordinator or Sales Team mark an order as 'submitted' (finished preparing).
     """
-    permission_classes = [IsAuthenticated, IsOrderCoordinator]  # Ensure user is authenticated and is an Order Coordinator
+    permission_classes = [IsAuthenticated]  # Allow any authenticated user to submit orders
 
     def post(self, request, pk):
         try:
             order = Order.objects.get(pk=pk)
 
-            if order.status != 'draft':
+            # Check if the user is from the sales team
+            user_role = request.user.role.name if hasattr(request.user, 'role') else None
+            is_sales_team = user_role == 'Sales Team'
+
+            # For sales team, allow any status to be submitted
+            # For other roles, enforce the draft-to-submitted workflow
+            if not is_sales_team and order.status != 'draft':
                 return Response({"error": "Only draft orders can be submitted."}, status=status.HTTP_400_BAD_REQUEST)
 
             order.status = 'submitted'
@@ -171,14 +183,20 @@ class OrderSubmitView(APIView):
 
 class GenerateInvoiceView(APIView):
     """
-    Allows owners to generate an invoice for an approved order.
+    Allows owners or sales team to generate an invoice for an approved order.
     """
-    permission_classes = [IsAuthenticated, IsOwner]  # Only owners can generate invoices
+    permission_classes = [IsAuthenticated]  # Allow any authenticated user to generate invoices
     def post(self, request, pk):
         try:
             order = Order.objects.prefetch_related('items__finished_product').get(pk=pk)
 
-            if order.status != 'approved':
+            # Check if the user is from the sales team
+            user_role = request.user.role.name if hasattr(request.user, 'role') else None
+            is_sales_team = user_role == 'Sales Team'
+
+            # For sales team, allow any status to be invoiced
+            # For other roles, enforce the approved-to-invoiced workflow
+            if not is_sales_team and order.status != 'approved':
                 return Response({"error": "Only approved orders can be invoiced."}, status=status.HTTP_400_BAD_REQUEST)
 
             # Generate invoice number (simple implementation - can be enhanced)

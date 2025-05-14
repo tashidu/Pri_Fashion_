@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { FaStore, FaShoppingCart, FaChartLine, FaTachometerAlt, FaSignOutAlt, FaBars, FaAngleRight, FaTshirt } from "react-icons/fa";
+import { FaStore, FaShoppingCart, FaChartLine, FaTachometerAlt, FaSignOutAlt, FaBars, FaAngleRight, FaTshirt, FaBoxes, FaCashRegister } from "react-icons/fa";
 import { logout } from "../utils/auth";
 
 function SalesTeamNavBar() {
@@ -58,6 +58,19 @@ function SalesTeamNavBar() {
         { title: "Product List", path: "/sales-products" },
         { title: "Product Gallery", path: "/sales-product-gallery" }
       ]
+    },
+    {
+      title: "Inventory",
+      icon: <FaBoxes />,
+      path: "/sales-packing-inventory",
+      subItems: [
+        { title: "View Inventory", path: "/sales-packing-inventory" }
+      ]
+    },
+    {
+      title: "Sell Products",
+      icon: <FaCashRegister />,
+      path: "/sell-product"
     },
     {
       title: "Shops",

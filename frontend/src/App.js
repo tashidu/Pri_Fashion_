@@ -26,6 +26,8 @@ import ViewApproveProduct from "./pages/ViewApproveProduct.js";
 import AddPackingSession from "./pages/AddPackingSession.js";
 import ViewPackingSessions from "./pages/ViewPackingSessions.js";
 import ViewPackingInventory from "./pages/ViewPackingInventory.js";
+import ViewPackingInventorySales from "./pages/ViewPackingInventorySales.js";
+import SellProductPage from "./pages/SellProductPage.js";
 import PackingReportChart from "./pages/PackingReportChart.js";
 import AddShop from "./pages/AddShop.js";
 import CreateOrder from "./pages/CreateOrder.js";
@@ -81,6 +83,8 @@ function App() {
         <Route path="/owner-orders" element={<OwnerOrdersPage />} />
         <Route path="/sales-team-orders" element={<SalesTeamOrdersPage />} />
         <Route path="/order-analysis" element={<OrderAnalysisPage />} />
+        <Route path="/sales-packing-inventory" element={<ViewPackingInventorySales />} />
+        <Route path="/sell-product" element={<SellProductPage />} />
       </Routes>
     </Router>
   );
