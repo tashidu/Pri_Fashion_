@@ -57,6 +57,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'payment_due_date', 'credit_term_months',
             # Owner notes
             'owner_notes',
+            # Direct sale flag
+            'direct_sale',
             # Items
             'items',
             # Payments

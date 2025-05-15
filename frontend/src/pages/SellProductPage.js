@@ -205,7 +205,8 @@ const SellProductPage = () => {
       // Create order
       const orderResponse = await authPost("orders/orders/create/", {
         shop: selectedShop,
-        status: "draft" // Start as draft to comply with the workflow
+        status: "draft", // Start as draft to comply with the workflow
+        direct_sale: true // Mark as a direct sale by sales team
       });
 
       if (orderResponse.status !== 201) {

@@ -33,10 +33,11 @@ const SalesProductImageViewer = () => {
             .get("http://localhost:8000/api/finished_product/sales-products/")
             .then((res) => {
                 console.log("API Response:", res.data);
-                // Filter out products with no stock
+                // Filter out products with no stock (either packed or unpacked)
                 const productsWithStock = res.data.filter(product => {
-                    const stockLevel = product.packing_inventory?.total_quantity || product.available_quantity;
-                    return stockLevel > 0;
+                    const packedQuantity = product.packing_inventory?.total_quantity || 0;
+                    const unpackedQuantity = product.available_quantity || 0;
+                    return packedQuantity > 0 || unpackedQuantity > 0;
                 });
                 setProducts(productsWithStock);
                 setLoading(false);
@@ -125,7 +126,7 @@ const SalesProductImageViewer = () => {
                                     bg="success"
                                     className="stock-badge"
                                 >
-                                    {product.packing_inventory?.total_quantity || product.available_quantity} in stock
+                                    {product.packing_inventory?.total_quantity || 0} packed + {product.available_quantity || 0} not packed yet
                                 </Badge>
                             </div>
                             <Card.Body className="text-center p-2">
@@ -145,8 +146,6 @@ const SalesProductImageViewer = () => {
     // Product detail modal
     const renderProductModal = () => {
         if (!selectedProduct) return null;
-
-        const stockLevel = selectedProduct.packing_inventory?.total_quantity || selectedProduct.available_quantity;
 
         return (
             <Modal
@@ -232,8 +231,12 @@ const SalesProductImageViewer = () => {
                                             <span className="value">{selectedProduct.packing_inventory?.extra_items || 0}</span>
                                         </div>
                                         <div className="stock-item total">
-                                            <span className="label">Total Available:</span>
-                                            <span className="value">{stockLevel}</span>
+                                            <span className="label">Total Packed:</span>
+                                            <span className="value">{selectedProduct.packing_inventory?.total_quantity || 0}</span>
+                                        </div>
+                                        <div className="stock-item total">
+                                            <span className="label">Sewn (Not Packed Yet):</span>
+                                            <span className="value">{selectedProduct.available_quantity || 0}</span>
                                         </div>
                                     </div>
                                 </div>

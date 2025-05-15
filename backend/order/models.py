@@ -69,6 +69,9 @@ class Order(models.Model):
     # Owner notes
     owner_notes = models.TextField(blank=True)
 
+    # Flag to identify direct sales by sales team
+    direct_sale = models.BooleanField(default=False)
+
     @property
     def total_amount(self):
         from decimal import Decimal

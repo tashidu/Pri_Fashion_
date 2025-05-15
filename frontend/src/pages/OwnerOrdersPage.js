@@ -25,6 +25,7 @@ const OwnerOrdersPage = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [directSaleFilter, setDirectSaleFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
@@ -39,7 +40,7 @@ const OwnerOrdersPage = () => {
   }, []);
 
   useEffect(() => {
-    // Apply filters whenever orders, searchTerm, or statusFilter changes
+    // Apply filters whenever orders, searchTerm, statusFilter, or directSaleFilter changes
     let result = [...orders];
 
     // Apply search filter
@@ -55,9 +56,15 @@ const OwnerOrdersPage = () => {
       result = result.filter(order => order.status === statusFilter);
     }
 
+    // Apply direct sale filter
+    if (directSaleFilter !== "all") {
+      const isDirect = directSaleFilter === "direct";
+      result = result.filter(order => (order.direct_sale === true) === isDirect);
+    }
+
     setFilteredOrders(result);
     setCurrentPage(1); // Reset to first page when filters change
-  }, [orders, searchTerm, statusFilter]);
+  }, [orders, searchTerm, statusFilter, directSaleFilter]);
 
   // Effect to handle sidebar state based on window resize
   useEffect(() => {
@@ -461,7 +468,7 @@ const OwnerOrdersPage = () => {
 
           {/* Search and filter controls */}
           <div className="row mb-4">
-            <div className="col-md-6 mb-3 mb-md-0">
+            <div className="col-md-4 mb-3 mb-md-0">
               <div className="input-group">
                 <span className="input-group-text bg-light">
                   <FaSearch className="text-secondary" />
@@ -476,7 +483,7 @@ const OwnerOrdersPage = () => {
               </div>
             </div>
 
-            <div className="col-md-4 mb-3 mb-md-0">
+            <div className="col-md-3 mb-3 mb-md-0">
               <div className="input-group">
                 <span className="input-group-text bg-light">
                   <FaFilter className="text-secondary" />
@@ -492,6 +499,23 @@ const OwnerOrdersPage = () => {
                   <option value="approved">Approved</option>
                   <option value="invoiced">Invoiced</option>
                   <option value="delivered">Delivered</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="col-md-3 mb-3 mb-md-0">
+              <div className="input-group">
+                <span className="input-group-text bg-light">
+                  <FaFilter className="text-secondary" />
+                </span>
+                <select
+                  className="form-select"
+                  value={directSaleFilter}
+                  onChange={(e) => setDirectSaleFilter(e.target.value)}
+                >
+                  <option value="all">All Orders</option>
+                  <option value="direct">Direct Sales</option>
+                  <option value="regular">Regular Orders</option>
                 </select>
               </div>
             </div>
@@ -546,9 +570,14 @@ const OwnerOrdersPage = () => {
                           <td className="fw-medium">#{order.id}</td>
                           <td>{order.shop_name || order.shop}</td>
                           <td>
-                            <span className={`badge ${getBadgeClass(order.status)}`}>
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                            </span>
+                            <div className="d-flex flex-column gap-1">
+                              <span className={`badge ${getBadgeClass(order.status)}`}>
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </span>
+                              {order.direct_sale && (
+                                <span className="badge bg-info text-dark">Direct Sale</span>
+                              )}
+                            </div>
                           </td>
                           <td>
                             {order.payment_status ? (
@@ -715,9 +744,15 @@ const OwnerOrdersPage = () => {
                     <div className="row mb-3">
                       <div className="col-md-6">
                         <p className="mb-1"><strong>Shop:</strong> {selectedOrder.shop_name}</p>
-                        <p className="mb-1"><strong>Status:</strong> <span className={`badge ${getBadgeClass(selectedOrder.status)}`}>
-                          {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
-                        </span></p>
+                        <p className="mb-1">
+                          <strong>Status:</strong>
+                          <span className={`badge ${getBadgeClass(selectedOrder.status)} me-1`}>
+                            {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                          </span>
+                          {selectedOrder.direct_sale && (
+                            <span className="badge bg-info text-dark">Direct Sale</span>
+                          )}
+                        </p>
                         <p className="mb-1"><strong>Created:</strong> {new Date(selectedOrder.created_at).toLocaleString()}</p>
                         {selectedOrder.approval_date && (
                           <p className="mb-1"><strong>Approved Date:</strong> {new Date(selectedOrder.approval_date).toLocaleString()}</p>
