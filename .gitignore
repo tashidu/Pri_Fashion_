@@ -32,6 +32,11 @@ media
 venv/
 ENV/
 
+# Environment variables
+.env
+.env.local
+.env.vm
+
 # IDE
 .idea/
 .vscode/

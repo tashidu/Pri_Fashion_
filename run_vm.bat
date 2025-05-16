@@ -1,0 +1,6 @@
+@echo off
+echo Copying VM environment file...
+copy .env.vm .env
+echo Starting Django server using the VM environment...
+cd backend
+..\env\Scripts\python.exe manage.py runserver

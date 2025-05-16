@@ -1,0 +1,6 @@
+@echo off
+echo Copying local environment file...
+copy .env.local .env
+echo Starting Django server using the local environment...
+cd backend
+..\new_env\Scripts\python.exe manage.py runserver

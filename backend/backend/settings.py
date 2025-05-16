@@ -1,20 +1,29 @@
 import pymysql
 pymysql.install_as_MySQLdb()
 
-
 from pathlib import Path
 import os
 from datetime import timedelta
+from dotenv import load_dotenv
 
+# Load environment variables from .env file
+# First try to load .env.local, if not found, try .env.vm, if not found, load .env
+if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env.local')):
+    load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env.local'))
+    print("Loaded .env.local")
+elif os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env.vm')):
+    load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env.vm'))
+    print("Loaded .env.vm")
+else:
+    load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env'))
+    print("Loaded .env")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Get settings from environment variables
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-ge9)a+1@8zel*ba@&m$4ltn-2nhoc0$)y1%#t15@4cn7o38052')
 
-
-SECRET_KEY = 'django-insecure-ge9)a+1@8zel*ba@&m$4ltn-2nhoc0$)y1%#t15@4cn7o38052'
-
-
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = []
 
@@ -80,13 +89,13 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-     'default': {
+    'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'prifashion',
-        'USER': 'root',
-        'PASSWORD': 'boossa12',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': os.getenv('DATABASE_NAME', 'prifashion'),
+        'USER': os.getenv('DATABASE_USER', 'root'),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'boossa12'),
+        'HOST': os.getenv('DATABASE_HOST', 'localhost'),
+        'PORT': os.getenv('DATABASE_PORT', '3306'),
     }
 }
 
@@ -129,7 +138,7 @@ STATIC_URL = 'static/'
 
 # Media files (Uploaded files)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.path.join(BASE_DIR, os.getenv('MEDIA_ROOT', 'media'))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

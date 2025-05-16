@@ -2,12 +2,33 @@
 
 A fashion garment management system with Django backend and React frontend.
 
-## Setup Instructions
+## Quick Setup
+
+For a quick setup, run the setup script:
+
+```
+setup.bat
+```
+
+This script will:
+1. Check if Python is installed
+2. Ask if you're setting up on a local machine or VM
+3. Create a virtual environment
+4. Install dependencies
+5. Set up the appropriate environment file
+
+## Manual Setup Instructions
 
 ### Prerequisites
 - Python 3.13.3
 - Node.js and npm
 - MySQL
+
+### Environment Setup
+
+1. Choose the appropriate environment file:
+   - For local machine: Copy `.env.local` to `.env`
+   - For VM: Copy `.env.vm` to `.env`
 
 ### Backend Setup
 
@@ -16,25 +37,14 @@ A fashion garment management system with Django backend and React frontend.
 python -m venv new_env
 ```
 
-2. Activate the virtual environment:
-- Windows: `new_env\Scripts\activate.bat`
-- Linux/Mac: `source new_env/bin/activate`
-
-3. Install dependencies:
+2. Install dependencies:
 ```
-pip install -r requirements.txt
+new_env\Scripts\pip.exe install -r requirements.txt
 ```
 
-4. Run the Django server:
-```
-cd backend
-python manage.py runserver
-```
-
-Or use the provided batch file:
-```
-run_project.bat
-```
+3. Run the Django server:
+   - For local machine: `run_local.bat`
+   - For VM: `run_vm.bat`
 
 ### Frontend Setup
 
@@ -58,11 +68,30 @@ npm start
 - `backend/`: Django backend
 - `frontend/`: React frontend
 - `media/`: Media files
+- `.env.local`: Environment variables for local machine
+- `.env.vm`: Environment variables for VM
+- `.env.template`: Template for environment variables
 - `requirements.txt`: Python dependencies
-- `run_project.bat`: Batch file to run the Django server
+- `run_local.bat`: Batch file to run the Django server on local machine
+- `run_vm.bat`: Batch file to run the Django server on VM
+- `setup.bat`: Setup script for new environments
+
+## Environment Variables
+
+The project uses environment variables for configuration. These are stored in `.env` files:
+
+- `DATABASE_NAME`: Name of the MySQL database
+- `DATABASE_USER`: MySQL username
+- `DATABASE_PASSWORD`: MySQL password
+- `DATABASE_HOST`: MySQL host
+- `DATABASE_PORT`: MySQL port
+- `PYTHON_PATH`: Path to Python executable
+- `MEDIA_ROOT`: Path to media files
+- `DEBUG`: Whether to run in debug mode
+- `SECRET_KEY`: Django secret key
 
 ## Notes
 
 - Make sure your MySQL server is running
-- The database settings are in `backend/backend/settings.py`
 - Virtual environments should not be committed to version control
+- If you switch between environments, use the appropriate batch file
