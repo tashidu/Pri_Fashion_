@@ -1,0 +1,3 @@
+@echo off
+echo Starting Django server using the environment wrapper...
+..\new_env\Scripts\python.exe manage_wrapper.py runserver
