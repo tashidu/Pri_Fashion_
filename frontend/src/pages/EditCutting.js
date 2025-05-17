@@ -25,6 +25,12 @@ const EditCutting = () => {
     { fabric_variant: '', yard_usage: '', xs: 0, s: 0, m: 0, l: 0, xl: 0 }
   ]);
 
+  // Original yard usage for each variant (to calculate available yards)
+  const [originalYardUsage, setOriginalYardUsage] = useState({});
+
+  // Validation errors for each detail row
+  const [detailErrors, setDetailErrors] = useState([]);
+
   // Loading, error, success states
   const [loadingDefinitions, setLoadingDefinitions] = useState(true);
   const [loadingVariants, setLoadingVariants] = useState(false);
@@ -49,19 +55,37 @@ const EditCutting = () => {
   // 1. Fetch the cutting record to edit
   useEffect(() => {
     setLoadingRecord(true);
-    axios.get(`http://localhost:8000/api/cutting/records/${id}/`)
+    console.log(`Fetching cutting record with ID: ${id}`);
+
+    axios.get(`http://localhost:8000/api/cutting/cutting-records/${id}/`)
       .then((res) => {
         const record = res.data;
+        console.log('Cutting record fetched successfully:', record);
         setOriginalRecord(record);
 
         // Set form fields with record data
         setSelectedFabricDefinition(record.fabric_definition);
+        console.log(`Setting selected fabric definition to: ${record.fabric_definition}`);
         setCuttingDate(record.cutting_date);
         setDescription(record.description || '');
         setProductName(record.product_name || '');
 
-        // Set details
+        // Set details and store original yard usage
         if (record.details && record.details.length > 0) {
+          console.log('Setting details from record:', record.details);
+
+          // Create a map of original yard usage by variant ID
+          const yardUsageMap = {};
+          record.details.forEach(detail => {
+            yardUsageMap[detail.fabric_variant] = parseFloat(detail.yard_usage);
+          });
+          console.log('Original yard usage map:', yardUsageMap);
+          setOriginalYardUsage(yardUsageMap);
+
+          // Initialize detail errors array with empty strings
+          setDetailErrors(Array(record.details.length).fill(''));
+
+          // Set details
           setDetails(record.details.map(detail => ({
             id: detail.id, // Keep the original ID for updating
             fabric_variant: detail.fabric_variant,
@@ -86,8 +110,19 @@ const EditCutting = () => {
   // 2. Fetch fabric definitions on mount
   useEffect(() => {
     setLoadingDefinitions(true);
+
+    // Test API call to check if the variants endpoint is working
+    axios.get('http://localhost:8000/api/fabric-definitions/1/variants/')
+      .then(res => {
+        console.log('Test API call to variants endpoint successful:', res.data);
+      })
+      .catch(err => {
+        console.error('Test API call to variants endpoint failed:', err);
+      });
+
     axios.get("http://localhost:8000/api/fabric-definitions/")
       .then((res) => {
+        console.log('Fabric definitions fetched successfully:', res.data);
         setFabricDefinitions(res.data);
         setLoadingDefinitions(false);
       })
@@ -102,30 +137,104 @@ const EditCutting = () => {
   useEffect(() => {
     if (selectedFabricDefinition) {
       setLoadingVariants(true);
-      axios.get(`http://localhost:8000/api/fabric-definitions/${selectedFabricDefinition}/variants/`)
-        .then((res) => {
-          setFabricVariants(res.data);
-          setLoadingVariants(false);
-        })
-        .catch((err) => {
-          console.error('Error fetching fabric variants:', err);
-          setError('Failed to load fabric variants. Please try again.');
-          setLoadingVariants(false);
-        });
+      console.log(`Fetching variants for fabric definition ID: ${selectedFabricDefinition}`);
+
+      // Try a different URL format to ensure we're hitting the correct endpoint
+      const url = `http://localhost:8000/api/fabric-definitions/${selectedFabricDefinition}/variants/`;
+      console.log('Requesting variants from URL:', url);
+
+      // Add a small delay to ensure the backend has time to process the request
+      setTimeout(() => {
+        axios.get(url)
+          .then((res) => {
+            console.log('Variants fetched successfully:', res.data);
+            if (Array.isArray(res.data)) {
+              setFabricVariants(res.data);
+            } else {
+              console.error('Unexpected response format:', res.data);
+              setFabricVariants([]);
+            }
+            setLoadingVariants(false);
+          })
+          .catch((err) => {
+            console.error('Error fetching fabric variants:', err);
+            // Try a fallback approach - fetch all variants and filter
+            console.log('Trying fallback approach...');
+            axios.get('http://localhost:8000/api/fabric-variants/')
+              .then((fallbackRes) => {
+                console.log('All variants fetched:', fallbackRes.data);
+                // Filter variants by fabric_definition
+                const filteredVariants = fallbackRes.data.filter(
+                  variant => variant.fabric_definition == selectedFabricDefinition
+                );
+                console.log('Filtered variants:', filteredVariants);
+                setFabricVariants(filteredVariants);
+                setLoadingVariants(false);
+              })
+              .catch((fallbackErr) => {
+                console.error('Fallback approach failed:', fallbackErr);
+                setError('Failed to load fabric variants. Please try again.');
+                setFabricVariants([]);
+                setLoadingVariants(false);
+              });
+          });
+      }, 500);
     } else {
       setFabricVariants([]);
     }
   }, [selectedFabricDefinition]);
 
+  // 4. Validate yard usage when variants or details change
+  useEffect(() => {
+    if (fabricVariants.length > 0 && details.length > 0) {
+      // Create a new array for detail errors
+      const newDetailErrors = [...detailErrors];
+
+      // Validate each detail
+      details.forEach((detail, index) => {
+        if (detail.fabric_variant && detail.yard_usage) {
+          const variantId = detail.fabric_variant;
+
+          // Find the variant in the fabricVariants array
+          const variant = fabricVariants.find(v => v.id === parseInt(variantId));
+          if (!variant) return;
+
+          // Get the original yard usage for this variant (or 0 if it's a new detail)
+          const original = originalYardUsage[variantId] || 0;
+
+          // Calculate the maximum allowed yard usage
+          const maxAllowed = parseFloat(variant.available_yard) + original;
+
+          // Check if the yard usage exceeds the maximum allowed
+          if (parseFloat(detail.yard_usage) > maxAllowed) {
+            newDetailErrors[index] = `Exceeds available yards. Maximum allowed: ${maxAllowed.toFixed(2)} yards`;
+          } else if (parseFloat(detail.yard_usage) <= 0) {
+            newDetailErrors[index] = 'Yard usage must be greater than 0';
+          } else {
+            newDetailErrors[index] = '';
+          }
+        }
+      });
+
+      // Update detail errors state
+      setDetailErrors(newDetailErrors);
+    }
+  }, [fabricVariants, details, originalYardUsage]);
+
   // Add a new empty detail row
   const addDetailRow = () => {
     setDetails([...details, { fabric_variant: '', yard_usage: '', xs: 0, s: 0, m: 0, l: 0, xl: 0 }]);
+    setDetailErrors([...detailErrors, '']); // Add an empty error for the new row
   };
 
   // Delete a detail row
   const removeDetailRow = (index) => {
     const newDetails = details.filter((_, i) => i !== index);
     setDetails(newDetails);
+
+    // Also remove the corresponding error
+    const newDetailErrors = detailErrors.filter((_, i) => i !== index);
+    setDetailErrors(newDetailErrors);
   };
 
   // Handle change for each detail row field
@@ -133,6 +242,51 @@ const EditCutting = () => {
     const newDetails = [...details];
     newDetails[index][field] = value;
     setDetails(newDetails);
+
+    // Validate yard usage if that's the field being changed
+    if (field === 'yard_usage') {
+      validateYardUsage(index, value);
+    }
+  };
+
+  // Validate yard usage against available yards
+  const validateYardUsage = (index, newYardUsage) => {
+    const newDetailErrors = [...detailErrors];
+    const detail = details[index];
+    const variantId = detail.fabric_variant;
+
+    // Skip validation if no variant is selected
+    if (!variantId) {
+      newDetailErrors[index] = '';
+      setDetailErrors(newDetailErrors);
+      return;
+    }
+
+    // Find the variant in the fabricVariants array
+    const variant = fabricVariants.find(v => v.id === parseInt(variantId));
+    if (!variant) {
+      newDetailErrors[index] = '';
+      setDetailErrors(newDetailErrors);
+      return;
+    }
+
+    // Get the original yard usage for this variant (or 0 if it's a new detail)
+    const original = originalYardUsage[variantId] || 0;
+
+    // Calculate the maximum allowed yard usage
+    // This is the current available yards plus the original yard usage
+    const maxAllowed = parseFloat(variant.available_yard) + original;
+
+    // Check if the new yard usage exceeds the maximum allowed
+    if (parseFloat(newYardUsage) > maxAllowed) {
+      newDetailErrors[index] = `Exceeds available yards. Maximum allowed: ${maxAllowed.toFixed(2)} yards`;
+    } else if (parseFloat(newYardUsage) <= 0) {
+      newDetailErrors[index] = 'Yard usage must be greater than 0';
+    } else {
+      newDetailErrors[index] = '';
+    }
+
+    setDetailErrors(newDetailErrors);
   };
 
   // Handle form submission
@@ -151,6 +305,21 @@ const EditCutting = () => {
     const hasValidDetails = details.some(detail => detail.fabric_variant);
     if (!hasValidDetails) {
       setError('Please select at least one fabric variant for your cutting details.');
+      return;
+    }
+
+    // Validate all yard usage values
+    let hasYardUsageErrors = false;
+    details.forEach((detail, index) => {
+      validateYardUsage(index, detail.yard_usage);
+      if (detailErrors[index]) {
+        hasYardUsageErrors = true;
+      }
+    });
+
+    // Check if there are any yard usage validation errors
+    if (hasYardUsageErrors) {
+      setError('Please fix the yard usage errors before submitting.');
       return;
     }
 
@@ -387,6 +556,15 @@ const EditCutting = () => {
                                 <Spinner animation="border" size="sm" className="me-2" />
                                 <span>Loading variants...</span>
                               </div>
+                            ) : fabricVariants.length === 0 ? (
+                              <div>
+                                <Form.Select disabled>
+                                  <option>No variants available</option>
+                                </Form.Select>
+                                <small className="text-danger">
+                                  No fabric variants found. Please check the fabric definition.
+                                </small>
+                              </div>
                             ) : (
                               <Form.Select
                                 value={detail.fabric_variant}
@@ -418,10 +596,18 @@ const EditCutting = () => {
                               onChange={(e) => handleDetailChange(index, 'yard_usage', e.target.value)}
                               required
                               disabled={isSubmitting}
+                              isInvalid={!!detailErrors[index]}
+                              className={detailErrors[index] ? 'border-danger' : ''}
                             />
                             <Form.Control.Feedback type="invalid">
-                              Please enter valid yard usage.
+                              {detailErrors[index] || 'Please enter valid yard usage.'}
                             </Form.Control.Feedback>
+                            {currentVariant && (
+                              <small className="text-muted">
+                                Available: {parseFloat(currentVariant.available_yard) + (originalYardUsage[detail.fabric_variant] || 0)} yards
+                                (Original: {originalYardUsage[detail.fabric_variant] || 0} yards + Current: {currentVariant.available_yard} yards)
+                              </small>
+                            )}
                           </Form.Group>
                         </Col>
                         <Col md={5}>

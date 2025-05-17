@@ -9,7 +9,7 @@ import {
 import {
   FaSearch, FaSort, FaSortUp, FaSortDown,
   FaTshirt, FaCut, FaCalendarAlt, FaFilter,
-  FaPlus, FaInfoCircle, FaEdit, FaTrash
+  FaPlus, FaInfoCircle, FaTrash
 } from 'react-icons/fa';
 
 // Add global CSS for hover effect
@@ -190,11 +190,7 @@ const ViewCutting = () => {
     setSortConfig({ key: 'cutting_date', direction: 'desc' });
   };
 
-  // Handle edit cutting record
-  const handleEditClick = (e, record) => {
-    e.stopPropagation(); // Prevent row click event
-    navigate(`/editcutting/${record.id}`);
-  };
+  // Edit functionality removed
 
   // State for tracking if a record has sewing records
   const [hasSewingRecords, setHasSewingRecords] = useState(false);
@@ -487,13 +483,7 @@ const ViewCutting = () => {
                                 >
                                   <FaInfoCircle className="me-1" /> Details
                                 </Button>
-                                <Button
-                                  variant="outline-primary"
-                                  size="sm"
-                                  onClick={(e) => handleEditClick(e, record)}
-                                >
-                                  <FaEdit className="me-1" /> Edit
-                                </Button>
+
                                 <Button
                                   variant="outline-danger"
                                   size="sm"

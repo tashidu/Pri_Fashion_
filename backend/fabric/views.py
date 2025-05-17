@@ -1,8 +1,8 @@
 from rest_framework import generics
 from .models import Supplier, FabricDefinition, FabricVariant
 from .serializers import (
-    SupplierSerializer, 
-    FabricDefinitionSerializer, 
+    SupplierSerializer,
+    FabricDefinitionSerializer,
     FabricVariantSerializer,
     FabricDefinitionDetailSerializer
 )
@@ -31,7 +31,7 @@ class FabricDefinitionListCreateView(generics.ListCreateAPIView):
     POST: Create a new fabric definition.
     """
     queryset = FabricDefinition.objects.all()
-    serializer_class = FabricDefinitionSerializer
+    serializer_class = FabricDefinitionDetailSerializer
 
 class FabricDefinitionDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
@@ -57,14 +57,9 @@ class FabricVariantDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = FabricVariant.objects.all()
     serializer_class = FabricVariantSerializer
 
-
-class FabricDefinitionListCreateView(generics.ListCreateAPIView):
-    queryset = FabricDefinition.objects.all()
-    serializer_class = FabricDefinitionDetailSerializer
-    
 class FabricVariantByDefinitionListView(generics.ListAPIView):
     serializer_class = FabricVariantSerializer
 
     def get_queryset(self):
         definition_id = self.kwargs.get('definition_id')
-        return FabricVariant.objects.filter(fabric_definition_id=definition_id)    
+        return FabricVariant.objects.filter(fabric_definition_id=definition_id)

@@ -6,7 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from fabric.models import FabricVariant
-from django.db.models import Sum
+from django.db.models import Sum, Exists, OuterRef
+from sewing.models import DailySewingRecord
 from rest_framework.decorators import action
 
 
@@ -71,6 +72,36 @@ class CuttingRecordDetailView(APIView):
                 {"error": f"Failed to retrieve cutting record: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class CheckSewingRecordsView(APIView):
+    """
+    Check if a cutting record has any associated sewing records.
+    """
+    def get(self, request, pk, format=None):
+        try:
+            # Get the cutting record
+            cutting_record = get_object_or_404(CuttingRecord, pk=pk)
+
+            # Get all cutting record fabric details for this cutting record
+            cutting_record_fabrics = CuttingRecordFabric.objects.filter(cutting_record=cutting_record)
+
+            # Check if any of these cutting record fabrics have associated sewing records
+            has_sewing_records = False
+            for fabric in cutting_record_fabrics:
+                sewing_records_count = DailySewingRecord.objects.filter(cutting_record_fabric=fabric).count()
+                if sewing_records_count > 0:
+                    has_sewing_records = True
+                    break
+
+            return Response({
+                "has_sewing_records": has_sewing_records
+            })
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to check sewing records: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class FabricVariantCuttingHistoryView(APIView):
     """
