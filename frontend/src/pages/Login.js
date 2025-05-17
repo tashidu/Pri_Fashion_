@@ -53,13 +53,23 @@ function Login() {
             setUserRole(response.data.role);
             setError("");
 
-            const roleRoutes = {
-                "Owner": "/owner-dashboard",
-                "Inventory Manager": "/inventory-dashboard",
-                "Order Coordinator": "/orders-dashboard",
-                "Sales Team": "/sales-dashboard"
-            };
-            navigate(roleRoutes[response.data.role] || "/");
+            // Check if there's a saved redirect path from a previous attempt to access a protected route
+            const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+
+            if (redirectPath) {
+                // Clear the saved path
+                sessionStorage.removeItem('redirectAfterLogin');
+                navigate(redirectPath);
+            } else {
+                // Default navigation based on role
+                const roleRoutes = {
+                    "Owner": "/owner-dashboard",
+                    "Inventory Manager": "/inventory-dashboard",
+                    "Order Coordinator": "/orders-dashboard",
+                    "Sales Team": "/sales-dashboard"
+                };
+                navigate(roleRoutes[response.data.role] || "/");
+            }
         } catch (error) {
             setError(error.response?.data?.error || "Login failed. Please try again.");
             setLoading(false);
