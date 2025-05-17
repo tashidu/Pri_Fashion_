@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from fabric.models import FabricVariant
 from django.db.models import Sum
+from rest_framework.decorators import action
 
 
 
@@ -14,6 +15,39 @@ class CuttingRecordViewSet(viewsets.ModelViewSet):
     queryset = CuttingRecord.objects.all()
     serializer_class = CuttingRecordSerializer
     permission_classes = [AllowAny]
+
+    def destroy(self, request, *args, **kwargs):
+        cutting_record = self.get_object()
+
+        # Check if any CuttingRecordFabric instances have associated DailySewingRecords
+        for detail in cutting_record.details.all():
+            if hasattr(detail, 'daily_sewing_records') and detail.daily_sewing_records.exists():
+                return Response(
+                    {"error": "Cannot delete this cutting record because it has associated sewing records."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # If no sewing records are found, proceed with deletion
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['get'])
+    def check_sewing_records(self, request, pk=None):
+        """
+        Check if a cutting record has any associated sewing records.
+        """
+        cutting_record = self.get_object()
+        has_sewing_records = False
+
+        # Check if any CuttingRecordFabric instances have associated DailySewingRecords
+        for detail in cutting_record.details.all():
+            if hasattr(detail, 'daily_sewing_records') and detail.daily_sewing_records.exists():
+                has_sewing_records = True
+                break
+
+        return Response({
+            "id": cutting_record.id,
+            "has_sewing_records": has_sewing_records
+        })
 
 class AddCuttingRecordView(APIView):
     def post(self, request, format=None):

@@ -191,25 +191,47 @@ const ViewCutting = () => {
   };
 
   // Handle edit cutting record
-  const handleEditClick = (e) => {
+  const handleEditClick = (e, record) => {
     e.stopPropagation(); // Prevent row click event
-    // Since we don't have a dedicated edit page yet, navigate to the add cutting page
-    // The user can create a new cutting record based on the existing one
-    navigate(`/addcutting`);
-    // You can also show an alert to inform the user
-    alert("Edit functionality is not yet implemented. You can create a new cutting record instead.");
+    navigate(`/editcutting/${record.id}`);
   };
 
+  // State for tracking if a record has sewing records
+  const [hasSewingRecords, setHasSewingRecords] = useState(false);
+
   // Handle delete confirmation
-  const handleDeleteClick = (e, record) => {
+  const handleDeleteClick = async (e, record) => {
     e.stopPropagation(); // Prevent row click event
     setRecordToDelete(record);
-    setShowDeleteModal(true);
+    setLoading(true);
+    setError(""); // Clear any previous errors
+
+    try {
+      // Check if the cutting record has any sewing records
+      const response = await axios.get(`http://localhost:8000/api/cutting/cutting-records/${record.id}/check_sewing_records/`);
+      setHasSewingRecords(response.data.has_sewing_records);
+      setShowDeleteModal(true);
+    } catch (error) {
+      console.error("Error checking sewing records:", error);
+      // If we can't check, assume there might be sewing records to prevent accidental deletion
+      setHasSewingRecords(true);
+      setShowDeleteModal(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle actual deletion
   const handleDeleteConfirm = () => {
     if (!recordToDelete) return;
+
+    // Don't allow deletion if there are sewing records
+    if (hasSewingRecords) {
+      setError("Cannot delete this cutting record because it has associated sewing records.");
+      setShowDeleteModal(false);
+      setRecordToDelete(null);
+      return;
+    }
 
     setLoading(true);
     setError(""); // Clear any previous errors
@@ -468,7 +490,7 @@ const ViewCutting = () => {
                                 <Button
                                   variant="outline-primary"
                                   size="sm"
-                                  onClick={(e) => handleEditClick(e)}
+                                  onClick={(e) => handleEditClick(e, record)}
                                 >
                                   <FaEdit className="me-1" /> Edit
                                 </Button>
@@ -499,24 +521,66 @@ const ViewCutting = () => {
           <Modal.Title>Confirm Deletion</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {recordToDelete && (
-            <p>
-              Are you sure you want to delete the cutting record for{" "}
-              <strong>{recordToDelete.product_name || "Unnamed Product"}</strong> from{" "}
-              <strong>{recordToDelete.cutting_date}</strong>?
-            </p>
+          {hasSewingRecords ? (
+            <div>
+              <Alert variant="danger">
+                <strong>Cannot Delete:</strong> This cutting record has associated sewing records.
+                <div className="mt-2">
+                  <small>
+                    To delete this cutting record, you must first delete all sewing records that use it.
+                    You can view these records in the Daily Sewing History page.
+                  </small>
+                </div>
+              </Alert>
+              {recordToDelete && (
+                <p className="mt-3">
+                  Cutting record for <strong>{recordToDelete.product_name || "Unnamed Product"}</strong> from{" "}
+                  <strong>{recordToDelete.cutting_date}</strong> cannot be deleted.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div>
+              {recordToDelete && (
+                <p>
+                  Are you sure you want to delete the cutting record for{" "}
+                  <strong>{recordToDelete.product_name || "Unnamed Product"}</strong> from{" "}
+                  <strong>{recordToDelete.cutting_date}</strong>?
+                </p>
+              )}
+              <Alert variant="warning">
+                <strong>Warning:</strong> This action cannot be undone. Deleting this record may affect related data.
+              </Alert>
+            </div>
           )}
-          <Alert variant="warning">
-            <strong>Warning:</strong> This action cannot be undone. Deleting this record may affect related data.
-          </Alert>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Cancel
+            {hasSewingRecords ? "Close" : "Cancel"}
           </Button>
-          <Button variant="danger" onClick={handleDeleteConfirm}>
-            Delete
-          </Button>
+          {!hasSewingRecords && (
+            <Button
+              variant="danger"
+              onClick={handleDeleteConfirm}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    role="status"
+                    aria-hidden="true"
+                    className="me-2"
+                  />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
     </>
