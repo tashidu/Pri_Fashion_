@@ -66,7 +66,7 @@ const RevertOrderModal = ({ show, onHide, order, onSubmit, processing }) => {
               <li>Update the packing inventory with the restored items</li>
             </ul>
             <p className="mb-0">
-              <strong>This action is intended for draft orders or cases where a shop has rejected an order after delivery or during processing, and the order has not been paid for.</strong>
+              <strong>This action is intended for draft, submitted, approved, delivered, or invoiced orders that have not been paid for, such as when a shop rejects an order.</strong>
             </p>
           </Alert>
 

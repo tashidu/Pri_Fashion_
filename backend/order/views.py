@@ -432,9 +432,9 @@ class RevertOrderView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            if order.status not in ['draft', 'delivered', 'invoiced']:
+            if order.status not in ['draft', 'submitted', 'approved', 'delivered', 'invoiced']:
                 return Response(
-                    {"error": "Only draft, delivered, or invoiced orders can be reverted."},
+                    {"error": "Only draft, submitted, approved, delivered, or invoiced orders can be reverted."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 

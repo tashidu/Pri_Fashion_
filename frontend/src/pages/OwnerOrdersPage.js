@@ -402,8 +402,9 @@ const OwnerOrdersPage = () => {
       return;
     }
 
-    if (order.status !== 'draft' && order.status !== 'delivered' && order.status !== 'invoiced') {
-      setError("Only draft, delivered, or invoiced orders can be reverted.");
+    if (order.status !== 'draft' && order.status !== 'submitted' && order.status !== 'approved' &&
+        order.status !== 'delivered' && order.status !== 'invoiced') {
+      setError("Only draft, submitted, approved, delivered, or invoiced orders can be reverted.");
       return;
     }
 
@@ -730,18 +731,7 @@ const OwnerOrdersPage = () => {
                                 </button>
                               )}
 
-                              {/* Revert Order button - for draft, delivered or invoiced orders that are unpaid */}
-                              {(order.status === "draft" || order.status === "delivered" || order.status === "invoiced") &&
-                               (!order.payment_status || order.payment_status === "unpaid") && (
-                                <button
-                                  onClick={() => handleRevertOrder(order.id)}
-                                  disabled={processing}
-                                  className="btn btn-sm btn-danger d-flex align-items-center"
-                                  title="Revert Order"
-                                >
-                                  <FaUndo className="me-1" /> Revert
-                                </button>
-                              )}
+                              {/* Removed Revert button from here - it will only show in order details */}
                             </div>
                           </td>
                         </tr>
@@ -1063,13 +1053,15 @@ const OwnerOrdersPage = () => {
                         </button>
                       )}
 
-                      {/* Revert Order button - for draft, delivered or invoiced orders that are unpaid */}
-                      {(selectedOrder.status === "draft" || selectedOrder.status === "delivered" || selectedOrder.status === "invoiced") &&
+                      {/* Revert Order button - for draft, submitted, approved, delivered or invoiced orders that are unpaid */}
+                      {(selectedOrder.status === "draft" || selectedOrder.status === "submitted" ||
+                        selectedOrder.status === "approved" || selectedOrder.status === "delivered" ||
+                        selectedOrder.status === "invoiced") &&
                        (!selectedOrder.payment_status || selectedOrder.payment_status === "unpaid") && (
                         <button
                           onClick={() => handleRevertOrder(selectedOrder.id)}
                           disabled={processing}
-                          className="btn btn-danger"
+                          className="btn btn-danger btn-lg"
                         >
                           <FaUndo className="me-2" /> Revert Order
                         </button>
