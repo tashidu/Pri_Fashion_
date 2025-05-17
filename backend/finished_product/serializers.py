@@ -257,11 +257,11 @@ class SalesProductSerializer(serializers.ModelSerializer):
         # Get images from the ProductImage model
         image_urls = []
         for img in obj.images.all():
-            if img.url:  # Use the url property which handles both image and external_url
+            if hasattr(img, 'url') and img.url:  # Use the url property which handles both image and external_url
                 if img.external_url:
                     # External URLs (like Firebase) don't need to be built with request
                     image_urls.append(img.external_url)
-                else:
+                elif img.image:
                     image_urls.append(request.build_absolute_uri(img.image.url))
 
         # If no ProductImage instances, fall back to the legacy product_image
