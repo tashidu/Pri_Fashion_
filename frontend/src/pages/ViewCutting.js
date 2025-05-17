@@ -4,12 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import {
   Container, Row, Col, Card, Table, Button,
-  Form, InputGroup, Badge, Spinner, Alert
+  Form, InputGroup, Badge, Spinner, Alert, Modal
 } from 'react-bootstrap';
 import {
   FaSearch, FaSort, FaSortUp, FaSortDown,
   FaTshirt, FaCut, FaCalendarAlt, FaFilter,
-  FaPlus, FaInfoCircle
+  FaPlus, FaInfoCircle, FaEdit, FaTrash
 } from 'react-icons/fa';
 
 // Add global CSS for hover effect
@@ -36,6 +36,8 @@ const ViewCutting = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: 'cutting_date', direction: 'desc' });
   const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState(null);
 
   // Add resize event listener to update sidebar state
   useEffect(() => {
@@ -186,6 +188,74 @@ const ViewCutting = () => {
     setSearchTerm('');
     setDateFilter({ startDate: '', endDate: '' });
     setSortConfig({ key: 'cutting_date', direction: 'desc' });
+  };
+
+  // Handle edit cutting record
+  const handleEditClick = (e) => {
+    e.stopPropagation(); // Prevent row click event
+    // Since we don't have a dedicated edit page yet, navigate to the add cutting page
+    // The user can create a new cutting record based on the existing one
+    navigate(`/addcutting`);
+    // You can also show an alert to inform the user
+    alert("Edit functionality is not yet implemented. You can create a new cutting record instead.");
+  };
+
+  // Handle delete confirmation
+  const handleDeleteClick = (e, record) => {
+    e.stopPropagation(); // Prevent row click event
+    setRecordToDelete(record);
+    setShowDeleteModal(true);
+  };
+
+  // Handle actual deletion
+  const handleDeleteConfirm = () => {
+    if (!recordToDelete) return;
+
+    setLoading(true);
+    setError(""); // Clear any previous errors
+
+    // Log the request for debugging
+    console.log(`Attempting to delete cutting record with ID: ${recordToDelete.id}`);
+
+    axios
+      .delete(`http://localhost:8000/api/cutting/cutting-records/${recordToDelete.id}/`)
+      .then((response) => {
+        console.log("Delete response:", response);
+        // Remove the deleted record from state
+        const updatedRecords = cuttingRecords.filter(record => record.id !== recordToDelete.id);
+        setCuttingRecords(updatedRecords);
+        setFilteredRecords(updatedRecords);
+        setShowDeleteModal(false);
+        setRecordToDelete(null);
+        setLoading(false);
+
+        // Show success message
+        setError(""); // Clear any previous errors
+        alert("Cutting record deleted successfully!");
+      })
+      .catch((err) => {
+        console.error("Error deleting cutting record:", err);
+        let errorMessage = "Failed to delete cutting record.";
+
+        // Check for specific error messages from the server
+        if (err.response) {
+          console.log("Error response:", err.response);
+          if (err.response.data && typeof err.response.data === 'object') {
+            errorMessage = JSON.stringify(err.response.data);
+          } else if (err.response.data) {
+            errorMessage = err.response.data;
+          } else if (err.response.status === 403) {
+            errorMessage = "You don't have permission to delete this record.";
+          } else if (err.response.status === 409 || err.response.status === 400) {
+            errorMessage = "This record cannot be deleted because it is referenced by other records.";
+          }
+        }
+
+        setError(errorMessage);
+        setShowDeleteModal(false);
+        setRecordToDelete(null);
+        setLoading(false);
+      });
   };
 
   return (
@@ -384,7 +454,7 @@ const ViewCutting = () => {
                               </Badge>
                             </td>
                             <td>
-                              <div className="d-flex action-buttons">
+                              <div className="d-flex action-buttons gap-2">
                                 <Button
                                   variant="outline-info"
                                   size="sm"
@@ -394,6 +464,20 @@ const ViewCutting = () => {
                                   }}
                                 >
                                   <FaInfoCircle className="me-1" /> Details
+                                </Button>
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  onClick={(e) => handleEditClick(e)}
+                                >
+                                  <FaEdit className="me-1" /> Edit
+                                </Button>
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
+                                  onClick={(e) => handleDeleteClick(e, record)}
+                                >
+                                  <FaTrash className="me-1" /> Delete
                                 </Button>
                               </div>
                             </td>
@@ -408,6 +492,33 @@ const ViewCutting = () => {
           </Card.Body>
         </Card>
       </Container>
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Deletion</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {recordToDelete && (
+            <p>
+              Are you sure you want to delete the cutting record for{" "}
+              <strong>{recordToDelete.product_name || "Unnamed Product"}</strong> from{" "}
+              <strong>{recordToDelete.cutting_date}</strong>?
+            </p>
+          )}
+          <Alert variant="warning">
+            <strong>Warning:</strong> This action cannot be undone. Deleting this record may affect related data.
+          </Alert>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleDeleteConfirm}>
+            Delete
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };

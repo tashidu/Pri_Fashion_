@@ -54,7 +54,7 @@ function App() {
         <Route path="/viewsuppliers" element={<ViewSuppliers />} />
         <Route path="/addfabric" element={<AddFabric />} />
 
-        <Route path="/edit-fabric/:id" component={EditFabric} />
+        <Route path="/edit-fabric/:id" element={<EditFabric />} />
         <Route path="/viewfabric" element={<ViewFabrics />} />
         <Route
           path="/fabric-definitions/:id"
