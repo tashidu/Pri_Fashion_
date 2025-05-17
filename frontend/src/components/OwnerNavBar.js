@@ -55,6 +55,11 @@ function OwnerNavBar() {
       path: "/owner-dashboard"
     },
     {
+      title: "User Management",
+      icon: <FaUserPlus />,
+      path: "/signup"
+    },
+    {
       title: "Suppliers",
       icon: <FaBuilding />,
       path: "/viewsuppliers"
@@ -98,11 +103,6 @@ function OwnerNavBar() {
       title: "Order Analysis",
       icon: <FaChartLine />,
       path: "/order-analysis"
-    },
-    {
-      title: "Sign Up",
-      icon: <FaUserPlus />,
-      path: "/signup"
     }
   ];
 
@@ -160,20 +160,20 @@ function OwnerNavBar() {
         }}
       >
         {/* Brand logo and name */}
-        <div className="d-flex align-items-center justify-content-center mb-4 px-3">
+        <div className="d-flex align-items-center justify-content-center mb-3 px-3">
           <img
             src="/logo.jpg"
             alt="Pri Fashion Logo"
             className={isSidebarOpen ? "me-2" : ""}
             style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "8px",
+              width: "36px",
+              height: "36px",
+              borderRadius: "6px",
               boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
             }}
           />
           {isSidebarOpen && (
-            <span className="fw-bold fs-5 text-primary">Pri Fashion</span>
+            <span className="fw-bold text-primary" style={{ fontSize: "17px" }}>Pri Fashion</span>
           )}
         </div>
 
@@ -186,7 +186,7 @@ function OwnerNavBar() {
                   to={item.path}
                   className="nav-link d-flex align-items-center"
                   style={{
-                    padding: isSidebarOpen ? "10px 15px" : "10px 0",
+                    padding: isSidebarOpen ? "9px 12px" : "9px 0",
                     borderRadius: "8px",
                     backgroundColor: isActive(item.path) ? "rgba(13, 110, 253, 0.1)" : "transparent",
                     color: isActive(item.path) ? "#0d6efd" : "#212529",
@@ -195,12 +195,13 @@ function OwnerNavBar() {
                     marginRight: isSidebarOpen ? "0" : "auto",
                     width: isSidebarOpen ? "auto" : "50px",
                     textAlign: isSidebarOpen ? "left" : "center",
-                    transition: "all 0.2s ease"
+                    transition: "all 0.2s ease",
+                    fontSize: "16px"
                   }}
                 >
                   <div className="icon-container" style={{
-                    width: "30px",
-                    height: "30px",
+                    width: "28px",
+                    height: "28px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -217,17 +218,18 @@ function OwnerNavBar() {
         </div>
 
         {/* Logout button at bottom */}
-        <div style={{ padding: "20px" }}>
+        <div style={{ padding: "15px" }}>
           <button
             onClick={handleLogout}
             className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center"
             style={{
-              padding: "10px",
-              borderRadius: "8px",
-              transition: "all 0.2s ease"
+              padding: "8px",
+              borderRadius: "6px",
+              transition: "all 0.2s ease",
+              fontSize: "16px"
             }}
           >
-            <FaSignOutAlt />
+            <FaSignOutAlt size={16} />
             {isSidebarOpen && <span className="ms-2">Logout</span>}
           </button>
         </div>
