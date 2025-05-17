@@ -13,7 +13,8 @@ from .views import (
     RecordPaymentView,
     OrderPaymentsListView,
     ProductSalesView,
-    OrderSummaryView
+    OrderSummaryView,
+    RevertOrderView
 )
 
 urlpatterns = [
@@ -30,6 +31,7 @@ urlpatterns = [
     path('orders/<int:pk>/mark-delivered/', MarkOrderDeliveredView.as_view(), name='mark-delivered'),
     path('orders/<int:pk>/record-payment/', RecordPaymentView.as_view(), name='record-payment'),
     path('orders/<int:pk>/payments/', OrderPaymentsListView.as_view(), name='order-payments-list'),
+    path('orders/<int:pk>/revert/', RevertOrderView.as_view(), name='order-revert'),
     path('product/<int:product_id>/sales/', ProductSalesView.as_view(), name='product-sales'),
     path('summary/', OrderSummaryView.as_view(), name='order-summary'),
 
@@ -43,5 +45,6 @@ urlpatterns = [
     path('orders/orders/<int:pk>/mark-delivered/', MarkOrderDeliveredView.as_view(), name='mark-delivered-alt'),
     path('orders/orders/<int:pk>/record-payment/', RecordPaymentView.as_view(), name='record-payment-alt'),
     path('orders/orders/<int:pk>/payments/', OrderPaymentsListView.as_view(), name='order-payments-list-alt'),
+    path('orders/orders/<int:pk>/revert/', RevertOrderView.as_view(), name='order-revert-alt'),
     path('orders/orders/<int:order_id>/items/', OrderItemCreateView.as_view(), name='orderitem-create-alt'),
 ]

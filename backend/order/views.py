@@ -410,6 +410,90 @@ class ProductSalesView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class RevertOrderView(APIView):
+    """
+    Allows owners to revert unpaid orders and create new packing sessions to restore inventory.
+    This is used when shops reject orders after delivery or during processing.
+    """
+    permission_classes = [IsAuthenticated, IsOwner]  # Only owners can revert orders
+
+    def post(self, request, pk):
+        try:
+            from packing_app.models import PackingSession
+            from django.utils import timezone
+
+            order = Order.objects.prefetch_related('items__finished_product').get(pk=pk)
+
+            # Check if the order is in a state that can be reverted
+            # Only delivered or invoiced orders that are unpaid can be reverted
+            if order.payment_status == 'paid' or order.payment_status == 'partially_paid':
+                return Response(
+                    {"error": "Cannot revert orders that have been paid or partially paid."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if order.status not in ['draft', 'delivered', 'invoiced']:
+                return Response(
+                    {"error": "Only draft, delivered, or invoiced orders can be reverted."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Process each order item to create new packing sessions
+            restored_items = []
+            packing_sessions_created = []
+
+            for item in order.items.all():
+                # Create a new packing session for this product
+                if item.quantity_6_packs > 0 or item.quantity_12_packs > 0 or item.quantity_extra_items > 0:
+                    packing_session = PackingSession.objects.create(
+                        finished_product=item.finished_product,
+                        date=timezone.now().date(),
+                        number_of_6_packs=item.quantity_6_packs,
+                        number_of_12_packs=item.quantity_12_packs,
+                        extra_items=item.quantity_extra_items
+                    )
+
+                    # Update the packing inventory
+                    inventory, created = PackingInventory.objects.get_or_create(
+                        finished_product=item.finished_product
+                    )
+                    inventory.update_from_session(packing_session)
+
+                    packing_sessions_created.append({
+                        'id': packing_session.id,
+                        'product_id': item.finished_product.id,
+                        'date': packing_session.date.isoformat()
+                    })
+
+                # Add to restored items list for the response
+                restored_items.append({
+                    'product_id': item.finished_product.id,
+                    'product_name': item.finished_product.cutting_record.product_name if hasattr(item.finished_product, 'cutting_record') else f"Product #{item.finished_product.id}",
+                    'six_packs': item.quantity_6_packs,
+                    'twelve_packs': item.quantity_12_packs,
+                    'extras': item.quantity_extra_items,
+                    'total_units': item.total_units
+                })
+
+            # Store order details before deletion
+            order_id = order.id
+            shop_name = order.shop.name if order.shop else "Unknown Shop"
+
+            # Delete the order
+            order.delete()
+
+            return Response({
+                "message": f"Order #{order_id} for {shop_name} has been reverted and deleted. New packing sessions have been created to restore inventory.",
+                "restored_items": restored_items,
+                "packing_sessions_created": packing_sessions_created
+            }, status=status.HTTP_200_OK)
+
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class OrderSummaryView(APIView):
     """
     Returns summary data for orders, including counts by status and total units sold.

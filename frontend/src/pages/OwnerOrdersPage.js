@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaPrint, FaChartLine } from "react-icons/fa";
+import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaPrint, FaChartLine, FaUndo, FaTrashAlt } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -7,6 +7,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import PaymentModal from "../components/PaymentModal";
 import DeliveryModal from "../components/DeliveryModal";
 import InvoicePreviewModal from "../components/InvoicePreviewModal";
+import RevertOrderModal from "../components/RevertOrderModal";
 // Import authenticated API utilities
 import { authGet, authPost, authPut } from "../utils/api";
 
@@ -33,6 +34,7 @@ const OwnerOrdersPage = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
+  const [showRevertModal, setShowRevertModal] = useState(false);
   const [orderForModal, setOrderForModal] = useState(null);
 
   useEffect(() => {
@@ -387,6 +389,71 @@ const OwnerOrdersPage = () => {
     setShowInvoicePreviewModal(true);
   };
 
+  const handleRevertOrder = (orderId) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) {
+      setError("Order not found");
+      return;
+    }
+
+    // Check if the order can be reverted
+    if (order.payment_status === 'paid' || order.payment_status === 'partially_paid') {
+      setError("Cannot revert orders that have been paid or partially paid.");
+      return;
+    }
+
+    if (order.status !== 'draft' && order.status !== 'delivered' && order.status !== 'invoiced') {
+      setError("Only draft, delivered, or invoiced orders can be reverted.");
+      return;
+    }
+
+    // Set the order for the modal and show the modal
+    setOrderForModal(order);
+    setShowRevertModal(true);
+  };
+
+  const handleRevertSubmit = async () => {
+    if (!orderForModal) return;
+
+    setProcessing(true);
+    try {
+      const response = await authPost(`orders/orders/${orderForModal.id}/revert/`);
+
+      if (response.status === 200) {
+        // Remove the order from the local state
+        const updatedOrders = orders.filter(order => order.id !== orderForModal.id);
+        setOrders(updatedOrders);
+
+        // Show success message
+        setSuccessMessage(response.data.message || "Order has been reverted and deleted successfully! New packing sessions have been created to restore inventory.");
+
+        // Hide success message after 5 seconds (longer message needs more time to read)
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 5000);
+
+        // Close the modal
+        setShowRevertModal(false);
+
+        // Reset selected order if this was the selected one
+        if (selectedOrderId === orderForModal.id) {
+          setSelectedOrderId(null);
+          setSelectedOrderItems([]);
+          setSelectedOrder(null);
+        }
+      }
+    } catch (error) {
+      console.error("Revert order failed:", error);
+      if (error.response && error.response.data) {
+        setError(error.response.data.error || "Failed to revert order");
+      } else {
+        setError("Error reverting the order. Please try again.");
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   // Get current orders for pagination
   const indexOfLastOrder = currentPage * itemsPerPage;
   const indexOfFirstOrder = indexOfLastOrder - itemsPerPage;
@@ -660,6 +727,19 @@ const OwnerOrdersPage = () => {
                                   title="Record Payment"
                                 >
                                   <FaMoneyBillWave className="me-1" /> Payment
+                                </button>
+                              )}
+
+                              {/* Revert Order button - for draft, delivered or invoiced orders that are unpaid */}
+                              {(order.status === "draft" || order.status === "delivered" || order.status === "invoiced") &&
+                               (!order.payment_status || order.payment_status === "unpaid") && (
+                                <button
+                                  onClick={() => handleRevertOrder(order.id)}
+                                  disabled={processing}
+                                  className="btn btn-sm btn-danger d-flex align-items-center"
+                                  title="Revert Order"
+                                >
+                                  <FaUndo className="me-1" /> Revert
                                 </button>
                               )}
                             </div>
@@ -983,6 +1063,18 @@ const OwnerOrdersPage = () => {
                         </button>
                       )}
 
+                      {/* Revert Order button - for draft, delivered or invoiced orders that are unpaid */}
+                      {(selectedOrder.status === "draft" || selectedOrder.status === "delivered" || selectedOrder.status === "invoiced") &&
+                       (!selectedOrder.payment_status || selectedOrder.payment_status === "unpaid") && (
+                        <button
+                          onClick={() => handleRevertOrder(selectedOrder.id)}
+                          disabled={processing}
+                          className="btn btn-danger"
+                        >
+                          <FaUndo className="me-2" /> Revert Order
+                        </button>
+                      )}
+
                       {/* We've removed the separate download button since it's now part of the invoice preview modal */}
                     </div>
                   </div>
@@ -1023,6 +1115,14 @@ const OwnerOrdersPage = () => {
           setTimeout(() => setSuccessMessage(""), 3000);
         }}
         onError={(message) => setError(message)}
+      />
+
+      <RevertOrderModal
+        show={showRevertModal}
+        onHide={() => setShowRevertModal(false)}
+        order={orderForModal}
+        onSubmit={handleRevertSubmit}
+        processing={processing}
       />
     </>
   );
