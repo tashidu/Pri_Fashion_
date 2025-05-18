@@ -19,7 +19,7 @@ const InvoicePreviewModal = ({ show, onHide, order, onSuccess, onError }) => {
   const generatePdfPreview = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       if (!order || !order.items) {
         throw new Error("Cannot generate invoice: Order data is missing.");
@@ -40,15 +40,36 @@ const InvoicePreviewModal = ({ show, onHide, order, onSuccess, onError }) => {
         format: 'a4'
       });
 
+      // Add the logo to the PDF
+      try {
+        // Get the base URL for the current environment
+        const baseUrl = window.location.origin;
+
+        // Add the logo to the PDF
+        doc.addImage(`${baseUrl}/logo.png`, 'PNG', 14, 10, 20, 20);
+      } catch (logoError) {
+        console.warn("Could not add logo to PDF:", logoError);
+
+        // Fallback to a simple placeholder if the logo can't be loaded
+        doc.setFillColor(41, 128, 185); // Primary blue color
+        doc.rect(14, 10, 20, 20, 'F');
+
+        // Add "PF" text as a simple logo
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text("PF", 24, 22, { align: 'center' });
+        doc.setTextColor(0, 0, 0); // Reset text color to black
+      }
+
       // Add company header
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text('Pri Fashion', 20, 20);
+      doc.text('Pri Fashion', 40, 20);
 
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      doc.text('Quality Clothes for Everyone', 20, 28);
-      doc.text('Sri Lanka', 20, 34);
+      doc.text('Quality Clothes for Everyone', 40, 28);
+      doc.text('Sri Lanka', 40, 34);
 
       // Add invoice details
       doc.setFontSize(16);
@@ -147,13 +168,34 @@ const InvoicePreviewModal = ({ show, onHide, order, onSuccess, onError }) => {
         }
       }
 
-      // Add footer
+      // Add signature fields
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Signatures:', 20, finalY + 10);
+
+      // Draw signature lines
+      finalY += 15;
+
+      // Owner signature
+      doc.line(20, finalY + 15, 80, finalY + 15); // Signature line
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text('Thank you for your business!', 20, finalY + 20);
+      doc.text("Owner Signature", 20, finalY + 20);
+      doc.text("Date: ________________", 20, finalY + 25);
+
+      // Shop owner signature
+      doc.line(120, finalY + 15, 180, finalY + 15); // Signature line
+      doc.text("Shop Owner Signature", 120, finalY + 20);
+      doc.text("Date: ________________", 120, finalY + 25);
+
+      // Add footer
+      finalY += 35;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Thank you for your business!', 20, finalY);
 
       // Add company contact information
-      finalY += 30;
+      finalY += 10;
       doc.setFontSize(8);
       doc.text('Pri Fashion | Sri Lanka | Quality Clothes for Everyone', 20, finalY);
 
@@ -177,15 +219,36 @@ const InvoicePreviewModal = ({ show, onHide, order, onSuccess, onError }) => {
         format: 'a4'
       });
 
+      // Add the logo to the PDF
+      try {
+        // Get the base URL for the current environment
+        const baseUrl = window.location.origin;
+
+        // Add the logo to the PDF
+        doc.addImage(`${baseUrl}/logo.png`, 'PNG', 14, 10, 20, 20);
+      } catch (logoError) {
+        console.warn("Could not add logo to PDF:", logoError);
+
+        // Fallback to a simple placeholder if the logo can't be loaded
+        doc.setFillColor(41, 128, 185); // Primary blue color
+        doc.rect(14, 10, 20, 20, 'F');
+
+        // Add "PF" text as a simple logo
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text("PF", 24, 22, { align: 'center' });
+        doc.setTextColor(0, 0, 0); // Reset text color to black
+      }
+
       // Add company header
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text('Pri Fashion', 20, 20);
+      doc.text('Pri Fashion', 40, 20);
 
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      doc.text('Quality Clothes for Everyone', 20, 28);
-      doc.text('Sri Lanka', 20, 34);
+      doc.text('Quality Clothes for Everyone', 40, 28);
+      doc.text('Sri Lanka', 40, 34);
 
       // Add invoice details
       doc.setFontSize(16);
@@ -284,19 +347,40 @@ const InvoicePreviewModal = ({ show, onHide, order, onSuccess, onError }) => {
         }
       }
 
-      // Add footer
+      // Add signature fields
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Signatures:', 20, finalY + 10);
+
+      // Draw signature lines
+      finalY += 15;
+
+      // Owner signature
+      doc.line(20, finalY + 15, 80, finalY + 15); // Signature line
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text('Thank you for your business!', 20, finalY + 20);
+      doc.text("Owner Signature", 20, finalY + 20);
+      doc.text("Date: ________________", 20, finalY + 25);
+
+      // Shop owner signature
+      doc.line(120, finalY + 15, 180, finalY + 15); // Signature line
+      doc.text("Shop Owner Signature", 120, finalY + 20);
+      doc.text("Date: ________________", 120, finalY + 25);
+
+      // Add footer
+      finalY += 35;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Thank you for your business!', 20, finalY);
 
       // Add company contact information
-      finalY += 30;
+      finalY += 10;
       doc.setFontSize(8);
       doc.text('Pri Fashion | Sri Lanka | Quality Clothes for Everyone', 20, finalY);
 
       // Save the PDF
       doc.save(`Invoice-${order.invoice_number}.pdf`);
-      
+
       // Call the success callback
       if (onSuccess) {
         onSuccess("Invoice downloaded successfully!");
@@ -318,15 +402,36 @@ const InvoicePreviewModal = ({ show, onHide, order, onSuccess, onError }) => {
         format: 'a4'
       });
 
+      // Add the logo to the PDF
+      try {
+        // Get the base URL for the current environment
+        const baseUrl = window.location.origin;
+
+        // Add the logo to the PDF
+        doc.addImage(`${baseUrl}/logo.png`, 'PNG', 14, 10, 20, 20);
+      } catch (logoError) {
+        console.warn("Could not add logo to PDF:", logoError);
+
+        // Fallback to a simple placeholder if the logo can't be loaded
+        doc.setFillColor(41, 128, 185); // Primary blue color
+        doc.rect(14, 10, 20, 20, 'F');
+
+        // Add "PF" text as a simple logo
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text("PF", 24, 22, { align: 'center' });
+        doc.setTextColor(0, 0, 0); // Reset text color to black
+      }
+
       // Add company header
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text('Pri Fashion', 20, 20);
+      doc.text('Pri Fashion', 40, 20);
 
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      doc.text('Quality Clothes for Everyone', 20, 28);
-      doc.text('Sri Lanka', 20, 34);
+      doc.text('Quality Clothes for Everyone', 40, 28);
+      doc.text('Sri Lanka', 40, 34);
 
       // Add invoice details
       doc.setFontSize(16);
@@ -425,20 +530,41 @@ const InvoicePreviewModal = ({ show, onHide, order, onSuccess, onError }) => {
         }
       }
 
-      // Add footer
+      // Add signature fields
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Signatures:', 20, finalY + 10);
+
+      // Draw signature lines
+      finalY += 15;
+
+      // Owner signature
+      doc.line(20, finalY + 15, 80, finalY + 15); // Signature line
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text('Thank you for your business!', 20, finalY + 20);
+      doc.text("Owner Signature", 20, finalY + 20);
+      doc.text("Date: ________________", 20, finalY + 25);
+
+      // Shop owner signature
+      doc.line(120, finalY + 15, 180, finalY + 15); // Signature line
+      doc.text("Shop Owner Signature", 120, finalY + 20);
+      doc.text("Date: ________________", 120, finalY + 25);
+
+      // Add footer
+      finalY += 35;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Thank you for your business!', 20, finalY);
 
       // Add company contact information
-      finalY += 30;
+      finalY += 10;
       doc.setFontSize(8);
       doc.text('Pri Fashion | Sri Lanka | Quality Clothes for Everyone', 20, finalY);
 
       // Open PDF in a new window for printing
       const pdfOutput = doc.output('bloburl');
       window.open(pdfOutput, '_blank');
-      
+
       // Call the success callback
       if (onSuccess) {
         onSuccess("Invoice opened for printing!");
@@ -487,9 +613,9 @@ const InvoicePreviewModal = ({ show, onHide, order, onSuccess, onError }) => {
         ) : (
           <div className="pdf-preview-container">
             <div className="ratio ratio-1x1">
-              <iframe 
-                src={pdfDataUrl} 
-                title="Invoice Preview" 
+              <iframe
+                src={pdfDataUrl}
+                title="Invoice Preview"
                 className="pdf-preview"
                 style={{ width: '100%', height: '600px', border: '1px solid #dee2e6' }}
               />
@@ -501,16 +627,16 @@ const InvoicePreviewModal = ({ show, onHide, order, onSuccess, onError }) => {
         <Button variant="secondary" onClick={onHide}>
           Close
         </Button>
-        <Button 
-          variant="info" 
+        <Button
+          variant="info"
           onClick={handlePrint}
           disabled={loading || error}
           className="d-flex align-items-center"
         >
           <FaPrint className="me-2" /> Print
         </Button>
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           onClick={handleDownload}
           disabled={loading || error}
           className="d-flex align-items-center"
