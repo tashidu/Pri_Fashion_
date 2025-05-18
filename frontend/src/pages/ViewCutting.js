@@ -9,7 +9,8 @@ import {
 import {
   FaSearch, FaSort, FaSortUp, FaSortDown,
   FaTshirt, FaCut, FaCalendarAlt, FaFilter,
-  FaPlus, FaInfoCircle, FaTrash
+  FaPlus, FaInfoCircle, FaTrash, FaFileDownload,
+  FaFileCsv, FaTable
 } from 'react-icons/fa';
 
 // Add global CSS for hover effect
@@ -38,6 +39,15 @@ const ViewCutting = () => {
   const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
+  const [showCsvModal, setShowCsvModal] = useState(false);
+  const [csvFilters, setCsvFilters] = useState({
+    startDate: '',
+    endDate: '',
+    fabricFilter: '',
+    includeAllRecords: true
+  });
+  const [uniqueFabrics, setUniqueFabrics] = useState([]);
+  const [csvLoading, setCsvLoading] = useState(false);
 
   // Add resize event listener to update sidebar state
   useEffect(() => {
@@ -58,6 +68,38 @@ const ViewCutting = () => {
         console.log("Fetched cutting records:", res.data);
         setCuttingRecords(res.data);
         setFilteredRecords(res.data);
+
+        // Extract unique fabric names for the dropdown
+        // First, create a more detailed log of the fabric data
+        console.log("Detailed fabric data:", res.data.map(record => {
+          return {
+            id: record.id,
+            product_name: record.product_name,
+            fabric_definition_id: record.fabric_definition,
+            fabric_definition_data: record.fabric_definition_data,
+            fabric_name: record.fabric_definition_data?.fabric_name
+          };
+        }));
+
+        // Create a list of all fabric names from the records
+        let allFabricNames = [];
+
+        // Loop through each record to extract fabric names
+        res.data.forEach(record => {
+          if (record.fabric_definition_data && record.fabric_definition_data.fabric_name) {
+            allFabricNames.push(record.fabric_definition_data.fabric_name);
+          }
+        });
+
+        console.log("All fabric names (before deduplication):", allFabricNames);
+
+        // Remove duplicates and sort alphabetically
+        const uniqueFabricNames = [...new Set(allFabricNames)].sort();
+        console.log("Unique fabric names (after deduplication):", uniqueFabricNames);
+
+        // Set the unique fabric names in state
+        setUniqueFabrics(uniqueFabricNames);
+
         setLoading(false);
       })
       .catch((err) => {
@@ -276,6 +318,107 @@ const ViewCutting = () => {
       });
   };
 
+  // Open CSV export modal
+  const openCsvModal = () => {
+    // Initialize CSV filters with current date filters
+    setCsvFilters({
+      ...csvFilters,
+      startDate: dateFilter.startDate,
+      endDate: dateFilter.endDate
+    });
+    console.log("Opening CSV modal, unique fabrics:", uniqueFabrics); // Debug log
+    setShowCsvModal(true);
+  };
+
+  // Generate and download CSV file
+  const generateCSV = () => {
+    setCsvLoading(true);
+
+    // Apply filters to get the records for CSV
+    let recordsToExport = cuttingRecords;
+
+    // Apply date filter if provided
+    if (csvFilters.startDate && csvFilters.endDate) {
+      recordsToExport = recordsToExport.filter(record => {
+        const recordDate = new Date(record.cutting_date);
+        const startDate = new Date(csvFilters.startDate);
+        const endDate = new Date(csvFilters.endDate);
+        endDate.setHours(23, 59, 59); // Include the entire end date
+        return recordDate >= startDate && recordDate <= endDate;
+      });
+    }
+
+    // Apply fabric filter if provided
+    if (csvFilters.fabricFilter) {
+      recordsToExport = recordsToExport.filter(record =>
+        record.fabric_definition_data?.fabric_name === csvFilters.fabricFilter
+      );
+    }
+
+    // If not including all records, use the current filtered records
+    if (!csvFilters.includeAllRecords) {
+      recordsToExport = filteredRecords;
+    }
+
+    // Create CSV content
+    let csvContent = "Product Name,Cutting Date,Fabric Name,Total Yard Usage,Total Amount (Rs.),Number of Colors,Color Codes\n";
+
+    recordsToExport.forEach(record => {
+      const { totalYard, totalVariants } = getAggregates(record);
+
+      // Calculate total amount (fabric cost)
+      let totalAmount = 0;
+
+      // Collect color information
+      const colorCodes = [];
+
+      if (record.details) {
+        record.details.forEach(detail => {
+          if (detail.fabric_variant_data) {
+            const yardUsage = parseFloat(detail.yard_usage || 0);
+            const pricePerYard = parseFloat(detail.fabric_variant_data.price_per_yard || 0);
+            totalAmount += yardUsage * pricePerYard;
+
+            // Add color code if available
+            if (detail.fabric_variant_data.color) {
+              colorCodes.push(detail.fabric_variant_data.color);
+            }
+          }
+        });
+      }
+
+      // Format the row data
+      const productName = record.product_name || "N/A";
+      const cuttingDate = record.cutting_date;
+      const fabricName = record.fabric_definition_data?.fabric_name || "N/A";
+      const numberOfColors = totalVariants;
+      const colorCodesStr = colorCodes.join(' | ');
+
+      // Escape commas in text fields
+      const escapedProductName = productName.includes(',') ? `"${productName}"` : productName;
+      const escapedFabricName = fabricName.includes(',') ? `"${fabricName}"` : fabricName;
+      const escapedColorCodes = colorCodesStr.includes(',') ? `"${colorCodesStr}"` : colorCodesStr;
+
+      // Add row to CSV
+      csvContent += `${escapedProductName},${cuttingDate},${escapedFabricName},${totalYard.toFixed(2)},${totalAmount.toFixed(2)},${numberOfColors},${escapedColorCodes}\n`;
+    });
+
+    // Create a Blob and download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `cutting_records_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+
+    // Trigger download and cleanup
+    link.click();
+    document.body.removeChild(link);
+
+    setCsvLoading(false);
+    setShowCsvModal(false);
+  };
+
   return (
     <>
       <RoleBasedNavBar />
@@ -292,12 +435,20 @@ const ViewCutting = () => {
             <FaCut className="me-2 text-primary" />
             Cutting Records
           </h2>
-          <Button
-            variant="success"
-            onClick={() => navigate('/addcutting')}
-          >
-            <FaPlus className="me-1" /> Add New Cutting
-          </Button>
+          <div className="d-flex gap-2">
+            <Button
+              variant="outline-primary"
+              onClick={openCsvModal}
+            >
+              <FaFileCsv className="me-1" /> Export CSV
+            </Button>
+            <Button
+              variant="success"
+              onClick={() => navigate('/addcutting')}
+            >
+              <FaPlus className="me-1" /> Add New Cutting
+            </Button>
+          </div>
         </div>
 
         {error && <Alert variant="danger" className="text-center">{error}</Alert>}
@@ -571,6 +722,124 @@ const ViewCutting = () => {
               )}
             </Button>
           )}
+        </Modal.Footer>
+      </Modal>
+
+      {/* CSV Export Modal */}
+      <Modal show={showCsvModal} onHide={() => setShowCsvModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FaFileCsv className="me-2 text-primary" />
+            Export Cutting Records to CSV
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted mb-3">
+            Configure the filters below to customize your CSV export. The CSV will include product name,
+            cutting date, fabric name, total yard usage, total amount, number of colors, and color codes.
+          </p>
+
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Date Range</Form.Label>
+              <Row>
+                <Col>
+                  <Form.Control
+                    type="date"
+                    placeholder="Start Date"
+                    value={csvFilters.startDate}
+                    onChange={(e) => setCsvFilters({...csvFilters, startDate: e.target.value})}
+                  />
+                </Col>
+                <Col>
+                  <Form.Control
+                    type="date"
+                    placeholder="End Date"
+                    value={csvFilters.endDate}
+                    onChange={(e) => setCsvFilters({...csvFilters, endDate: e.target.value})}
+                  />
+                </Col>
+              </Row>
+              <Form.Text className="text-muted">
+                Leave dates empty to include all dates
+              </Form.Text>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Fabric Filter</Form.Label>
+              <Form.Select
+                value={csvFilters.fabricFilter}
+                onChange={(e) => setCsvFilters({...csvFilters, fabricFilter: e.target.value})}
+                className="form-select mb-2"
+              >
+                <option value="">All Fabrics</option>
+                {uniqueFabrics && uniqueFabrics.length > 0 ?
+                  uniqueFabrics.map((fabric, index) => (
+                    <option key={`fabric-${index}`} value={fabric}>
+                      {fabric}
+                    </option>
+                  ))
+                :
+                  <option disabled>No fabrics available</option>
+                }
+              </Form.Select>
+
+              {/* Debug information - will show what fabrics are available */}
+              <div className="small text-muted mb-2">
+                Available fabrics: {uniqueFabrics && uniqueFabrics.length > 0 ?
+                  uniqueFabrics.join(', ') : 'None found'}
+              </div>
+
+              <Form.Text className="text-muted">
+                Select a fabric from the dropdown or choose "All Fabrics" to include all
+              </Form.Text>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="checkbox"
+                label="Include only currently filtered records"
+                checked={!csvFilters.includeAllRecords}
+                onChange={(e) => setCsvFilters({...csvFilters, includeAllRecords: !e.target.checked})}
+              />
+              <Form.Text className="text-muted">
+                When checked, only the records currently visible in the table will be exported
+              </Form.Text>
+            </Form.Group>
+          </Form>
+
+          <Alert variant="info">
+            <FaTable className="me-2" />
+            <strong>Note:</strong> The CSV file will include color information with the number of colors used and their color codes.
+          </Alert>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCsvModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={generateCSV}
+            disabled={csvLoading}
+          >
+            {csvLoading ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Generating CSV...
+              </>
+            ) : (
+              <>
+                <FaFileDownload className="me-1" /> Download CSV
+              </>
+            )}
+          </Button>
         </Modal.Footer>
       </Modal>
     </>

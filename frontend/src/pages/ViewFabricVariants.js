@@ -5,13 +5,17 @@ import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { getUserRole, hasRole } from '../utils/auth';
 import {
   Container, Row, Col, Card, Table, Button,
-  Badge, Alert, Spinner, ListGroup, ProgressBar, Modal
+  Badge, Alert, Spinner, ListGroup, ProgressBar, Modal,
+  Form
 } from 'react-bootstrap';
 import {
   FaTshirt, FaArrowLeft, FaPalette,
   FaRulerHorizontal, FaMoneyBillWave, FaUserTie,
-  FaCalendarAlt, FaInfoCircle, FaTrash, FaEdit
+  FaCalendarAlt, FaInfoCircle, FaTrash, FaEdit,
+  FaFilePdf, FaFileDownload, FaTable
 } from 'react-icons/fa';
+import { jsPDF } from "jspdf";
+import autoTable from 'jspdf-autotable';
 
 const ViewFabricVariants = () => {
   const { id } = useParams(); // FabricDefinition ID from URL
@@ -29,6 +33,12 @@ const ViewFabricVariants = () => {
   const [variantToDelete, setVariantToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [hasDependencies, setHasDependencies] = useState(false);
+
+  // PDF export states
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [showAdditionPdfModal, setShowAdditionPdfModal] = useState(false);
+  const [additionPdfLoading, setAdditionPdfLoading] = useState(false);
 
   // Add resize event listener to update sidebar state
   useEffect(() => {
@@ -66,6 +76,14 @@ const ViewFabricVariants = () => {
     if (!fabricDetail || !fabricDetail.variants) return 0;
     return fabricDetail.variants.reduce((total, variant) => {
       return total + (variant.total_yard * variant.price_per_yard);
+    }, 0).toFixed(2);
+  };
+
+  // Calculate current inventory value (based on available yards)
+  const calculateCurrentValue = () => {
+    if (!fabricDetail || !fabricDetail.variants) return 0;
+    return fabricDetail.variants.reduce((total, variant) => {
+      return total + (variant.available_yard * variant.price_per_yard);
     }, 0).toFixed(2);
   };
 
@@ -290,6 +308,350 @@ const ViewFabricVariants = () => {
     setHasDependencies(false);
   };
 
+  // Open Real-time Inventory PDF export modal
+  const openPdfModal = () => {
+    setShowPdfModal(true);
+  };
+
+  // Open Fabric Addition Report PDF modal
+  const openAdditionPdfModal = () => {
+    setShowAdditionPdfModal(true);
+  };
+
+  // Generate and download Real-time Inventory PDF file
+  const generatePDF = () => {
+    setPdfLoading(true);
+
+    if (!fabricDetail || !fabricDetail.variants) {
+      setError("No fabric data available to export");
+      setPdfLoading(false);
+      return;
+    }
+
+    try {
+      // Create a new jsPDF instance
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Set font sizes and styles
+      const titleFontSize = 18;
+      const headingFontSize = 14;
+      const normalFontSize = 10;
+      const smallFontSize = 8;
+
+      // Add logo
+      try {
+        // Get the base URL for the current environment
+        const baseUrl = window.location.origin;
+
+        // Add the logo to the PDF
+        doc.addImage(`${baseUrl}/logo.png`, 'PNG', 14, 10, 20, 20);
+      } catch (logoError) {
+        console.warn("Could not add logo to PDF:", logoError);
+
+        // Fallback to a simple placeholder if the logo can't be loaded
+        doc.setFillColor(41, 128, 185); // Primary blue color
+        doc.rect(14, 10, 20, 20, 'F');
+
+        // Add "PF" text as a simple logo
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text("PF", 24, 22, { align: 'center' });
+        doc.setTextColor(0, 0, 0); // Reset text color to black
+      }
+
+      // Add title
+      doc.setFontSize(titleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Real-time Fabric Inventory Report', 105, 20, { align: 'center' });
+
+      // Add fabric information section
+      doc.setFontSize(headingFontSize);
+      doc.text('Fabric Information', 20, 35);
+
+      doc.setFontSize(normalFontSize);
+      doc.setFont('helvetica', 'normal');
+
+      // Add fabric details
+      const fabricInfo = [
+        ['Fabric Name', fabricDetail.fabric_name || 'N/A'],
+        ['Supplier', fabricDetail.supplier_name || 'N/A'],
+        ['Date Added', formatDate(fabricDetail.date_added) || 'N/A'],
+        ['Total Variants', fabricDetail.variants.length.toString()],
+        ['Total Yards', calculateTotalYards().toString()],
+        ['Available Yards', fabricDetail.variants.reduce((total, variant) => total + parseFloat(variant.available_yard), 0).toFixed(2)],
+        ['Total Value (All)', `Rs. ${calculateTotalValue()}`],
+        ['Current Value', `Rs. ${calculateCurrentValue()}`]
+      ];
+
+      // Add fabric info table
+      autoTable(doc, {
+        startY: 40,
+        head: [['Property', 'Value']],
+        body: fabricInfo,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        styles: { fontSize: 10 }
+      });
+
+      // Add variants section
+      doc.setFontSize(headingFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Color Variants', 20, doc.lastAutoTable.finalY + 15);
+
+      // Prepare data for variants table
+      const variantsData = fabricDetail.variants.map(variant => {
+        // Calculate current value based on available yard * price per yard
+        const currentValue = (variant.available_yard * variant.price_per_yard).toFixed(2);
+        return [
+          variant.color_name || variant.color || 'N/A',
+          '', // Empty cell for color display
+          variant.color || 'N/A', // Color code in separate column
+          variant.total_yard.toString(),
+          variant.available_yard.toString(),
+          `Rs. ${variant.price_per_yard}`,
+          `Rs. ${currentValue}`
+        ];
+      });
+
+      // No need to define dimensions here as we'll use the cell dimensions
+
+      // Add variants table
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 20,
+        head: [['Color Name', 'Color', 'Color Code', 'Total Yard', 'Available Yard', 'Price/Yard', 'Current Value']],
+        body: variantsData,
+        theme: 'striped',
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        columnStyles: {
+          1: { cellWidth: 30 }, // Wider column for color swatch
+          2: { cellWidth: 30 }  // Wider column for color code
+        },
+        didDrawCell: (data) => {
+          // Add color box in the color display column (index 1)
+          if (data.section === 'body' && data.column.index === 1) {
+            const rowIndex = data.row.index;
+            const colorCode = variantsData[rowIndex][2]; // Get color code from the next column
+
+            // Only draw if it's a valid color code
+            if (colorCode && colorCode !== 'N/A') {
+              const { x, y, width, height } = data.cell;
+
+              // Create a color swatch that fits within the cell with some padding
+              const padding = 2;
+              const swatchX = x + padding;
+              const swatchY = y + padding;
+              const swatchWidth = width - (padding * 2);
+              const swatchHeight = height - (padding * 2);
+
+              // Draw the color swatch
+              doc.setFillColor(colorCode);
+              doc.rect(swatchX, swatchY, swatchWidth, swatchHeight, 'F');
+
+              // Add border around the color box
+              doc.setDrawColor(100, 100, 100); // Darker border for better visibility
+              doc.rect(swatchX, swatchY, swatchWidth, swatchHeight, 'S');
+            }
+          }
+        }
+      });
+
+      // Add footer
+      doc.setFontSize(smallFontSize);
+      doc.setFont('helvetica', 'italic');
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 280, { align: 'center' });
+      doc.text('Pri Fashion Garment Management System', 105, 285, { align: 'center' });
+
+      // Save the PDF
+      const cleanFabricName = fabricDetail.fabric_name.replace(/[^a-zA-Z0-9]/g, '_');
+      doc.save(`Fabric_Inventory_${cleanFabricName}_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+      setPdfLoading(false);
+      setShowPdfModal(false);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      setError(`Failed to generate PDF: ${error.message}`);
+      setPdfLoading(false);
+    }
+  };
+
+  // Generate and download Fabric Addition Report PDF
+  const generateAdditionPDF = () => {
+    setAdditionPdfLoading(true);
+
+    if (!fabricDetail || !fabricDetail.variants) {
+      setError("No fabric data available to export");
+      setAdditionPdfLoading(false);
+      return;
+    }
+
+    try {
+      // Create a new jsPDF instance
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Set font sizes and styles
+      const titleFontSize = 18;
+      const headingFontSize = 14;
+      const normalFontSize = 10;
+      const smallFontSize = 8;
+
+      // Add logo
+      try {
+        // Get the base URL for the current environment
+        const baseUrl = window.location.origin;
+
+        // Add the logo to the PDF
+        doc.addImage(`${baseUrl}/logo.png`, 'PNG', 14, 10, 20, 20);
+      } catch (logoError) {
+        console.warn("Could not add logo to PDF:", logoError);
+
+        // Fallback to a simple placeholder if the logo can't be loaded
+        doc.setFillColor(41, 128, 185); // Primary blue color
+        doc.rect(14, 10, 20, 20, 'F');
+
+        // Add "PF" text as a simple logo
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text("PF", 24, 22, { align: 'center' });
+        doc.setTextColor(0, 0, 0); // Reset text color to black
+      }
+
+      // Add title
+      doc.setFontSize(titleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Fabric Addition Report', 105, 20, { align: 'center' });
+
+      // Add fabric information section
+      doc.setFontSize(headingFontSize);
+      doc.text('Fabric Information', 20, 35);
+
+      doc.setFontSize(normalFontSize);
+      doc.setFont('helvetica', 'normal');
+
+      // Add fabric details
+      const fabricInfo = [
+        ['Fabric Name', fabricDetail.fabric_name || 'N/A'],
+        ['Supplier', fabricDetail.supplier_name || 'N/A'],
+        ['Date Added', formatDate(fabricDetail.date_added) || 'N/A'],
+        ['Total Variants', fabricDetail.variants.length.toString()]
+      ];
+
+      // Add fabric info table
+      autoTable(doc, {
+        startY: 40,
+        head: [['Property', 'Value']],
+        body: fabricInfo,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        styles: { fontSize: 10 }
+      });
+
+      // Add variants section
+      doc.setFontSize(headingFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Added Fabric Variants', 20, doc.lastAutoTable.finalY + 15);
+
+      // Prepare data for variants table
+      const variantsData = fabricDetail.variants.map(variant => {
+        return [
+          variant.color_name || variant.color || 'N/A',
+          '', // Empty cell for color display
+          variant.color || 'N/A', // Color code in separate column
+          variant.total_yard.toString(),
+          `Rs. ${variant.price_per_yard}`,
+          `Rs. ${(variant.total_yard * variant.price_per_yard).toFixed(2)}`
+        ];
+      });
+
+      // No need to define dimensions here as we'll use the cell dimensions
+
+      // Add variants table
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 20,
+        head: [['Color Name', 'Color', 'Color Code', 'Added Yard', 'Price/Yard', 'Total Value']],
+        body: variantsData,
+        theme: 'striped',
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        columnStyles: {
+          1: { cellWidth: 30 }, // Wider column for color swatch
+          2: { cellWidth: 30 }  // Wider column for color code
+        },
+        didDrawCell: (data) => {
+          // Add color box in the color display column (index 1)
+          if (data.section === 'body' && data.column.index === 1) {
+            const rowIndex = data.row.index;
+            const colorCode = variantsData[rowIndex][2]; // Get color code from the next column
+
+            // Only draw if it's a valid color code
+            if (colorCode && colorCode !== 'N/A') {
+              const { x, y, width, height } = data.cell;
+
+              // Create a color swatch that fits within the cell with some padding
+              const padding = 2;
+              const swatchX = x + padding;
+              const swatchY = y + padding;
+              const swatchWidth = width - (padding * 2);
+              const swatchHeight = height - (padding * 2);
+
+              // Draw the color swatch
+              doc.setFillColor(colorCode);
+              doc.rect(swatchX, swatchY, swatchWidth, swatchHeight, 'F');
+
+              // Add border around the color box
+              doc.setDrawColor(100, 100, 100); // Darker border for better visibility
+              doc.rect(swatchX, swatchY, swatchWidth, swatchHeight, 'S');
+            }
+          }
+        }
+      });
+
+      // Add summary section
+      doc.setFontSize(headingFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Summary', 20, doc.lastAutoTable.finalY + 15);
+
+      // Calculate totals
+      const totalYards = calculateTotalYards();
+      const totalValue = calculateTotalValue();
+
+      // Add summary table
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 20,
+        head: [['Total Yards Added', 'Total Value']],
+        body: [[totalYards, `Rs. ${totalValue}`]],
+        theme: 'grid',
+        styles: { fontSize: 10, halign: 'center' },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 }
+      });
+
+      // Add footer
+      doc.setFontSize(smallFontSize);
+      doc.setFont('helvetica', 'italic');
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 280, { align: 'center' });
+      doc.text('Pri Fashion Garment Management System', 105, 285, { align: 'center' });
+
+      // Save the PDF
+      const cleanFabricName = fabricDetail.fabric_name.replace(/[^a-zA-Z0-9]/g, '_');
+      doc.save(`Fabric_Addition_${cleanFabricName}_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+      setAdditionPdfLoading(false);
+      setShowAdditionPdfModal(false);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      setError(`Failed to generate PDF: ${error.message}`);
+      setAdditionPdfLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -361,7 +723,22 @@ const ViewFabricVariants = () => {
             <FaTshirt className="me-2 text-primary" />
             {fabricDetail.fabric_name}
           </h2>
-          <div style={{ width: '85px' }}></div> {/* Empty div for balance */}
+          <div>
+            <Button
+              variant="outline-primary"
+              onClick={openPdfModal}
+              className="me-2"
+            >
+              <FaFilePdf className="me-2" /> Real-time Inventory
+            </Button>
+            <Button
+              variant="outline-success"
+              onClick={openAdditionPdfModal}
+              className="me-2"
+            >
+              <FaFilePdf className="me-2" /> Fabric Addition
+            </Button>
+          </div>
         </div>
 
         {message && <Alert variant="danger" className="text-center">{message}</Alert>}
@@ -409,10 +786,24 @@ const ViewFabricVariants = () => {
                   </ListGroup.Item>
                   <ListGroup.Item className="d-flex justify-content-between align-items-center">
                     <div>
+                      <FaRulerHorizontal className="me-2 text-secondary" />
+                      Available Yards
+                    </div>
+                    <span>{fabricDetail.variants.reduce((total, variant) => total + parseFloat(variant.available_yard), 0).toFixed(2)} yards</span>
+                  </ListGroup.Item>
+                  <ListGroup.Item className="d-flex justify-content-between align-items-center">
+                    <div>
                       <FaMoneyBillWave className="me-2 text-secondary" />
-                      Total Value
+                      Total Value (All)
                     </div>
                     <span className="text-success fw-bold">Rs. {calculateTotalValue()}</span>
+                  </ListGroup.Item>
+                  <ListGroup.Item className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <FaMoneyBillWave className="me-2 text-secondary" />
+                      Current Value
+                    </div>
+                    <span className="text-success fw-bold">Rs. {calculateCurrentValue()}</span>
                   </ListGroup.Item>
                 </ListGroup>
               </Card.Body>
@@ -434,7 +825,7 @@ const ViewFabricVariants = () => {
                       <th style={{ width: '15%' }}>Color</th>
                       <th style={{ width: '30%' }} className="text-center">Yard Information</th>
                       <th style={{ width: '20%' }} className="text-center">Price per Yard</th>
-                      <th style={{ width: '20%' }} className="text-center">Total Price</th>
+                      <th style={{ width: '20%' }} className="text-center">Current Value</th>
                       {isInventoryManager && (
                         <th style={{ width: '15%' }} className="text-center">Actions</th>
                       )}
@@ -492,7 +883,7 @@ const ViewFabricVariants = () => {
                         </td>
                         <td className="text-center">Rs. {variant.price_per_yard}/yard</td>
                         <td className="text-center fw-bold">
-                          Rs. {(variant.total_yard * variant.price_per_yard).toFixed(2)}
+                          Rs. {(variant.available_yard * variant.price_per_yard).toFixed(2)}
                         </td>
                         {isInventoryManager && (
                           <td className="text-center">
@@ -515,7 +906,7 @@ const ViewFabricVariants = () => {
                       <td colSpan="2" className="text-end fw-bold">Total:</td>
                       <td className="text-center">{fabricDetail.variants.length} variants</td>
                       <td className="text-center fw-bold text-success" colSpan={isInventoryManager ? 2 : 1}>
-                        Rs. {calculateTotalValue()}
+                        Rs. {calculateCurrentValue()}
                       </td>
                     </tr>
                   </tfoot>
@@ -611,6 +1002,104 @@ const ViewFabricVariants = () => {
               </>
             ) : (
               'Delete Variant'
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* PDF Export Modal */}
+      <Modal show={showPdfModal} onHide={() => setShowPdfModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FaFilePdf className="me-2 text-primary" />
+            Export Fabric Variants to PDF
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted mb-3">
+            This will generate a PDF report containing all color variants of {fabricDetail?.fabric_name}.
+            The PDF will include fabric name, color, total yard, available yard, price per yard, and total value.
+          </p>
+
+          <Alert variant="info">
+            <FaTable className="me-2" />
+            <strong>Note:</strong> The PDF report will include all color variants for this fabric with their respective inventory details and color swatches.
+          </Alert>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPdfModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={generatePDF}
+            disabled={pdfLoading}
+          >
+            {pdfLoading ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <FaFileDownload className="me-1" /> Download PDF
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Fabric Addition Report Modal */}
+      <Modal show={showAdditionPdfModal} onHide={() => setShowAdditionPdfModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FaFilePdf className="me-2 text-success" />
+            Fabric Addition Report
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted mb-3">
+            This will generate a PDF report showing the initial fabric addition details for {fabricDetail?.fabric_name}.
+            The report will include fabric name, supplier, date added, and details of all color variants that were added.
+          </p>
+
+          <Alert variant="info">
+            <FaTable className="me-2" />
+            <strong>Note:</strong> This report focuses on the initial fabric addition data rather than current inventory levels.
+          </Alert>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAdditionPdfModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="success"
+            onClick={generateAdditionPDF}
+            disabled={additionPdfLoading}
+          >
+            {additionPdfLoading ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <FaFileDownload className="me-1" /> Download Report
+              </>
             )}
           </Button>
         </Modal.Footer>
