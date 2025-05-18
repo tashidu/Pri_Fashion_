@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaPrint, FaChartLine, FaUndo, FaTrashAlt } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { FaSearch, FaFilter, FaEye, FaCheck, FaFileInvoice, FaMoneyBillWave, FaSync, FaDownload, FaChartLine, FaUndo } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 // Import custom modal components
 import PaymentModal from "../components/PaymentModal";
 import DeliveryModal from "../components/DeliveryModal";
-import InvoicePreviewModal from "../components/InvoicePreviewModal";
 import RevertOrderModal from "../components/RevertOrderModal";
+// Import PDF generation libraries
+import { jsPDF } from "jspdf";
+import { autoTable } from 'jspdf-autotable';
 // Import authenticated API utilities
-import { authGet, authPost, authPut } from "../utils/api";
+import { authGet, authPost } from "../utils/api";
 
 const OwnerOrdersPage = () => {
   const navigate = useNavigate();
@@ -33,7 +35,6 @@ const OwnerOrdersPage = () => {
   // Modal states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
-  const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
   const [showRevertModal, setShowRevertModal] = useState(false);
   const [orderForModal, setOrderForModal] = useState(null);
 
@@ -368,25 +369,206 @@ const OwnerOrdersPage = () => {
     }
   };
 
-  const handleViewInvoice = (order) => {
-    if (!order || !order.items) {
-      setError("Cannot generate invoice: Order data is missing.");
-      return;
-    }
+  const handleDownload = (order) => {
+    try {
+      if (!order || !order.items) {
+        setError("Cannot generate invoice: Order data is missing.");
+        return;
+      }
 
-    if (!order.items.length) {
-      setError("Cannot generate invoice: No order items found.");
-      return;
-    }
+      if (!order.items.length) {
+        setError("Cannot generate invoice: No order items found.");
+        return;
+      }
 
-    if (!order.invoice_number) {
-      setError("Cannot generate invoice: Invoice number is missing.");
-      return;
-    }
+      if (!order.invoice_number) {
+        setError("Cannot generate invoice: Invoice number is missing.");
+        return;
+      }
 
-    // Set the order for the modal and show the modal
-    setOrderForModal(order);
-    setShowInvoicePreviewModal(true);
+      // Create a new jsPDF instance for download
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Generate PDF content
+      generateInvoicePdf(doc, order);
+
+      // Save the PDF
+      doc.save(`Invoice-${order.invoice_number}.pdf`);
+
+      // Show success message
+      setSuccessMessage("Invoice downloaded successfully!");
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      setError(`Failed to download invoice: ${error.message || "Unknown error"}`);
+    }
+  };
+
+  // Function to generate PDF content
+  const generateInvoicePdf = (doc, order) => {
+    try {
+      // Add the logo to the PDF
+      try {
+        const baseUrl = window.location.origin;
+        doc.addImage(`${baseUrl}/logo.png`, 'PNG', 14, 10, 20, 20);
+      } catch (logoError) {
+        console.warn("Could not add logo to PDF:", logoError);
+        // Fallback to a simple placeholder
+        doc.setFillColor(41, 128, 185);
+        doc.rect(14, 10, 20, 20, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text("PF", 24, 22, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+      }
+
+      // Add company header
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Pri Fashion', 40, 20);
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Quality Clothes for Everyone', 40, 28);
+      doc.text('Sri Lanka', 40, 34);
+
+      // Add invoice details
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`INVOICE #${order.invoice_number}`, 120, 20);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 120, 28);
+      doc.text(`Order ID: ${order.id}`, 120, 34);
+      doc.text(`Status: ${order.status.toUpperCase()}`, 120, 40);
+
+      // Add customer info
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Bill To:', 20, 50);
+
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${order.shop_name || order.shop || 'Customer'}`, 20, 58);
+
+      // Prepare table data
+      const tableBody = [];
+
+      // Add each order item to the table
+      order.items.forEach(item => {
+        const productName = item.finished_product_name || `Product #${item.finished_product || 'Unknown'}`;
+        const qty6Packs = item.quantity_6_packs || 0;
+        const qty12Packs = item.quantity_12_packs || 0;
+        const qtyExtra = item.quantity_extra_items || 0;
+        const totalUnits = item.total_units || 0;
+
+        // Calculate unit price safely
+        let unitPrice = 0;
+        let subtotal = 0;
+
+        if (item.subtotal && item.total_units && item.total_units > 0) {
+          unitPrice = parseFloat(item.subtotal) / parseFloat(item.total_units);
+          subtotal = parseFloat(item.subtotal);
+        } else if (item.subtotal) {
+          subtotal = parseFloat(item.subtotal);
+        }
+
+        tableBody.push([
+          productName,
+          qty6Packs,
+          qty12Packs,
+          qtyExtra,
+          totalUnits,
+          `LKR ${unitPrice.toFixed(2)}`,
+          `LKR ${subtotal.toFixed(2)}`
+        ]);
+      });
+
+      // Add the table to the PDF
+      autoTable(doc, {
+        startY: 70,
+        head: [['Product', '6 Packs', '12 Packs', 'Extra Items', 'Total Units', 'Unit Price', 'Subtotal']],
+        body: tableBody,
+        theme: 'striped',
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      });
+
+      // Get the final Y position after the table
+      let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 200;
+
+      // Calculate total amount
+      const totalAmount = parseFloat(order.total_amount || 0);
+
+      // Add total amount
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Total Amount: LKR ${totalAmount.toFixed(2)}`, 120, finalY);
+
+      // Add payment information if available
+      if (parseFloat(order.amount_paid || 0) > 0) {
+        finalY += 6;
+        doc.text(`Amount Paid: LKR ${parseFloat(order.amount_paid || 0).toFixed(2)}`, 120, finalY);
+
+        if (parseFloat(order.balance_due || 0) > 0) {
+          finalY += 6;
+          doc.text(`Balance Due: LKR ${parseFloat(order.balance_due || 0).toFixed(2)}`, 120, finalY);
+        }
+      }
+
+      // Add payment terms if it's a credit payment
+      if (order.payment_method === 'credit' && order.credit_term_months > 0) {
+        finalY += 8;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'italic');
+        doc.text(`Payment Terms: ${order.credit_term_months} months credit`, 120, finalY);
+
+        if (order.payment_due_date) {
+          finalY += 5;
+          doc.text(`Payment Due Date: ${new Date(order.payment_due_date).toLocaleDateString()}`, 120, finalY);
+        }
+      }
+
+      // Add signature fields
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Signatures:', 20, finalY + 10);
+
+      // Draw signature lines
+      finalY += 15;
+
+      // Owner signature
+      doc.line(20, finalY + 15, 80, finalY + 15); // Signature line
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text("Owner Signature", 20, finalY + 20);
+      doc.text("Date: ________________", 20, finalY + 25);
+
+      // Shop owner signature
+      doc.line(120, finalY + 15, 180, finalY + 15); // Signature line
+      doc.text("Shop Owner Signature", 120, finalY + 20);
+      doc.text("Date: ________________", 120, finalY + 25);
+
+      // Add footer
+      finalY += 35;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Thank you for your business!', 20, finalY);
+
+      // Add company contact information
+      finalY += 10;
+      doc.setFontSize(8);
+      doc.text('Pri Fashion | Sri Lanka | Quality Clothes for Everyone', 20, finalY);
+
+      return doc;
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      throw error;
+    }
   };
 
   const handleRevertOrder = (orderId) => {
@@ -709,14 +891,12 @@ const OwnerOrdersPage = () => {
                               {order.status === "invoiced" && (
                                 <>
                                   <button
-                                    onClick={() => handleViewInvoice(order)}
-                                    className="btn btn-sm btn-info d-flex align-items-center"
-                                    title="View Invoice"
+                                    onClick={() => handleDownload(order)}
+                                    className="btn btn-sm btn-primary d-flex align-items-center"
+                                    title="Download Invoice"
                                   >
-                                    <FaPrint className="me-1" /> Invoice
+                                    <FaDownload className="me-1" /> Download
                                   </button>
-
-
                                 </>
                               )}
 
@@ -1032,10 +1212,10 @@ const OwnerOrdersPage = () => {
 
                       {selectedOrder.invoice_number && (
                         <button
-                          onClick={() => handleViewInvoice(selectedOrder)}
-                          className="btn btn-info text-white"
+                          onClick={() => handleDownload(selectedOrder)}
+                          className="btn btn-primary"
                         >
-                          <FaPrint className="me-2" /> View Invoice
+                          <FaDownload className="me-2" /> Download Invoice
                         </button>
                       )}
 
@@ -1098,16 +1278,7 @@ const OwnerOrdersPage = () => {
         processing={processing}
       />
 
-      <InvoicePreviewModal
-        show={showInvoicePreviewModal}
-        onHide={() => setShowInvoicePreviewModal(false)}
-        order={orderForModal}
-        onSuccess={(message) => {
-          setSuccessMessage(message);
-          setTimeout(() => setSuccessMessage(""), 3000);
-        }}
-        onError={(message) => setError(message)}
-      />
+
 
       <RevertOrderModal
         show={showRevertModal}
