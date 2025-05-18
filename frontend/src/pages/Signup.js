@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Container, Row, Col, Card, Form, Button, Alert, InputGroup, Spinner } from 'react-bootstrap';
-import { FaUser, FaLock, FaUserTag, FaSignInAlt, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { Container, Row, Col, Card, Form, Button, Alert, InputGroup, Spinner, Table, Badge, Modal } from 'react-bootstrap';
+import { FaUser, FaLock, FaUserTag, FaSignInAlt, FaEye, FaEyeSlash, FaSearch, FaEdit, FaTrash } from 'react-icons/fa';
 import RoleBasedNavBar from '../components/RoleBasedNavBar';
+import { getUserRole } from '../utils/auth';
 
 function Signup() {
   // State variables
@@ -17,6 +18,27 @@ function Signup() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [validated, setValidated] = useState(false);
+
+  // User list state variables
+  const [users, setUsers] = useState([]);
+  const [userListLoading, setUserListLoading] = useState(false);
+  const [userListError, setUserListError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [userRole, setUserRole] = useState(getUserRole());
+
+  // Edit user modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editUser, setEditUser] = useState(null);
+  const [editPassword, setEditPassword] = useState("");
+  const [editConfirmPassword, setEditConfirmPassword] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editPasswordError, setEditPasswordError] = useState("");
+
+  // Delete confirmation state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Form validation errors
   const [usernameError, setUsernameError] = useState("");
@@ -33,6 +55,50 @@ function Signup() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Function to fetch users
+  const fetchUsers = async () => {
+    // Only fetch users if the current user is an Owner
+    if (userRole !== 'Owner') {
+      return;
+    }
+
+    setUserListLoading(true);
+    setUserListError("");
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setUserListError("You must be logged in to view users");
+        setUserListLoading(false);
+        return;
+      }
+
+      const response = await axios.get('http://localhost:8000/api/auth/users/', {
+        headers: {
+          'Authorization': `JWT ${token}`
+        }
+      });
+
+      setUsers(response.data);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      setUserListError(
+        error.response?.data?.error ||
+        "Failed to load users. Please try again."
+      );
+    } finally {
+      setUserListLoading(false);
+    }
+  };
+
+  // Effect to load users when component mounts if user is Owner
+  useEffect(() => {
+    if (userRole === 'Owner') {
+      fetchUsers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userRole]);
 
   // Validate username
   const validateUsername = (username) => {
@@ -116,6 +182,11 @@ function Signup() {
         setConfirmPassword("");
         setRole("");
         setValidated(false);
+
+        // Refresh user list if owner is logged in
+        if (userRole === 'Owner') {
+          fetchUsers();
+        }
       } else {
         setError("Unexpected response from server. Please try again.");
       }
@@ -130,6 +201,127 @@ function Signup() {
     }
   };
 
+  // Function to handle search
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  // Filter users based on search term
+  const filteredUsers = users.filter(user =>
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.role_name && user.role_name.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  // Handle edit user (change password)
+  const handleEditUser = (user) => {
+    setEditUser(user);
+    setEditPassword("");
+    setEditConfirmPassword("");
+    setEditError("");
+    setShowEditModal(true);
+  };
+
+  // Validate password
+  const validateEditPassword = (password) => {
+    if (!password) {
+      setEditError("Password is required");
+      return false;
+    } else if (password.length < 6) {
+      setEditError("Password must be at least 6 characters");
+      return false;
+    }
+    return true;
+  };
+
+  // Validate confirm password
+  const validateEditConfirmPassword = (password, confirmPassword) => {
+    if (!confirmPassword) {
+      setEditError("Please confirm your password");
+      return false;
+    } else if (confirmPassword !== password) {
+      setEditError("Passwords do not match");
+      return false;
+    }
+    return true;
+  };
+
+  // Handle save edited user (change password)
+  const handleSaveEdit = async () => {
+    // Validate passwords
+    if (!validateEditPassword(editPassword) ||
+        !validateEditConfirmPassword(editPassword, editConfirmPassword)) {
+      return;
+    }
+
+    setEditLoading(true);
+    setEditError("");
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setEditError("You must be logged in to change user password");
+        setEditLoading(false);
+        return;
+      }
+
+      const userData = {
+        password: editPassword
+      };
+
+      await axios.put(`http://localhost:8000/api/auth/users/${editUser.id}/`, userData, {
+        headers: {
+          'Authorization': `JWT ${token}`
+        }
+      });
+
+      // Refresh user list
+      fetchUsers();
+      setShowEditModal(false);
+    } catch (error) {
+      console.error("Error updating user password:", error);
+      setEditError(
+        error.response?.data?.error ||
+        "Failed to update password. Please try again."
+      );
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Handle delete user
+  const handleDeleteUser = (userId) => {
+    setDeleteUserId(userId);
+    setShowDeleteModal(true);
+  };
+
+  // Handle confirm delete
+  const handleConfirmDelete = async () => {
+    setDeleteLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setShowDeleteModal(false);
+        setDeleteLoading(false);
+        return;
+      }
+
+      await axios.delete(`http://localhost:8000/api/auth/users/${deleteUserId}/`, {
+        headers: {
+          'Authorization': `JWT ${token}`
+        }
+      });
+
+      // Refresh user list
+      fetchUsers();
+      setShowDeleteModal(false);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <>
       {/* Sidebar */}
@@ -141,9 +333,9 @@ function Signup() {
         transition: "margin-left 0.3s ease",
         paddingTop: "20px"
       }}>
-        <Container>
-          <Row className="justify-content-center">
-            <Col md={8} lg={6}>
+        <Container fluid>
+          <Row>
+            <Col md={12}>
               <Card className="shadow-sm border-0 animate-fade-in">
                 <Card.Body className="p-4">
                   <div className="text-center mb-4">
@@ -302,6 +494,95 @@ function Signup() {
                       )}
                     </Button>
                   </Form>
+
+                  {/* User List Section - Only visible to Owners */}
+                  {userRole === 'Owner' && (
+                    <div className="mt-5">
+                      <h4 className="mb-3">User List</h4>
+                      <div className="mb-3">
+                        <InputGroup>
+                          <InputGroup.Text>
+                            <FaSearch />
+                          </InputGroup.Text>
+                          <Form.Control
+                            placeholder="Search users..."
+                            value={searchTerm}
+                            onChange={handleSearch}
+                          />
+                        </InputGroup>
+                      </div>
+
+                      {userListLoading ? (
+                        <div className="text-center p-4">
+                          <Spinner animation="border" variant="primary" />
+                          <p className="mt-2">Loading users...</p>
+                        </div>
+                      ) : userListError ? (
+                        <Alert variant="danger">{userListError}</Alert>
+                      ) : (
+                        <Table hover responsive className="mb-0">
+                          <thead>
+                            <tr>
+                              <th>Username</th>
+                              <th>Role</th>
+                              <th>Status</th>
+                              <th>Joined</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredUsers.length > 0 ? (
+                              filteredUsers.map(user => (
+                                <tr key={user.id}>
+                                  <td>{user.username}</td>
+                                  <td>
+                                    <Badge bg={
+                                      user.role_name === 'Owner' ? 'danger' :
+                                      user.role_name === 'Inventory Manager' ? 'success' :
+                                      user.role_name === 'Sales Team' ? 'info' :
+                                      user.role_name === 'Order Coordinator' ? 'warning' :
+                                      'secondary'
+                                    }>
+                                      {user.role_name || 'No Role'}
+                                    </Badge>
+                                  </td>
+                                  <td>
+                                    <Badge bg={user.is_active ? 'success' : 'danger'}>
+                                      {user.is_active ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                  </td>
+                                  <td>{new Date(user.date_joined).toLocaleDateString()}</td>
+                                  <td>
+                                    <Button
+                                      variant="outline-primary"
+                                      size="sm"
+                                      className="me-2"
+                                      onClick={() => handleEditUser(user)}
+                                    >
+                                      <FaEdit className="me-1" /> Change Password
+                                    </Button>
+                                    <Button
+                                      variant="outline-danger"
+                                      size="sm"
+                                      onClick={() => handleDeleteUser(user.id)}
+                                    >
+                                      <FaTrash className="me-1" /> Delete
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan="5" className="text-center">
+                                  {searchTerm ? 'No users match your search' : 'No users found'}
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </Table>
+                      )}
+                    </div>
+                  )}
                 </Card.Body>
               </Card>
               <div className="text-center mt-3">
@@ -313,6 +594,105 @@ function Signup() {
           </Row>
         </Container>
       </div>
+
+      {/* Change Password Modal */}
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Change Password</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {editError && <Alert variant="danger">{editError}</Alert>}
+
+          <Form>
+            {editUser && (
+              <p className="mb-3">
+                Changing password for user: <strong>{editUser.username}</strong>
+              </p>
+            )}
+
+            <Form.Group className="mb-3">
+              <Form.Label>New Password</Form.Label>
+              <Form.Control
+                type="password"
+                value={editPassword}
+                onChange={(e) => setEditPassword(e.target.value)}
+                placeholder="Enter new password"
+              />
+              <Form.Text className="text-muted">
+                Password must be at least 6 characters long
+              </Form.Text>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Confirm New Password</Form.Label>
+              <Form.Control
+                type="password"
+                value={editConfirmPassword}
+                onChange={(e) => setEditConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSaveEdit}
+            disabled={editLoading}
+          >
+            {editLoading ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Saving...
+              </>
+            ) : "Change Password"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete this user? This action cannot be undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleConfirmDelete}
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Deleting...
+              </>
+            ) : "Delete User"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Custom CSS with animations */}
       <style jsx="true">{`

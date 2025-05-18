@@ -14,6 +14,8 @@ import {
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// We'll use a different approach for the logo
+
 const CuttingRecordDetail = () => {
   const { recordId } = useParams();
   const navigate = useNavigate();
@@ -141,18 +143,41 @@ const CuttingRecordDetail = () => {
         format: 'a4'
       });
 
+      // Add the actual logo from the public directory
+      try {
+        // Get the base URL for the current environment
+        const baseUrl = window.location.origin;
+
+        // Add the logo to the PDF
+        doc.addImage(`${baseUrl}/logo.png`, 'PNG', 14, 10, 20, 20);
+      } catch (logoError) {
+        console.warn("Could not add logo to PDF:", logoError);
+
+        // Fallback to a simple placeholder if the logo can't be loaded
+        doc.setFillColor(41, 128, 185); // Primary blue color
+        doc.rect(14, 10, 20, 20, 'F');
+
+        // Add "PF" text as a simple logo
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text("PF", 24, 22, { align: 'center' });
+      }
+
+      // Reset text color for the rest of the document
+      doc.setTextColor(0, 0, 0);
+
       // Add title and company info
       doc.setFontSize(20);
       doc.setTextColor(0, 0, 0);
-      doc.text("Cutting Record Report", 105, 15, { align: 'center' });
+      doc.text("Cutting Record Report", 105, 20, { align: 'center' });
 
       doc.setFontSize(12);
-      doc.text("Fashion Garment Management System", 105, 25, { align: 'center' });
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 30, { align: 'center' });
+      doc.text("Pri Fashion - Garment Management System", 105, 28, { align: 'center' });
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 34, { align: 'center' });
 
       // Add cutting record details
       doc.setFontSize(14);
-      doc.text("Cutting Record Details", 14, 40);
+      doc.text("Cutting Record Details", 14, 45);
 
       doc.setFontSize(10);
       const details = [
@@ -166,7 +191,7 @@ const CuttingRecordDetail = () => {
       ];
 
       // First table
-      let finalY = 45;
+      let finalY = 50;
       autoTable(doc, {
         startY: finalY,
         head: [["Property", "Value"]],
@@ -184,37 +209,112 @@ const CuttingRecordDetail = () => {
       doc.text("Color Usage Details", 14, finalY);
 
       if (cuttingRecord.details && cuttingRecord.details.length > 0) {
-        const colorDetails = cuttingRecord.details.map(detail => [
-          detail.fabric_variant_data?.color_name || detail.fabric_variant_data?.color || "N/A",
-          `${parseFloat(detail.yard_usage).toFixed(2)} yards`,
-          `Rs. ${detail.fabric_variant_data?.price_per_yard.toFixed(2)}`,
-          `Rs. ${calculateCuttingValue(detail)}`,
-          detail.xs || 0,
-          detail.s || 0,
-          detail.m || 0,
-          detail.l || 0,
-          detail.xl || 0,
-          calculateTotalPieces(detail)
-        ]);
+        const colorDetails = cuttingRecord.details.map(detail => {
+          // Get the color code for display
+          const colorCode = detail.fabric_variant_data?.color || "#CCCCCC";
+          const colorName = detail.fabric_variant_data?.color_name || "N/A";
 
-        // Second table
+          return [
+            colorName,
+            colorCode, // Add color code as a separate column
+            `${parseFloat(detail.yard_usage).toFixed(2)} yards`,
+            `Rs. ${detail.fabric_variant_data?.price_per_yard.toFixed(2)}`,
+            `Rs. ${calculateCuttingValue(detail)}`,
+            detail.xs || 0,
+            detail.s || 0,
+            detail.m || 0,
+            detail.l || 0,
+            detail.xl || 0,
+            calculateTotalPieces(detail)
+          ];
+        });
+
+        // Second table with color swatches
         autoTable(doc, {
           startY: finalY + 5,
-          head: [["Color", "Yard Usage", "Price/Yard", "Fabric Cost", "XS", "S", "M", "L", "XL", "Total"]],
+          head: [["Color Name", "Color", "Yard Usage", "Price/Yard", "Fabric Cost", "XS", "S", "M", "L", "XL", "Total"]],
           body: colorDetails,
           theme: 'grid',
           headStyles: { fillColor: [41, 128, 185], textColor: 255 },
           styles: { fontSize: 9 },
           columnStyles: {
             0: { cellWidth: 25 },
-            1: { cellWidth: 20 },
+            1: { cellWidth: 15 }, // Color swatch column
             2: { cellWidth: 20 },
             3: { cellWidth: 20 },
+            4: { cellWidth: 20 },
+          },
+          // Add color swatches to the color column
+          didDrawCell: (data) => {
+            if (data.section === 'body' && data.column.index === 1) {
+              const colorHex = data.cell.raw;
+
+              try {
+                // Convert hex color to RGB
+                const r = parseInt(colorHex.substring(1, 3), 16) || 0;
+                const g = parseInt(colorHex.substring(3, 5), 16) || 0;
+                const b = parseInt(colorHex.substring(5, 7), 16) || 0;
+
+                // Set fill color using RGB values
+                doc.setFillColor(r, g, b);
+
+                // Draw a color rectangle
+                doc.rect(
+                  data.cell.x + 2,
+                  data.cell.y + 2,
+                  data.cell.width - 4,
+                  data.cell.height - 4,
+                  'F'
+                );
+
+                // Add a border around the color swatch
+                doc.setDrawColor(200, 200, 200);
+                doc.rect(
+                  data.cell.x + 2,
+                  data.cell.y + 2,
+                  data.cell.width - 4,
+                  data.cell.height - 4,
+                  'S'
+                );
+              } catch (error) {
+                console.warn("Error drawing color swatch:", error);
+                // Fallback to a gray color if there's an error
+                doc.setFillColor(200, 200, 200);
+                doc.rect(
+                  data.cell.x + 2,
+                  data.cell.y + 2,
+                  data.cell.width - 4,
+                  data.cell.height - 4,
+                  'F'
+                );
+              }
+            }
           }
         });
       } else {
         doc.text("No color details available", 14, finalY + 5);
       }
+
+      // Get the final Y position after the second table
+      finalY = (doc.lastAutoTable || doc.previousAutoTable).finalY + 15;
+
+      // Add signature fields
+      doc.setFontSize(12);
+      doc.text("Signatures:", 14, finalY);
+
+      // Draw signature lines
+      finalY += 8;
+
+      // Owner signature
+      doc.line(14, finalY + 15, 80, finalY + 15); // Signature line
+      doc.setFontSize(10);
+      doc.text("Owner Signature", 14, finalY + 20);
+      doc.text("Date: ________________", 14, finalY + 25);
+
+      // Cutter signature
+      doc.line(120, finalY + 15, 186, finalY + 15); // Signature line
+      doc.text("Cutter Signature", 120, finalY + 20);
+      doc.text("Date: ________________", 120, finalY + 25);
 
       // Add footer
       const pageCount = doc.internal.getNumberOfPages();
@@ -222,7 +322,7 @@ const CuttingRecordDetail = () => {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.text(
-          `Page ${i} of ${pageCount} - Fashion Garment Management System`,
+          `Page ${i} of ${pageCount} - Pri Fashion Garment Management System`,
           105,
           doc.internal.pageSize.height - 10,
           { align: 'center' }
