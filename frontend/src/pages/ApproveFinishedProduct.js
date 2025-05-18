@@ -6,11 +6,12 @@ import { Card, Form, Button, Alert, Row, Col, Spinner, Image, Modal, ProgressBar
 import {
   FaCheck, FaUpload, FaImage, FaTags, FaInfoCircle, FaMoneyBillWave,
   FaArrowRight, FaPercentage, FaBoxOpen, FaClipboardList,
-  FaTrash, FaUndo, FaExclamationTriangle
+  FaTrash, FaUndo, FaExclamationTriangle, FaFilePdf, FaDownload
 } from 'react-icons/fa';
 import { useDropzone } from 'react-dropzone';
 import RoleBasedNavBar from '../components/RoleBasedNavBar';
 import './ApproveFinishedProduct.css';
+import { jsPDF } from 'jspdf';
 // No need to import uploadMultipleImages as we're using FormData directly
 
 const ApproveFinishedProduct = () => {
@@ -46,6 +47,8 @@ const ApproveFinishedProduct = () => {
   // UI state
   const [activeTab, setActiveTab] = useState('details');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [profitMargin, setProfitMargin] = useState(0);
 
@@ -357,6 +360,180 @@ const ApproveFinishedProduct = () => {
     setShowConfirmModal(false);
   };
 
+  // Open PDF modal
+  const openPdfModal = () => {
+    setShowPdfModal(true);
+  };
+
+  // Close PDF modal
+  const closePdfModal = () => {
+    setShowPdfModal(false);
+  };
+
+  // Generate PDF report for the product
+  const generateProductReport = () => {
+    setPdfLoading(true);
+
+    try {
+      // Create PDF document
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Set font sizes
+      const titleFontSize = 16;
+      const headingFontSize = 12;
+      const normalFontSize = 10;
+      const smallFontSize = 8;
+
+      // Add header
+      doc.setFontSize(titleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Product Report', 105, 20, { align: 'center' });
+
+      // Add product name
+      const productName = productDetails && productDetails.fabric_definition_data
+        ? productDetails.fabric_definition_data.fabric_name
+        : `Batch ID: ${id}`;
+      doc.setFontSize(headingFontSize);
+      doc.text(productName, 105, 30, { align: 'center' });
+
+      // Add approval date
+      doc.setFontSize(normalFontSize);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Approval Date: ${new Date().toLocaleDateString()}`, 105, 40, { align: 'center' });
+
+      // Add horizontal line
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, 45, 190, 45);
+
+      // Start Y position for content
+      let yPos = 55;
+
+      // Add pricing information
+      doc.setFontSize(headingFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Pricing Information', 20, yPos);
+      yPos += 10;
+
+      doc.setFontSize(normalFontSize);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Manufacture Price: LKR ${manufacturePrice}`, 25, yPos);
+      yPos += 7;
+      doc.text(`Selling Price: LKR ${sellingPrice}`, 25, yPos);
+      yPos += 7;
+      doc.text(`Profit Margin: ${profitMargin}%`, 25, yPos);
+      yPos += 15;
+
+      // Add size distribution
+      doc.setFontSize(headingFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Size Distribution', 20, yPos);
+      yPos += 10;
+
+      doc.setFontSize(normalFontSize);
+      doc.setFont('helvetica', 'normal');
+
+      // Create a table for size distribution
+      const sizes = Object.entries(sizeQuantities);
+      const sizeHeaders = ['Size', 'Quantity', 'Percentage'];
+      const totalQuantity = sizes.reduce((sum, [_, qty]) => sum + qty, 0);
+
+      // Draw table headers
+      doc.setFont('helvetica', 'bold');
+      doc.text(sizeHeaders[0], 25, yPos);
+      doc.text(sizeHeaders[1], 60, yPos);
+      doc.text(sizeHeaders[2], 95, yPos);
+      yPos += 7;
+
+      // Draw table rows
+      doc.setFont('helvetica', 'normal');
+      sizes.forEach(([size, quantity]) => {
+        const percentage = totalQuantity > 0 ? ((quantity / totalQuantity) * 100).toFixed(1) : '0.0';
+        doc.text(size.toUpperCase(), 25, yPos);
+        doc.text(quantity.toString(), 60, yPos);
+        doc.text(`${percentage}%`, 95, yPos);
+        yPos += 7;
+      });
+
+      // Add total row
+      doc.setFont('helvetica', 'bold');
+      doc.text('Total', 25, yPos);
+      doc.text(totalQuantity.toString(), 60, yPos);
+      doc.text('100.0%', 95, yPos);
+      yPos += 15;
+
+      // Add color information
+      if (fabricDetails.length > 0) {
+        doc.setFontSize(headingFontSize);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Color Information', 20, yPos);
+        yPos += 10;
+
+        doc.setFontSize(normalFontSize);
+        doc.setFont('helvetica', 'normal');
+
+        fabricDetails.forEach((detail, index) => {
+          doc.text(`Color ${index + 1}: ${detail.color || 'N/A'}`, 25, yPos);
+          yPos += 7;
+        });
+
+        yPos += 8;
+      }
+
+      // Add product notes if available
+      if (productNotes) {
+        doc.setFontSize(headingFontSize);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Product Notes', 20, yPos);
+        yPos += 10;
+
+        doc.setFontSize(normalFontSize);
+        doc.setFont('helvetica', 'normal');
+
+        // Split notes into multiple lines if needed
+        const splitNotes = doc.splitTextToSize(productNotes, 160);
+        doc.text(splitNotes, 25, yPos);
+        yPos += splitNotes.length * 7 + 8;
+      }
+
+      // Add image information
+      if (existingImageUrls && existingImageUrls.length > 0) {
+        doc.setFontSize(headingFontSize);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Product Images', 20, yPos);
+        yPos += 10;
+
+        doc.setFontSize(normalFontSize);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Number of Images: ${existingImageUrls.length}`, 25, yPos);
+        yPos += 7;
+        doc.text('Note: Images can be viewed in the system', 25, yPos);
+        yPos += 15;
+      }
+
+      // Add footer
+      doc.setFontSize(smallFontSize);
+      doc.setFont('helvetica', 'italic');
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 280, { align: 'center' });
+      doc.text('Pri Fashion Garment Management System', 105, 285, { align: 'center' });
+
+      // Save the PDF
+      const cleanProductName = productName.replace(/[^a-zA-Z0-9]/g, '_');
+      doc.save(`Product_Report_${cleanProductName}_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+      setPdfLoading(false);
+      setShowPdfModal(false);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      setError(`Failed to generate PDF: ${error.message}`);
+      setPdfLoading(false);
+      setShowPdfModal(false);
+    }
+  };
+
   // Loading spinner
   if (loading) return (
     <div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
@@ -583,6 +760,17 @@ const ApproveFinishedProduct = () => {
 
                             <h5 className="mb-3"><FaBoxOpen className="me-2" />Size Distribution</h5>
                             {renderSizeQuantityBars()}
+
+                            <div className="mt-4">
+                              <Button
+                                variant="outline-primary"
+                                className="w-100"
+                                onClick={openPdfModal}
+                              >
+                                <FaFilePdf className="me-2" />
+                                Generate Product Report
+                              </Button>
+                            </div>
                           </Col>
 
                           <Col md={6} className="text-center">
@@ -882,6 +1070,56 @@ const ApproveFinishedProduct = () => {
 
       {/* Confirmation Modal */}
       <ConfirmationModal />
+
+      {/* PDF Report Modal */}
+      <Modal show={showPdfModal} onHide={closePdfModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FaFilePdf className="text-danger me-2" />
+            Generate Product Report
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to generate a PDF report for this product?</p>
+          <div className="bg-light p-3 rounded">
+            <p className="mb-1"><strong>Product:</strong> {productDetails && productDetails.fabric_definition_data ?
+              productDetails.fabric_definition_data.fabric_name :
+              `Batch ID: ${id}`}</p>
+            <p className="mb-1"><strong>Manufacture Price:</strong> LKR {manufacturePrice}</p>
+            <p className="mb-1"><strong>Selling Price:</strong> LKR {sellingPrice}</p>
+            <p className="mb-0"><strong>Profit Margin:</strong> {profitMargin}%</p>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closePdfModal}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={generateProductReport}
+            disabled={pdfLoading}
+          >
+            {pdfLoading ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FaDownload className="me-2" />
+                Generate PDF
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };

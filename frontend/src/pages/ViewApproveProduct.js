@@ -10,10 +10,11 @@ import {
   FaSearch, FaSort, FaImage, FaUpload, FaTrash, FaUndo,
   FaInfoCircle, FaMoneyBillWave, FaTshirt, FaCalendarAlt,
   FaCheck, FaExclamationTriangle, FaEye, FaArrowLeft, FaArrowRight,
-  FaShoppingCart, FaBoxOpen, FaWarehouse
+  FaShoppingCart, FaBoxOpen, FaWarehouse, FaFilePdf, FaDownload
 } from "react-icons/fa";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { useDropzone } from "react-dropzone";
+import { jsPDF } from "jspdf";
 import './ViewApproveProduct.css';
 
 const ViewApproveProduct = () => {
@@ -58,6 +59,10 @@ const ViewApproveProduct = () => {
   const [cuttingData, setCuttingData] = useState(null);
   const [cuttingDataLoading, setCuttingDataLoading] = useState(false);
   const [cuttingDataError, setCuttingDataError] = useState("");
+
+  // State for PDF generation
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -506,6 +511,260 @@ const ViewApproveProduct = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString();
+  };
+
+  // Open PDF modal
+  const openPdfModal = () => {
+    setShowPdfModal(true);
+  };
+
+  // Close PDF modal
+  const closePdfModal = () => {
+    setShowPdfModal(false);
+  };
+
+  // Generate PDF report for the product
+  const generateProductReport = () => {
+    if (!selectedProduct) return;
+
+    setPdfLoading(true);
+
+    try {
+      // Create PDF document
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Set font sizes
+      const titleFontSize = 16;
+      const headingFontSize = 12;
+      const normalFontSize = 10;
+      const smallFontSize = 8;
+
+      // Get the base URL for the current environment
+      const baseUrl = window.location.origin;
+
+      // Add logo
+      try {
+        // Try to add the PriFashionLogo.png first
+        doc.addImage(`${baseUrl}/logo.png`, 'PNG', 20, 10, 30, 30);
+      } catch (logoError) {
+        console.warn("Could not add PriFashionLogo.png to PDF, trying logo.png:", logoError);
+
+        try {
+          // Try to add logo.png as fallback
+          doc.addImage(`${baseUrl}/logo.png`, 'PNG', 20, 10, 30, 30);
+        } catch (fallbackLogoError) {
+          console.warn("Could not add logo.png to PDF:", fallbackLogoError);
+
+          // Create a simple placeholder if both logos fail
+          doc.setFillColor(41, 128, 185); // Primary blue color
+          doc.rect(20, 10, 30, 30, 'F');
+
+          // Add "PF" text as a simple logo
+          doc.setFontSize(14);
+          doc.setTextColor(255, 255, 255);
+          doc.text("PF", 35, 25, { align: 'center' });
+          doc.setTextColor(0, 0, 0); // Reset text color to black
+        }
+      }
+
+      // Add header
+      doc.setFontSize(titleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Product Report', 105, 20, { align: 'center' });
+
+      // Add company name
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Pri Fashion - Garment Management System', 105, 30, { align: 'center' });
+
+      // Add generation date
+      doc.setFontSize(normalFontSize);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 40, { align: 'center' });
+
+      // Add product name
+      doc.setFontSize(headingFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Product Details', 20, 55);
+
+      // Add horizontal line
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, 50, 190, 50);
+
+      // Start Y position for content
+      let yPos = 65;
+
+      // Continue with the rest of the PDF generation
+      const finalizePdf = () => {
+        // Add product name and basic info
+        doc.setFontSize(normalFontSize);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Product Name: ${selectedProduct.product_name}`, 25, yPos);
+        yPos += 7;
+        doc.text(`Approval Date: ${formatDate(selectedProduct.approval_date)}`, 25, yPos);
+        yPos += 15;
+
+        // Add pricing information
+        doc.setFontSize(headingFontSize);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Pricing Information', 20, yPos);
+        yPos += 10;
+
+        doc.setFontSize(normalFontSize);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Manufacture Price: ${formatCurrency(selectedProduct.manufacture_price)}`, 25, yPos);
+        yPos += 7;
+        doc.text(`Selling Price: ${formatCurrency(selectedProduct.selling_price)}`, 25, yPos);
+        yPos += 7;
+        doc.text(`Profit Margin: ${calculateProfitMargin(selectedProduct.manufacture_price, selectedProduct.selling_price)}%`, 25, yPos);
+        yPos += 15;
+
+        // Add size distribution
+        doc.setFontSize(headingFontSize);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Size Distribution', 20, yPos);
+        yPos += 10;
+
+        doc.setFontSize(normalFontSize);
+        doc.setFont('helvetica', 'normal');
+
+        // Create a table for size distribution
+        const sizes = [
+          { label: 'XS', value: selectedProduct.total_sewn_xs || 0 },
+          { label: 'S', value: selectedProduct.total_sewn_s || 0 },
+          { label: 'M', value: selectedProduct.total_sewn_m || 0 },
+          { label: 'L', value: selectedProduct.total_sewn_l || 0 },
+          { label: 'XL', value: selectedProduct.total_sewn_xl || 0 }
+        ];
+
+        const totalQuantity = sizes.reduce((sum, size) => sum + size.value, 0);
+
+        // Draw table headers
+        doc.setFont('helvetica', 'bold');
+        doc.text('Size', 25, yPos);
+        doc.text('Quantity', 60, yPos);
+        doc.text('Percentage', 95, yPos);
+        yPos += 7;
+
+        // Draw table rows
+        doc.setFont('helvetica', 'normal');
+        sizes.forEach(size => {
+          const percentage = totalQuantity > 0 ? ((size.value / totalQuantity) * 100).toFixed(1) : '0.0';
+          doc.text(size.label, 25, yPos);
+          doc.text(size.value.toString(), 60, yPos);
+          doc.text(`${percentage}%`, 95, yPos);
+          yPos += 7;
+        });
+
+        // Add total row
+        doc.setFont('helvetica', 'bold');
+        doc.text('Total', 25, yPos);
+        doc.text(totalQuantity.toString(), 60, yPos);
+        doc.text('100.0%', 95, yPos);
+        yPos += 15;
+
+        // Add inventory information if available
+        if (packingInventory) {
+          doc.setFontSize(headingFontSize);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Inventory Information', 20, yPos);
+          yPos += 10;
+
+          doc.setFontSize(normalFontSize);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`Total in Stock: ${packingInventory.total_quantity} units`, 25, yPos);
+          yPos += 7;
+          doc.text(`6-Packs: ${packingInventory.number_of_6_packs} (${packingInventory.number_of_6_packs * 6} units)`, 25, yPos);
+          yPos += 7;
+          doc.text(`12-Packs: ${packingInventory.number_of_12_packs} (${packingInventory.number_of_12_packs * 12} units)`, 25, yPos);
+          yPos += 7;
+          doc.text(`Extra Items: ${packingInventory.extra_items} units`, 25, yPos);
+          yPos += 15;
+        }
+
+        // Add cutting and sewing information if available
+        if (cuttingData) {
+          doc.setFontSize(headingFontSize);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Cutting & Sewing Information', 20, yPos);
+          yPos += 10;
+
+          doc.setFontSize(normalFontSize);
+          doc.setFont('helvetica', 'normal');
+
+          // Calculate totals from cutting details
+          const totalCut = {
+            xs: cuttingData.details.reduce((sum, detail) => sum + (detail.xs || 0), 0),
+            s: cuttingData.details.reduce((sum, detail) => sum + (detail.s || 0), 0),
+            m: cuttingData.details.reduce((sum, detail) => sum + (detail.m || 0), 0),
+            l: cuttingData.details.reduce((sum, detail) => sum + (detail.l || 0), 0),
+            xl: cuttingData.details.reduce((sum, detail) => sum + (detail.xl || 0), 0)
+          };
+
+          const totalCutAll = totalCut.xs + totalCut.s + totalCut.m + totalCut.l + totalCut.xl;
+          const totalSewnAll = (selectedProduct.total_sewn_xs || 0) +
+                              (selectedProduct.total_sewn_s || 0) +
+                              (selectedProduct.total_sewn_m || 0) +
+                              (selectedProduct.total_sewn_l || 0) +
+                              (selectedProduct.total_sewn_xl || 0);
+
+          doc.text(`Cutting Date: ${formatDate(cuttingData.cutting_date)}`, 25, yPos);
+          yPos += 7;
+          doc.text(`Total Cut: ${totalCutAll} pieces`, 25, yPos);
+          yPos += 7;
+          doc.text(`Total Sewn: ${totalSewnAll} pieces`, 25, yPos);
+          yPos += 7;
+          doc.text(`Completion: ${totalCutAll > 0 ? Math.round((totalSewnAll / totalCutAll) * 100) : 0}%`, 25, yPos);
+          yPos += 15;
+        }
+
+        // Add sales information if available
+        if (productSales && productSales.length > 0) {
+          doc.setFontSize(headingFontSize);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Sales Information', 20, yPos);
+          yPos += 10;
+
+          doc.setFontSize(normalFontSize);
+          doc.setFont('helvetica', 'normal');
+
+          const totalSoldUnits = productSales.reduce((sum, sale) => sum + (sale.total_units || 0), 0);
+          const totalSalesAmount = productSales.reduce((sum, sale) => sum + (sale.subtotal || 0), 0);
+
+          doc.text(`Total Orders: ${productSales.length}`, 25, yPos);
+          yPos += 7;
+          doc.text(`Total Units Sold: ${totalSoldUnits}`, 25, yPos);
+          yPos += 7;
+          doc.text(`Total Sales Amount: ${formatCurrency(totalSalesAmount)}`, 25, yPos);
+          yPos += 15;
+        }
+
+        // Add footer
+        doc.setFontSize(smallFontSize);
+        doc.setFont('helvetica', 'italic');
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 280, { align: 'center' });
+        doc.text('Pri Fashion Garment Management System', 105, 285, { align: 'center' });
+
+        // Save the PDF
+        const cleanProductName = selectedProduct.product_name.replace(/[^a-zA-Z0-9]/g, '_');
+        doc.save(`Product_Report_${cleanProductName}_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+        setPdfLoading(false);
+        setShowPdfModal(false);
+      };
+
+      // Call finalizePdf directly without logo handling
+      finalizePdf();
+
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      setError(`Failed to generate PDF: ${error.message}`);
+      setPdfLoading(false);
+      setShowPdfModal(false);
+    }
   };
 
   // Render order status badge
@@ -1847,9 +2106,72 @@ const ViewApproveProduct = () => {
             </>
           )}
         </Modal.Body>
-        <Modal.Footer>
+        <Modal.Footer className="d-flex justify-content-between">
+          <Button
+            variant="outline-primary"
+            onClick={openPdfModal}
+          >
+            <FaFilePdf className="me-2" />
+            Generate Product Report
+          </Button>
           <Button variant="secondary" onClick={() => setShowDetailModal(false)}>
             Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* PDF Report Modal */}
+      <Modal show={showPdfModal} onHide={closePdfModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FaFilePdf className="text-danger me-2" />
+            Generate Product Report
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedProduct && (
+            <>
+              <p>Are you sure you want to generate a PDF report for this product?</p>
+              <div className="bg-light p-3 rounded">
+                <p className="mb-1"><strong>Product:</strong> {selectedProduct.product_name}</p>
+                <p className="mb-1"><strong>Manufacture Price:</strong> {formatCurrency(selectedProduct.manufacture_price)}</p>
+                <p className="mb-1"><strong>Selling Price:</strong> {formatCurrency(selectedProduct.selling_price)}</p>
+                <p className="mb-0"><strong>Approval Date:</strong> {formatDate(selectedProduct.approval_date)}</p>
+              </div>
+              <p className="mt-3 text-muted">
+                The report will include the Pri Fashion logo, pricing information, size distribution,
+                inventory status, cutting and sewing data, and sales information if available.
+              </p>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closePdfModal}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={generateProductReport}
+            disabled={pdfLoading}
+          >
+            {pdfLoading ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FaDownload className="me-2" />
+                Generate PDF
+              </>
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
