@@ -107,14 +107,18 @@ function Login() {
                         <div className="login-form-container p-4 p-md-5" style={{ maxWidth: '500px', width: '100%' }}>
                             <div className="text-center mb-4">
                                 <img
-                                    src="/logo.jpg"
+                                    src={process.env.PUBLIC_URL + "/logo.png"}
                                     alt="Pri Fashion Logo"
                                     className="mb-3 shadow-sm animate-logo"
                                     style={{
-                                        width: '80px',
-                                        height: '80px',
+                                        width: '90px',
+                                        height: '100px',
                                         borderRadius: '12px',
-                                        objectFit: 'cover'
+                                        objectFit: 'contain'
+                                    }}
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = process.env.PUBLIC_URL + "/PriFashionLogo.png";
                                     }}
                                 />
                                 <h2 className="fw-bold text-primary animate-fade-in" style={{ animationDelay: '0.3s' }}>Welcome Back</h2>

@@ -160,7 +160,7 @@ function InventoryManagerNavBar() {
         {/* Brand logo and name */}
         <div className="d-flex align-items-center justify-content-center mb-4 px-3">
           <img
-            src="/logo.jpg"
+            src="/logo.png"
             alt="Pri Fashion Logo"
             className={isSidebarOpen ? "me-2" : ""}
             style={{
