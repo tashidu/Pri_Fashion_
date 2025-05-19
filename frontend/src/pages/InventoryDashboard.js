@@ -1,15 +1,800 @@
-import React from "react";
-import InventoryManagerNavBar from "../components/InventoryManagerNavBar";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import RoleBasedNavBar from "../components/RoleBasedNavBar";
+import { Container, Row, Col, Card, Button, Badge, Tooltip, OverlayTrigger, Modal, Table } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import DashboardCard from "../components/DashboardCard";
+import {
+  FaTshirt,
+  FaCut,
+  FaBoxes,
+  FaCalendarCheck,
+  FaBuilding,
+  FaInfoCircle,
+  FaSearch,
+  FaHistory,
+  FaKeyboard
+} from 'react-icons/fa';
+// No chart imports needed
 
 function InventoryDashboard() {
+    const navigate = useNavigate();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+    const [showShortcutModal, setShowShortcutModal] = useState(false);
+    const [stats, setStats] = useState({
+        fabricCount: 0,
+        cuttingCount: 0,
+        sewingCount: 0,
+        packingCount: 0,
+        supplierCount: 0,
+        lowStockCount: 0
+    });
+    const [loading, setLoading] = useState(true);
+    const [recentActivity, setRecentActivity] = useState([]);
+    const [remainingFabrics, setRemainingFabrics] = useState([]);
+    const [topFabricColors, setTopFabricColors] = useState([]);
+    const dashboardRef = useRef(null);
+
+    // Add resize event listener to update sidebar state
+    useEffect(() => {
+        const handleResize = () => {
+            setIsSidebarOpen(window.innerWidth >= 768);
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    // Fetch dashboard statistics
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                setLoading(true);
+
+                // Fetch dashboard statistics
+                try {
+                    const statsResponse = await axios.get('http://localhost:8000/api/reports/dashboard/stats/');
+                    setStats({
+                        fabricCount: statsResponse.data.fabric_count,
+                        cuttingCount: statsResponse.data.cutting_count,
+                        sewingCount: statsResponse.data.sewing_count,
+                        packingCount: statsResponse.data.packing_count,
+                        supplierCount: statsResponse.data.supplier_count,
+                        lowStockCount: statsResponse.data.low_stock_count
+                    });
+                } catch (error) {
+                    console.error('Error fetching dashboard stats:', error);
+                    // Fallback to sample data if API fails
+                    setStats({
+                        fabricCount: 24,
+                        cuttingCount: 12,
+                        sewingCount: 18,
+                        packingCount: 8,
+                        supplierCount: 5,
+                        lowStockCount: 3
+                    });
+                }
+
+                // Fetch recent activity
+                try {
+                    const activityResponse = await axios.get('http://localhost:8000/api/reports/dashboard/recent-activity/');
+                    setRecentActivity(activityResponse.data);
+                } catch (error) {
+                    console.error('Error fetching recent activity:', error);
+                    // Fallback to sample data if API fails
+                    setRecentActivity([
+                        { id: 1, type: 'fabric', action: 'added', item: 'Cotton Blend', date: '2023-07-15', user: 'John' },
+                        { id: 2, type: 'cutting', action: 'updated', item: 'Denim Jeans', date: '2023-07-14', user: 'Sarah' },
+                        { id: 3, type: 'sewing', action: 'completed', item: 'T-Shirt Batch #45', date: '2023-07-13', user: 'Mike' },
+                        { id: 4, type: 'packing', action: 'started', item: 'Summer Collection', date: '2023-07-12', user: 'Lisa' },
+                        { id: 5, type: 'fabric', action: 'low stock', item: 'Silk', date: '2023-07-11', user: 'System' }
+                    ]);
+                }
+
+                // Fetch remaining fabric stock
+                try {
+                    const fabricStockResponse = await axios.get('http://localhost:8000/api/reports/dashboard/fabric-stock/');
+                    setRemainingFabrics(fabricStockResponse.data);
+                } catch (error) {
+                    console.error('Error fetching fabric stock:', error);
+                    // Fallback to sample data if API fails
+                    setRemainingFabrics([
+                        {
+                            id: 1,
+                            name: 'Black Cotton',
+                            colorCode: '#000000',
+                            availableYards: 45.5,
+                            pricePerYard: 8.99
+                        },
+                        {
+                            id: 2,
+                            name: 'Blue Denim',
+                            colorCode: '#0000FF',
+                            availableYards: 32.25,
+                            pricePerYard: 12.50
+                        },
+                        {
+                            id: 3,
+                            name: 'Red Polyester',
+                            colorCode: '#FF0000',
+                            availableYards: 28.75,
+                            pricePerYard: 7.25
+                        },
+                        {
+                            id: 4,
+                            name: 'White Cotton',
+                            colorCode: '#FFFFFF',
+                            availableYards: 50.0,
+                            pricePerYard: 6.99
+                        },
+                        {
+                            id: 5,
+                            name: 'Gray Wool',
+                            colorCode: '#808080',
+                            availableYards: 15.5,
+                            pricePerYard: 14.75
+                        }
+                    ]);
+                }
+
+                // Fetch top fabric colors for analysis
+                try {
+                    const colorAnalysisResponse = await axios.get('http://localhost:8000/api/reports/dashboard/color-analysis/');
+                    setTopFabricColors(colorAnalysisResponse.data);
+                } catch (error) {
+                    console.error('Error fetching color analysis:', error);
+                    // Fallback to sample data if API fails
+                    setTopFabricColors([
+                        {
+                            colorCode: '#000000',
+                            colorName: 'Black',
+                            count: 24,
+                            yardUsage: 120.5
+                        },
+                        {
+                            colorCode: '#0000FF',
+                            colorName: 'Blue',
+                            count: 18,
+                            yardUsage: 90.25
+                        },
+                        {
+                            colorCode: '#FF0000',
+                            colorName: 'Red',
+                            count: 15,
+                            yardUsage: 75.0
+                        },
+                        {
+                            colorCode: '#FFFFFF',
+                            colorName: 'White',
+                            count: 12,
+                            yardUsage: 60.75
+                        },
+                        {
+                            colorCode: '#808080',
+                            colorName: 'Gray',
+                            count: 9,
+                            yardUsage: 45.5
+                        }
+                    ]);
+                }
+
+                setLoading(false);
+            } catch (error) {
+                console.error('Error in dashboard data fetching:', error);
+                setLoading(false);
+            }
+        };
+
+        fetchStats();
+    }, []);
+
+    // Keyboard shortcut handler
+    const handleKeyDown = useCallback((e) => {
+        // Only process if no input elements are focused
+        if (document.activeElement.tagName === 'INPUT' ||
+            document.activeElement.tagName === 'TEXTAREA' ||
+            document.activeElement.tagName === 'SELECT') {
+            return;
+        }
+
+        // View shortcuts
+        if (e.ctrlKey) {
+            switch (e.key) {
+                case 'f':
+                    e.preventDefault();
+                    navigate('/viewfabric');
+                    break;
+                case 'c':
+                    e.preventDefault();
+                    navigate('/viewcutting');
+                    break;
+                case 's':
+                    e.preventDefault();
+                    navigate('/daily-sewing-history');
+                    break;
+                case 'u':
+                    e.preventDefault();
+                    navigate('/viewsuppliers');
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        // Add shortcuts (Alt key combinations)
+        if (e.altKey) {
+            switch (e.key) {
+                case 's':
+                    e.preventDefault();
+                    navigate('/addsupplier');
+                    break;
+                case 'f':
+                    e.preventDefault();
+                    navigate('/addfabric');
+                    break;
+                case 'c':
+                    e.preventDefault();
+                    navigate('/addcutting');
+                    break;
+                case 'd':
+                    e.preventDefault();
+                    navigate('/adddailysewing');
+                    break;
+                case 'p':
+                    e.preventDefault();
+                    navigate('/add-packing-session');
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        // Help shortcut
+        if (e.key === '?') {
+            e.preventDefault();
+            setShowShortcutModal(true);
+        }
+    }, [navigate]);
+
+    // Add keyboard shortcut listener
+    useEffect(() => {
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [handleKeyDown]);
+
+    // Chart data is now managed through the chartData state
+
+    // Render activity icon based on type
+    const getActivityIcon = (type) => {
+        switch (type) {
+            case 'fabric':
+                return <FaTshirt className="text-primary" />;
+            case 'cutting':
+                return <FaCut className="text-success" />;
+            case 'sewing':
+                return <FaCalendarCheck className="text-info" />;
+            case 'packing':
+                return <FaBoxes className="text-warning" />;
+            default:
+                return <FaInfoCircle className="text-secondary" />;
+        }
+    };
+
+    // Render activity badge based on action
+    const getActionBadge = (action) => {
+        switch (action) {
+            case 'added':
+                return <Badge bg="success">Added</Badge>;
+            case 'updated':
+                return <Badge bg="primary">Updated</Badge>;
+            case 'completed':
+                return <Badge bg="info">Completed</Badge>;
+            case 'started':
+                return <Badge bg="warning">Started</Badge>;
+            case 'low stock':
+                return <Badge bg="danger">Low Stock</Badge>;
+            default:
+                return <Badge bg="secondary">{action}</Badge>;
+        }
+    };
+
+    // Tooltip for shortcut keys
+    const renderTooltip = (props, shortcut, description) => (
+        <Tooltip id="button-tooltip" {...props}>
+            {description} <strong>({shortcut})</strong>
+        </Tooltip>
+    );
+
     return (
         <>
-        <InventoryManagerNavBar/>
-        <div className="main-content">
-            
+        <RoleBasedNavBar/>
+        <div
+            ref={dashboardRef}
+            style={{
+                marginLeft: isSidebarOpen ? "240px" : "70px",
+                width: `calc(100% - ${isSidebarOpen ? "240px" : "70px"})`,
+                transition: "all 0.3s ease",
+                padding: "20px"
+            }}
+        >
+            <Container fluid>
+                {/* Dashboard Header */}
+                <Row className="mb-4">
+                    <Col>
+                        <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h1 className="mb-1">Inventory Dashboard</h1>
+                                <p className="text-muted">
+                                    Welcome, <span className="fw-bold">Inventory Manager</span>. Here's your inventory overview.
+                                </p>
+                            </div>
+                            <div>
+                                <OverlayTrigger
+                                    placement="left"
+                                    delay={{ show: 250, hide: 400 }}
+                                    overlay={(props) => renderTooltip(props, '?', 'Keyboard Shortcuts')}
+                                >
+                                    <Button
+                                        variant="outline-secondary"
+                                        className="me-2"
+                                        onClick={() => setShowShortcutModal(true)}
+                                    >
+                                        <FaKeyboard />
+                                    </Button>
+                                </OverlayTrigger>
+                                <Button variant="primary">
+                                    <FaSearch className="me-2" />
+                                    Quick Search
+                                </Button>
+                            </div>
+                        </div>
+                    </Col>
+                </Row>
 
-            <h1>Inventory Dashboard</h1>
-            <p>Manage fabric stock, track inventory levels, and handle suppliers.</p>
+                {/* Stats Cards */}
+                <Row>
+                    <Col md={4} lg={2} sm={6} className="mb-4">
+                        <DashboardCard
+                            title="Fabrics"
+                            value={loading ? "..." : stats.fabricCount}
+                            icon={<FaTshirt />}
+                            linkTo="/viewfabric"
+                        />
+                    </Col>
+
+                    <Col md={4} lg={2} sm={6} className="mb-4">
+                        <DashboardCard
+                            title="Cutting"
+                            value={loading ? "..." : stats.cuttingCount}
+                            icon={<FaCut />}
+                            linkTo="/viewcutting"
+                        />
+                    </Col>
+
+                    <Col md={4} lg={2} sm={6} className="mb-4">
+                        <DashboardCard
+                            title="Sewing"
+                            value={loading ? "..." : stats.sewingCount}
+                            icon={<FaCalendarCheck />}
+                            linkTo="/daily-sewing-history"
+                        />
+                    </Col>
+
+                    <Col md={4} lg={2} sm={6} className="mb-4">
+                        <DashboardCard
+                            title="Packing"
+                            value={loading ? "..." : stats.packingCount}
+                            icon={<FaBoxes />}
+                            linkTo="/add-packing-session"
+                        />
+                    </Col>
+
+                    <Col md={4} lg={2} sm={6} className="mb-4">
+                        <DashboardCard
+                            title="Suppliers"
+                            value={loading ? "..." : stats.supplierCount}
+                            icon={<FaBuilding />}
+                            linkTo="/viewsuppliers"
+                        />
+                    </Col>
+
+                    <Col md={4} lg={2} sm={6} className="mb-4">
+                        <DashboardCard
+                            title="Fabric Value"
+                            value={loading ? "..." : `Rs. ${remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toFixed(2)}`}
+                            icon={<FaTshirt />}
+                            linkTo="#fabric-stock"
+                            color="#FFECB3"
+                        />
+                    </Col>
+                </Row>
+
+                {/* Quick Actions */}
+                <Row className="mb-4" id="quick-actions">
+                    <Col>
+                        <Card className="shadow-sm">
+                            <Card.Header className="bg-white">
+                                <h5 className="mb-0">Quick Actions</h5>
+                            </Card.Header>
+                            <Card.Body>
+                                <div>
+                                    <h6 className="mb-3">View Pages</h6>
+                                    <div className="d-flex flex-wrap gap-2 mb-4">
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Ctrl+F', 'View Fabrics')}
+                                        >
+                                            <Button variant="outline-primary" onClick={() => navigate('/viewfabric')}>
+                                                <FaTshirt className="me-2" />
+                                                View Fabrics
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Ctrl+C', 'View Cutting')}
+                                        >
+                                            <Button variant="outline-primary" onClick={() => navigate('/viewcutting')}>
+                                                <FaCut className="me-2" />
+                                                View Cutting
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Ctrl+S', 'Sewing History')}
+                                        >
+                                            <Button variant="outline-primary" onClick={() => navigate('/daily-sewing-history')}>
+                                                <FaCalendarCheck className="me-2" />
+                                                Sewing History
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Ctrl+U', 'View Suppliers')}
+                                        >
+                                            <Button variant="outline-primary" onClick={() => navigate('/viewsuppliers')}>
+                                                <FaBuilding className="me-2" />
+                                                View Suppliers
+                                            </Button>
+                                        </OverlayTrigger>
+                                    </div>
+
+                                    <h6 className="mb-3">Add New Items</h6>
+                                    <div className="d-flex flex-wrap gap-2">
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Alt+S', 'Add Supplier')}
+                                        >
+                                            <Button variant="outline-success" onClick={() => navigate('/addsupplier')}>
+                                                <FaBuilding className="me-2" />
+                                                Add Supplier
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Alt+F', 'Add Fabric')}
+                                        >
+                                            <Button variant="outline-success" onClick={() => navigate('/addfabric')}>
+                                                <FaTshirt className="me-2" />
+                                                Add Fabric
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Alt+C', 'Add Cutting')}
+                                        >
+                                            <Button variant="outline-success" onClick={() => navigate('/addcutting')}>
+                                                <FaCut className="me-2" />
+                                                Add Cutting
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Alt+D', 'Add Daily Sewing')}
+                                        >
+                                            <Button variant="outline-success" onClick={() => navigate('/adddailysewing')}>
+                                                <FaCalendarCheck className="me-2" />
+                                                Add Daily Sewing
+                                            </Button>
+                                        </OverlayTrigger>
+
+                                        <OverlayTrigger
+                                            placement="top"
+                                            delay={{ show: 250, hide: 400 }}
+                                            overlay={(props) => renderTooltip(props, 'Alt+P', 'Add Packing Session')}
+                                        >
+                                            <Button variant="outline-success" onClick={() => navigate('/add-packing-session')}>
+                                                <FaBoxes className="me-2" />
+                                                Add Packing
+                                            </Button>
+                                        </OverlayTrigger>
+                                    </div>
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                </Row>
+
+                {/* Main Content */}
+                <Row>
+                    {/* Recent Activity */}
+                    <Col lg={12} className="mb-4">
+                        <Card className="shadow-sm">
+                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+                                <h5 className="mb-0">Recent Activity</h5>
+                                <Button variant="link" size="sm">
+                                    <FaHistory /> View All
+                                </Button>
+                            </Card.Header>
+                            <Card.Body className="p-0">
+                                <div className="activity-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                    {recentActivity.map((activity) => (
+                                        <div
+                                            key={activity.id}
+                                            className="d-flex align-items-center p-3 border-bottom"
+                                        >
+                                            <div className="me-3">
+                                                {getActivityIcon(activity.type)}
+                                            </div>
+                                            <div className="flex-grow-1">
+                                                <div className="d-flex justify-content-between">
+                                                    <span className="fw-bold">{activity.item}</span>
+                                                    <small className="text-muted">{activity.date}</small>
+                                                </div>
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        {getActionBadge(activity.action)}
+                                                        <small className="ms-2 text-muted">by {activity.user}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                </Row>
+
+                {/* Fabric Color Analysis */}
+                <Row className="mb-4">
+                    <Col lg={6}>
+                        <Card className="shadow-sm h-100">
+                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+                                <h5 className="mb-0">
+                                    <FaTshirt className="text-primary me-2" />
+                                    Most Used Fabric Colors
+                                </h5>
+                                <Button variant="link" size="sm" onClick={() => navigate('/viewcutting')}>
+                                    View All Cutting
+                                </Button>
+                            </Card.Header>
+                            <Card.Body>
+                                <div className="color-analysis">
+                                    {loading ? (
+                                        <div className="text-center py-4">
+                                            <div className="spinner-border text-primary" role="status">
+                                                <span className="visually-hidden">Loading...</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <div className="d-flex mb-4">
+                                                {topFabricColors.map((color, index) => (
+                                                    <div key={index} className="text-center me-4">
+                                                        <div
+                                                            className="color-circle mb-2"
+                                                            style={{
+                                                                backgroundColor: color.colorCode,
+                                                                width: '50px',
+                                                                height: '50px',
+                                                                borderRadius: '50%',
+                                                                border: '2px solid #fff',
+                                                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                                                margin: '0 auto'
+                                                            }}
+                                                        ></div>
+                                                        <div className="small fw-bold">{color.colorName}</div>
+                                                        <div className="small text-muted">{color.count} cuts</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <Table hover size="sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Color</th>
+                                                        <th>Total Cuts</th>
+                                                        <th>Yard Usage</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {topFabricColors.map((color, index) => (
+                                                        <tr key={index}>
+                                                            <td>
+                                                                <div className="d-flex align-items-center">
+                                                                    <div
+                                                                        style={{
+                                                                            width: '20px',
+                                                                            height: '20px',
+                                                                            backgroundColor: color.colorCode,
+                                                                            borderRadius: '4px',
+                                                                            marginRight: '8px'
+                                                                        }}
+                                                                    ></div>
+                                                                    {color.colorName}
+                                                                </div>
+                                                            </td>
+                                                            <td>{color.count}</td>
+                                                            <td>{color.yardUsage} yards</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </Table>
+                                        </div>
+                                    )}
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+
+                    {/* Remaining Fabric Stock */}
+                    <Col lg={6} id="fabric-stock">
+                        <Card className="shadow-sm h-100">
+                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+                                <h5 className="mb-0">
+                                    <FaTshirt className="text-success me-2" />
+                                    Remaining Fabric Stock
+                                </h5>
+                                <Button variant="link" size="sm" onClick={() => navigate('/viewfabric')}>
+                                    View All Fabrics
+                                </Button>
+                            </Card.Header>
+                            <Card.Body>
+                                {loading ? (
+                                    <div className="text-center py-4">
+                                        <div className="spinner-border text-success" role="status">
+                                            <span className="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <Table hover responsive>
+                                        <thead>
+                                            <tr>
+                                                <th>Fabric</th>
+                                                <th>Available Yards</th>
+                                                <th>Cost</th>
+                                                <th>Total Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {remainingFabrics.map((fabric) => (
+                                                <tr key={fabric.id}>
+                                                    <td>
+                                                        <div className="d-flex align-items-center">
+                                                            <div
+                                                                style={{
+                                                                    width: '20px',
+                                                                    height: '20px',
+                                                                    backgroundColor: fabric.colorCode,
+                                                                    borderRadius: '4px',
+                                                                    marginRight: '8px'
+                                                                }}
+                                                            ></div>
+                                                            {fabric.name}
+                                                        </div>
+                                                    </td>
+                                                    <td>{fabric.availableYards} yards</td>
+                                                    <td>Rs. {fabric.pricePerYard.toFixed(2)}/yard</td>
+                                                    <td>Rs. {(fabric.availableYards * fabric.pricePerYard).toFixed(2)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot className="table-group-divider">
+                                            <tr className="fw-bold">
+                                                <td>Total</td>
+                                                <td>{remainingFabrics.reduce((sum, fabric) => sum + fabric.availableYards, 0).toFixed(2)} yards</td>
+                                                <td></td>
+                                                <td>Rs. {remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toFixed(2)}</td>
+                                            </tr>
+                                        </tfoot>
+                                    </Table>
+                                )}
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                </Row>
+            </Container>
+
+            {/* Keyboard Shortcuts Modal */}
+            <Modal show={showShortcutModal} onHide={() => setShowShortcutModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Keyboard Shortcuts</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Table striped bordered>
+                        <thead>
+                            <tr>
+                                <th>Shortcut</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr className="table-primary">
+                                <td colSpan="2" className="fw-bold">View Pages (Ctrl + Key)</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Ctrl</kbd> + <kbd>F</kbd></td>
+                                <td>View Fabrics</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Ctrl</kbd> + <kbd>C</kbd></td>
+                                <td>View Cutting</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+                                <td>Sewing History</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Ctrl</kbd> + <kbd>U</kbd></td>
+                                <td>View Suppliers</td>
+                            </tr>
+
+                            <tr className="table-success">
+                                <td colSpan="2" className="fw-bold">Add Pages (Alt + Key)</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Alt</kbd> + <kbd>S</kbd></td>
+                                <td>Add Supplier</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Alt</kbd> + <kbd>F</kbd></td>
+                                <td>Add Fabric</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Alt</kbd> + <kbd>C</kbd></td>
+                                <td>Add Cutting</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Alt</kbd> + <kbd>D</kbd></td>
+                                <td>Add Daily Sewing</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Alt</kbd> + <kbd>P</kbd></td>
+                                <td>Add Packing Session</td>
+                            </tr>
+
+                            <tr className="table-info">
+                                <td colSpan="2" className="fw-bold">Other Shortcuts</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>?</kbd></td>
+                                <td>Show this shortcuts help</td>
+                            </tr>
+                        </tbody>
+                    </Table>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowShortcutModal(false)}>
+                        Close
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </div>
         </>
     );

@@ -2,7 +2,7 @@
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, generics
 from django.contrib.auth.models import User
 from .models import Role
 from django.contrib.auth import authenticate
@@ -11,10 +11,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import CustomTokenObtainPairSerializer
+from .serializers import CustomTokenObtainPairSerializer, UserSerializer
 
 from rest_framework.permissions import IsAuthenticated
-from .permissions import IsOwner, IsInventoryManager,IsOrderCoordinator, IsSalesTeam
+from .permissions import IsOwner, IsInventoryManager, IsOrderCoordinator, IsSalesTeam
 
 User = get_user_model()
 
@@ -24,13 +24,13 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 class SomeView(APIView):
     permission_classes = [IsAuthenticated, IsOwner]  # Only owners can access this view
-    
+
     def get(self, request):
         return Response({"message": "You are an owner!"}, status=status.HTTP_200_OK)
 
 class InventoryView(APIView):
     permission_classes = [IsAuthenticated, IsInventoryManager]  # Only Inventory Managers can access this view
-    
+
     def get(self, request):
         return Response({"message": "You are an inventory manager!"}, status=status.HTTP_200_OK)
 
@@ -78,7 +78,7 @@ class RegisterView(APIView):
         return Response({
             'data': {'message': 'User created successfully', 'role': role_name}
         }, status=status.HTTP_201_CREATED)
-        
+
 class LoginView(APIView):
     def post(self, request):
         username = request.data.get("username")
@@ -106,3 +106,53 @@ class LoginView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+class UserListView(generics.ListAPIView):
+    """
+    API endpoint that allows users to be viewed.
+    Only accessible by users with Owner role.
+    """
+    permission_classes = [IsAuthenticated, IsOwner]
+    serializer_class = UserSerializer
+    queryset = User.objects.all().order_by('-date_joined')
+
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API endpoint that allows a user to be viewed, updated, or deleted.
+    Only accessible by users with Owner role.
+    """
+    permission_classes = [IsAuthenticated, IsOwner]
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        # Handle password separately if provided
+        password = request.data.get('password', None)
+        if password:
+            instance.set_password(password)
+
+        # Handle role if provided
+        role_name = request.data.get('role', None)
+        if role_name:
+            try:
+                role = Role.objects.get(name=role_name)
+                instance.role = role
+            except Role.DoesNotExist:
+                return Response(
+                    {"error": "Invalid role specified"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Handle other fields
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # Save the instance with password if it was changed
+        if password or role_name:
+            instance.save()
+
+        return Response(serializer.data)

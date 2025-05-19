@@ -9,7 +9,7 @@ COLOR_MAP = {
     # add other mappings as needed
 }
 class SupplierSerializer(serializers.ModelSerializer):
-  
+
     class Meta:
         model = Supplier
         fields = ['supplier_id', 'name', 'address', 'tel_no']
@@ -18,14 +18,16 @@ class FabricVariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = FabricVariant
         fields = [
-            'id', 
-            'color', 
-            'total_yard', 
+            'id',
+            'color',
+            'color_name',
+            'total_yard',
+            'available_yard',
             'price_per_yard',
             'fabric_definition'
         ]
-        
-def create(self, validated_data):
+
+    def create(self, validated_data):
         color_code = validated_data.get('color')
         validated_data['color_name'] = COLOR_MAP.get(color_code, color_code)
         return super().create(validated_data)
@@ -37,14 +39,14 @@ class FabricDefinitionSerializer(serializers.ModelSerializer):
     class Meta:
         model = FabricDefinition
         fields = [
-            'id', 
-            'fabric_name', 
-            'supplier', 
+            'id',
+            'fabric_name',
+            'supplier',
             'date_added',
             'variants'
         ]
-        
-        
+
+
 class FabricDefinitionDetailSerializer(serializers.ModelSerializer):
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
     variant_count = serializers.SerializerMethodField()

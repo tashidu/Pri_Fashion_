@@ -4,9 +4,10 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import DailySewingRecordSerializer, DailySewingRecordHistorySerializer
-from cutting.models import CuttingRecord
+from cutting.models import CuttingRecord, CuttingRecordFabric
 from django.db.models import Sum, Max
 from sewing.models import DailySewingRecord
+from datetime import date
 
 
 class AddDailySewingRecordView(APIView):
@@ -114,3 +115,89 @@ class DailySewingHistoryListAPIView(generics.ListAPIView):
     """
     queryset = DailySewingRecord.objects.all().order_by('-date')
     serializer_class = DailySewingRecordHistorySerializer
+
+
+class AlreadySewnQuantitiesView(APIView):
+    """
+    Returns the already sewn quantities for a specific cutting record fabric.
+    """
+    def get(self, request, cutting_record_fabric_id):
+        try:
+            # Get the cutting record fabric
+            cutting_record_fabric = CuttingRecordFabric.objects.get(id=cutting_record_fabric_id)
+
+            # Get all sewing records for this cutting record fabric
+            sewing_records = DailySewingRecord.objects.filter(cutting_record_fabric=cutting_record_fabric)
+
+            # Aggregate the quantities
+            aggregates = sewing_records.aggregate(
+                xs_sum=Sum('xs'),
+                s_sum=Sum('s'),
+                m_sum=Sum('m'),
+                l_sum=Sum('l'),
+                xl_sum=Sum('xl')
+            )
+
+            # Prepare the response
+            response_data = {
+                'xs': aggregates.get('xs_sum') or 0,
+                's': aggregates.get('s_sum') or 0,
+                'm': aggregates.get('m_sum') or 0,
+                'l': aggregates.get('l_sum') or 0,
+                'xl': aggregates.get('xl_sum') or 0
+            }
+
+            return Response(response_data)
+        except CuttingRecordFabric.DoesNotExist:
+            return Response(
+                {"error": "Cutting record fabric not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class TodaySewingCountView(APIView):
+    """
+    Returns the total sewing count for today.
+    """
+    def get(self, request, format=None):
+        try:
+            # Get today's date
+            today = date.today()
+
+            # Get all sewing records for today
+            today_records = DailySewingRecord.objects.filter(date=today)
+
+            # Aggregate the quantities
+            aggregates = today_records.aggregate(
+                xs_sum=Sum('xs'),
+                s_sum=Sum('s'),
+                m_sum=Sum('m'),
+                l_sum=Sum('l'),
+                xl_sum=Sum('xl')
+            )
+
+            # Calculate total sewn today
+            total_sewn_today = sum([
+                aggregates.get('xs_sum') or 0,
+                aggregates.get('s_sum') or 0,
+                aggregates.get('m_sum') or 0,
+                aggregates.get('l_sum') or 0,
+                aggregates.get('xl_sum') or 0
+            ])
+
+            # Prepare the response
+            response_data = {
+                'total_sewn_today': total_sewn_today,
+                'xs': aggregates.get('xs_sum') or 0,
+                's': aggregates.get('s_sum') or 0,
+                'm': aggregates.get('m_sum') or 0,
+                'l': aggregates.get('l_sum') or 0,
+                'xl': aggregates.get('xl_sum') or 0
+            }
+
+            return Response(response_data)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
