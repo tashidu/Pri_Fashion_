@@ -155,7 +155,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/view-packing-inventory" element={
-          <ProtectedRoute allowedRoles={['Inventory Manager', 'Owner', 'Sales Team']}>
+          <ProtectedRoute allowedRoles={['Inventory Manager', 'Owner', 'Sales Team', 'Order Coordinator']}>
             <ViewPackingInventory />
           </ProtectedRoute>
         } />
