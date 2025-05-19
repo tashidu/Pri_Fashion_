@@ -676,7 +676,7 @@ function InventoryDashboard() {
                             <Card.Header className="bg-white">
                                 <h5 className="mb-0">
                                     <FaTshirt className="text-success me-2" />
-                                    Remaining Fabric Stock
+                                    Top 5 Unused Fabrics
                                 </h5>
                             </Card.Header>
                             <Card.Body>
@@ -698,7 +698,8 @@ function InventoryDashboard() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {remainingFabrics.map((fabric) => (
+                                                {/* Display only top 5 unused fabrics */}
+                                                {remainingFabrics.slice(0, 5).map((fabric) => (
                                                     <tr key={fabric.id}>
                                                         <td>
                                                             <div className="d-flex align-items-center">
@@ -720,14 +721,6 @@ function InventoryDashboard() {
                                                     </tr>
                                                 ))}
                                             </tbody>
-                                            <tfoot className="table-group-divider">
-                                                <tr className="fw-bold">
-                                                    <td>Total</td>
-                                                    <td>{remainingFabrics.reduce((sum, fabric) => sum + fabric.availableYards, 0).toFixed(2)} yards</td>
-                                                    <td></td>
-                                                    <td>Rs. {remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toFixed(2)}</td>
-                                                </tr>
-                                            </tfoot>
                                         </Table>
                                     ) : (
                                         <div className="text-center p-4">

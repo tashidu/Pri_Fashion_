@@ -270,14 +270,14 @@ class FabricStockView(APIView):
     """
     def get(self, request, format=None):
         try:
-            # Get fabrics with available yards and price information
-            fabrics = FabricVariant.objects.filter(
+            # Get all fabrics with available yards and price information
+            all_fabrics = FabricVariant.objects.filter(
                 available_yard__gt=0
-            ).select_related('fabric_definition').order_by('-available_yard')[:5]
+            ).select_related('fabric_definition').order_by('-available_yard')
 
             # Format the response
             result = []
-            for fabric in fabrics:
+            for fabric in all_fabrics:
                 result.append({
                     'id': fabric.id,
                     'name': f"{fabric.fabric_definition.fabric_name} - {fabric.color_name}",
