@@ -63,19 +63,32 @@ class RecentActivityView(APIView):
                     'action': 'added',
                     'item': f"{fabric.fabric_definition.fabric_name} - {fabric.color_name}",
                     'date': fabric.fabric_definition.date_added.strftime('%Y-%m-%d'),
-                    'user': 'System'  # Replace with actual user when authentication is implemented
+                    'user': 'System',  # Replace with actual user when authentication is implemented
+                    'details': f"Added {fabric.total_yard} yards at Rs. {fabric.price_per_yard}/yard"
                 })
 
             # Recent cutting records
             recent_cutting = []
-            for cutting in CuttingRecord.objects.order_by('-cutting_date')[:5]:
+            for cutting in CuttingRecord.objects.prefetch_related('details').order_by('-cutting_date')[:5]:
+                # Calculate total pieces cut across all sizes
+                total_xs = sum(detail.xs for detail in cutting.details.all())
+                total_s = sum(detail.s for detail in cutting.details.all())
+                total_m = sum(detail.m for detail in cutting.details.all())
+                total_l = sum(detail.l for detail in cutting.details.all())
+                total_xl = sum(detail.xl for detail in cutting.details.all())
+
                 recent_cutting.append({
                     'id': cutting.id,
                     'type': 'cutting',
                     'action': 'created',
                     'item': cutting.product_name or f"Cutting #{cutting.id}",
                     'date': cutting.cutting_date.strftime('%Y-%m-%d'),
-                    'user': 'System'  # Replace with actual user when authentication is implemented
+                    'user': 'System',  # Replace with actual user when authentication is implemented
+                    'xs': total_xs,
+                    's': total_s,
+                    'm': total_m,
+                    'l': total_l,
+                    'xl': total_xl
                 })
 
             # Recent sewing records
@@ -93,19 +106,37 @@ class RecentActivityView(APIView):
                     'action': 'completed',
                     'item': product_name,
                     'date': sewing.date.strftime('%Y-%m-%d'),
-                    'user': 'System'  # Replace with actual user when authentication is implemented
+                    'user': 'System',  # Replace with actual user when authentication is implemented
+                    'xs': sewing.xs,
+                    's': sewing.s,
+                    'm': sewing.m,
+                    'l': sewing.l,
+                    'xl': sewing.xl,
+                    'damage_count': sewing.damage_count
                 })
 
             # Recent packing sessions
             recent_packing = []
             for packing in PackingSession.objects.order_by('-date')[:5]:
+                product_name = "Unknown"
+                try:
+                    if hasattr(packing, 'finished_product') and packing.finished_product:
+                        if hasattr(packing.finished_product, 'cutting_record') and packing.finished_product.cutting_record:
+                            product_name = packing.finished_product.cutting_record.product_name
+                except:
+                    pass
+
                 recent_packing.append({
                     'id': packing.id,
                     'type': 'packing',
                     'action': 'packed',
-                    'item': f"Packing #{packing.id}",
+                    'item': product_name or f"Packing #{packing.id}",
                     'date': packing.date.strftime('%Y-%m-%d'),
-                    'user': 'System'  # Replace with actual user when authentication is implemented
+                    'user': 'System',  # Replace with actual user when authentication is implemented
+                    'number_of_6_packs': packing.number_of_6_packs,
+                    'number_of_12_packs': packing.number_of_12_packs,
+                    'extra_items': packing.extra_items,
+                    'total_packed_quantity': packing.total_packed_quantity
                 })
 
             # Combine all activities and sort by date (newest first)
@@ -239,14 +270,14 @@ class FabricStockView(APIView):
     """
     def get(self, request, format=None):
         try:
-            # Get fabrics with available yards and price information
-            fabrics = FabricVariant.objects.filter(
+            # Get all fabrics with available yards and price information
+            all_fabrics = FabricVariant.objects.filter(
                 available_yard__gt=0
-            ).select_related('fabric_definition').order_by('-available_yard')[:5]
+            ).select_related('fabric_definition').order_by('-available_yard')
 
             # Format the response
             result = []
-            for fabric in fabrics:
+            for fabric in all_fabrics:
                 result.append({
                     'id': fabric.id,
                     'name': f"{fabric.fabric_definition.fabric_name} - {fabric.color_name}",
