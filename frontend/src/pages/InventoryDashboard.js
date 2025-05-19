@@ -219,10 +219,30 @@ function InventoryDashboard() {
                 return <Badge bg="info">Completed</Badge>;
             case 'started':
                 return <Badge bg="warning">Started</Badge>;
+            case 'created':
+                return <Badge bg="success">Created</Badge>;
+            case 'packed':
+                return <Badge bg="warning">Packed</Badge>;
             case 'low stock':
                 return <Badge bg="danger">Low Stock</Badge>;
             default:
                 return <Badge bg="secondary">{action}</Badge>;
+        }
+    };
+
+    // Get detailed activity description based on type and action
+    const getActivityDetails = (activity) => {
+        switch (activity.type) {
+            case 'fabric':
+                return `New fabric variant added to inventory`;
+            case 'cutting':
+                return `Cut pieces: XS: ${activity.xs || 0}, S: ${activity.s || 0}, M: ${activity.m || 0}, L: ${activity.l || 0}, XL: ${activity.xl || 0}`;
+            case 'sewing':
+                return `Sewn pieces: XS: ${activity.xs || 0}, S: ${activity.s || 0}, M: ${activity.m || 0}, L: ${activity.l || 0}, XL: ${activity.xl || 0}${activity.damage_count ? `, Damaged: ${activity.damage_count}` : ''}`;
+            case 'packing':
+                return `Packed: ${activity.number_of_6_packs || 0} 6-packs, ${activity.number_of_12_packs || 0} 12-packs, ${activity.extra_items || 0} extra items`;
+            default:
+                return activity.details || '';
         }
     };
 
@@ -488,11 +508,9 @@ function InventoryDashboard() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    {activity.details && (
-                                                        <div className="mt-1">
-                                                            <small className="text-muted">{activity.details}</small>
-                                                        </div>
-                                                    )}
+                                                    <div className="mt-1">
+                                                        <small className="text-muted">{getActivityDetails(activity)}</small>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))
