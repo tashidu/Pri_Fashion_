@@ -64,14 +64,14 @@ function InventoryDashboard() {
                     });
                 } catch (error) {
                     console.error('Error fetching dashboard stats:', error);
-                    // Fallback to sample data if API fails
+                    // Set empty stats if API fails
                     setStats({
-                        fabricCount: 24,
-                        cuttingCount: 12,
-                        sewingCount: 18,
-                        packingCount: 8,
-                        supplierCount: 5,
-                        lowStockCount: 3
+                        fabricCount: 0,
+                        cuttingCount: 0,
+                        sewingCount: 0,
+                        packingCount: 0,
+                        supplierCount: 0,
+                        lowStockCount: 0
                     });
                 }
 
@@ -81,14 +81,8 @@ function InventoryDashboard() {
                     setRecentActivity(activityResponse.data);
                 } catch (error) {
                     console.error('Error fetching recent activity:', error);
-                    // Fallback to sample data if API fails
-                    setRecentActivity([
-                        { id: 1, type: 'fabric', action: 'added', item: 'Cotton Blend', date: '2023-07-15', user: 'John' },
-                        { id: 2, type: 'cutting', action: 'updated', item: 'Denim Jeans', date: '2023-07-14', user: 'Sarah' },
-                        { id: 3, type: 'sewing', action: 'completed', item: 'T-Shirt Batch #45', date: '2023-07-13', user: 'Mike' },
-                        { id: 4, type: 'packing', action: 'started', item: 'Summer Collection', date: '2023-07-12', user: 'Lisa' },
-                        { id: 5, type: 'fabric', action: 'low stock', item: 'Silk', date: '2023-07-11', user: 'System' }
-                    ]);
+                    // Set empty array if API fails
+                    setRecentActivity([]);
                 }
 
                 // Fetch remaining fabric stock
@@ -97,44 +91,8 @@ function InventoryDashboard() {
                     setRemainingFabrics(fabricStockResponse.data);
                 } catch (error) {
                     console.error('Error fetching fabric stock:', error);
-                    // Fallback to sample data if API fails
-                    setRemainingFabrics([
-                        {
-                            id: 1,
-                            name: 'Black Cotton',
-                            colorCode: '#000000',
-                            availableYards: 45.5,
-                            pricePerYard: 8.99
-                        },
-                        {
-                            id: 2,
-                            name: 'Blue Denim',
-                            colorCode: '#0000FF',
-                            availableYards: 32.25,
-                            pricePerYard: 12.50
-                        },
-                        {
-                            id: 3,
-                            name: 'Red Polyester',
-                            colorCode: '#FF0000',
-                            availableYards: 28.75,
-                            pricePerYard: 7.25
-                        },
-                        {
-                            id: 4,
-                            name: 'White Cotton',
-                            colorCode: '#FFFFFF',
-                            availableYards: 50.0,
-                            pricePerYard: 6.99
-                        },
-                        {
-                            id: 5,
-                            name: 'Gray Wool',
-                            colorCode: '#808080',
-                            availableYards: 15.5,
-                            pricePerYard: 14.75
-                        }
-                    ]);
+                    // Set empty array if API fails
+                    setRemainingFabrics([]);
                 }
 
                 // Fetch top fabric colors for analysis
@@ -143,39 +101,8 @@ function InventoryDashboard() {
                     setTopFabricColors(colorAnalysisResponse.data);
                 } catch (error) {
                     console.error('Error fetching color analysis:', error);
-                    // Fallback to sample data if API fails
-                    setTopFabricColors([
-                        {
-                            colorCode: '#000000',
-                            colorName: 'Black',
-                            count: 24,
-                            yardUsage: 120.5
-                        },
-                        {
-                            colorCode: '#0000FF',
-                            colorName: 'Blue',
-                            count: 18,
-                            yardUsage: 90.25
-                        },
-                        {
-                            colorCode: '#FF0000',
-                            colorName: 'Red',
-                            count: 15,
-                            yardUsage: 75.0
-                        },
-                        {
-                            colorCode: '#FFFFFF',
-                            colorName: 'White',
-                            count: 12,
-                            yardUsage: 60.75
-                        },
-                        {
-                            colorCode: '#808080',
-                            colorName: 'Gray',
-                            count: 9,
-                            yardUsage: 45.5
-                        }
-                    ]);
+                    // Set empty array if API fails
+                    setTopFabricColors([]);
                 }
 
                 setLoading(false);
@@ -403,7 +330,7 @@ function InventoryDashboard() {
                     <Col md={4} lg={2} sm={6} className="mb-4">
                         <DashboardCard
                             title="Fabric Value"
-                            value={loading ? "..." : `Rs. ${remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toFixed(2)}`}
+                            value={loading ? "..." : `Rs. ${remainingFabrics.length > 0 ? remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toFixed(2) : '0.00'}`}
                             icon={<FaTshirt />}
                             linkTo="#fabric-stock"
                             color="#FFECB3"
@@ -543,28 +470,34 @@ function InventoryDashboard() {
                             </Card.Header>
                             <Card.Body className="p-0">
                                 <div className="activity-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                    {recentActivity.map((activity) => (
-                                        <div
-                                            key={activity.id}
-                                            className="d-flex align-items-center p-3 border-bottom"
-                                        >
-                                            <div className="me-3">
-                                                {getActivityIcon(activity.type)}
-                                            </div>
-                                            <div className="flex-grow-1">
-                                                <div className="d-flex justify-content-between">
-                                                    <span className="fw-bold">{activity.item}</span>
-                                                    <small className="text-muted">{activity.date}</small>
+                                    {recentActivity.length > 0 ? (
+                                        recentActivity.map((activity) => (
+                                            <div
+                                                key={activity.id}
+                                                className="d-flex align-items-center p-3 border-bottom"
+                                            >
+                                                <div className="me-3">
+                                                    {getActivityIcon(activity.type)}
                                                 </div>
-                                                <div className="d-flex justify-content-between align-items-center">
-                                                    <div>
-                                                        {getActionBadge(activity.action)}
-                                                        <small className="ms-2 text-muted">by {activity.user}</small>
+                                                <div className="flex-grow-1">
+                                                    <div className="d-flex justify-content-between">
+                                                        <span className="fw-bold">{activity.item}</span>
+                                                        <small className="text-muted">{activity.date}</small>
+                                                    </div>
+                                                    <div className="d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            {getActionBadge(activity.action)}
+                                                            <small className="ms-2 text-muted">by {activity.user}</small>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center p-4">
+                                            <p className="text-muted">No recent activity to display</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </Card.Body>
                         </Card>
@@ -594,58 +527,66 @@ function InventoryDashboard() {
                                         </div>
                                     ) : (
                                         <div>
-                                            <div className="d-flex mb-4">
-                                                {topFabricColors.map((color, index) => (
-                                                    <div key={index} className="text-center me-4">
-                                                        <div
-                                                            className="color-circle mb-2"
-                                                            style={{
-                                                                backgroundColor: color.colorCode,
-                                                                width: '50px',
-                                                                height: '50px',
-                                                                borderRadius: '50%',
-                                                                border: '2px solid #fff',
-                                                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                                                margin: '0 auto'
-                                                            }}
-                                                        ></div>
-                                                        <div className="small fw-bold">{color.colorName}</div>
-                                                        <div className="small text-muted">{color.count} cuts</div>
+                                            {topFabricColors.length > 0 ? (
+                                                <>
+                                                    <div className="d-flex mb-4">
+                                                        {topFabricColors.map((color, index) => (
+                                                            <div key={index} className="text-center me-4">
+                                                                <div
+                                                                    className="color-circle mb-2"
+                                                                    style={{
+                                                                        backgroundColor: color.colorCode,
+                                                                        width: '50px',
+                                                                        height: '50px',
+                                                                        borderRadius: '50%',
+                                                                        border: '2px solid #fff',
+                                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                                                        margin: '0 auto'
+                                                                    }}
+                                                                ></div>
+                                                                <div className="small fw-bold">{color.colorName}</div>
+                                                                <div className="small text-muted">{color.count} cuts</div>
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                ))}
-                                            </div>
 
-                                            <Table hover size="sm">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Color</th>
-                                                        <th>Total Cuts</th>
-                                                        <th>Yard Usage</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {topFabricColors.map((color, index) => (
-                                                        <tr key={index}>
-                                                            <td>
-                                                                <div className="d-flex align-items-center">
-                                                                    <div
-                                                                        style={{
-                                                                            width: '20px',
-                                                                            height: '20px',
-                                                                            backgroundColor: color.colorCode,
-                                                                            borderRadius: '4px',
-                                                                            marginRight: '8px'
-                                                                        }}
-                                                                    ></div>
-                                                                    {color.colorName}
-                                                                </div>
-                                                            </td>
-                                                            <td>{color.count}</td>
-                                                            <td>{color.yardUsage} yards</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </Table>
+                                                    <Table hover size="sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Color</th>
+                                                                <th>Total Cuts</th>
+                                                                <th>Yard Usage</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {topFabricColors.map((color, index) => (
+                                                                <tr key={index}>
+                                                                    <td>
+                                                                        <div className="d-flex align-items-center">
+                                                                            <div
+                                                                                style={{
+                                                                                    width: '20px',
+                                                                                    height: '20px',
+                                                                                    backgroundColor: color.colorCode,
+                                                                                    borderRadius: '4px',
+                                                                                    marginRight: '8px'
+                                                                                }}
+                                                                            ></div>
+                                                                            {color.colorName}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>{color.count}</td>
+                                                                    <td>{color.yardUsage} yards</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </Table>
+                                                </>
+                                            ) : (
+                                                <div className="text-center p-4">
+                                                    <p className="text-muted">No fabric color data available</p>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -673,47 +614,53 @@ function InventoryDashboard() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <Table hover responsive>
-                                        <thead>
-                                            <tr>
-                                                <th>Fabric</th>
-                                                <th>Available Yards</th>
-                                                <th>Cost</th>
-                                                <th>Total Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {remainingFabrics.map((fabric) => (
-                                                <tr key={fabric.id}>
-                                                    <td>
-                                                        <div className="d-flex align-items-center">
-                                                            <div
-                                                                style={{
-                                                                    width: '20px',
-                                                                    height: '20px',
-                                                                    backgroundColor: fabric.colorCode,
-                                                                    borderRadius: '4px',
-                                                                    marginRight: '8px'
-                                                                }}
-                                                            ></div>
-                                                            {fabric.name}
-                                                        </div>
-                                                    </td>
-                                                    <td>{fabric.availableYards} yards</td>
-                                                    <td>Rs. {fabric.pricePerYard.toFixed(2)}/yard</td>
-                                                    <td>Rs. {(fabric.availableYards * fabric.pricePerYard).toFixed(2)}</td>
+                                    remainingFabrics.length > 0 ? (
+                                        <Table hover responsive>
+                                            <thead>
+                                                <tr>
+                                                    <th>Fabric</th>
+                                                    <th>Available Yards</th>
+                                                    <th>Cost</th>
+                                                    <th>Total Value</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot className="table-group-divider">
-                                            <tr className="fw-bold">
-                                                <td>Total</td>
-                                                <td>{remainingFabrics.reduce((sum, fabric) => sum + fabric.availableYards, 0).toFixed(2)} yards</td>
-                                                <td></td>
-                                                <td>Rs. {remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toFixed(2)}</td>
-                                            </tr>
-                                        </tfoot>
-                                    </Table>
+                                            </thead>
+                                            <tbody>
+                                                {remainingFabrics.map((fabric) => (
+                                                    <tr key={fabric.id}>
+                                                        <td>
+                                                            <div className="d-flex align-items-center">
+                                                                <div
+                                                                    style={{
+                                                                        width: '20px',
+                                                                        height: '20px',
+                                                                        backgroundColor: fabric.colorCode,
+                                                                        borderRadius: '4px',
+                                                                        marginRight: '8px'
+                                                                    }}
+                                                                ></div>
+                                                                {fabric.name}
+                                                            </div>
+                                                        </td>
+                                                        <td>{fabric.availableYards} yards</td>
+                                                        <td>Rs. {fabric.pricePerYard.toFixed(2)}/yard</td>
+                                                        <td>Rs. {(fabric.availableYards * fabric.pricePerYard).toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                            <tfoot className="table-group-divider">
+                                                <tr className="fw-bold">
+                                                    <td>Total</td>
+                                                    <td>{remainingFabrics.reduce((sum, fabric) => sum + fabric.availableYards, 0).toFixed(2)} yards</td>
+                                                    <td></td>
+                                                    <td>Rs. {remainingFabrics.reduce((sum, fabric) => sum + (fabric.availableYards * fabric.pricePerYard), 0).toFixed(2)}</td>
+                                                </tr>
+                                            </tfoot>
+                                        </Table>
+                                    ) : (
+                                        <div className="text-center p-4">
+                                            <p className="text-muted">No fabric stock data available</p>
+                                        </div>
+                                    )
                                 )}
                             </Card.Body>
                         </Card>
