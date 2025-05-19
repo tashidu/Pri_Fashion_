@@ -44,8 +44,12 @@ import {
   FaChartLine,
   FaChartPie,
   FaChartBar,
-  FaPercentage
+  FaPercentage,
+  FaFilePdf,
+  FaDownload
 } from "react-icons/fa";
+import { jsPDF } from "jspdf";
+import autoTable from 'jspdf-autotable';
 
 const ViewPackingInventory = () => {
   const [inventory, setInventory] = useState([]);
@@ -66,6 +70,10 @@ const ViewPackingInventory = () => {
   const [salesData, setSalesData] = useState([]);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState("");
+
+  // PDF state
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   // Add resize event listener to update sidebar state
   useEffect(() => {
@@ -211,6 +219,136 @@ const ViewPackingInventory = () => {
     });
   };
 
+  // Open PDF modal
+  const openPdfModal = () => {
+    setShowPdfModal(true);
+  };
+
+  // Close PDF modal
+  const closePdfModal = () => {
+    setShowPdfModal(false);
+  };
+
+  // Generate PDF report for packing inventory
+  const generatePDF = () => {
+    setPdfLoading(true);
+
+    try {
+      // Create a new jsPDF instance
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Set font sizes
+      const titleFontSize = 16;
+      const headingFontSize = 14;
+      const normalFontSize = 10;
+      const smallFontSize = 8;
+
+      // Add logo to the PDF
+      try {
+        const baseUrl = window.location.origin;
+        doc.addImage(`${baseUrl}/logo.png`, 'PNG', 14, 10, 20, 20);
+      } catch (logoError) {
+        console.warn("Could not add logo to PDF:", logoError);
+        // Fallback to a simple placeholder
+        doc.setFillColor(41, 128, 185);
+        doc.rect(14, 10, 20, 20, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text("PF", 24, 22, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+      }
+
+      // Add title
+      doc.setFontSize(titleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Packing Inventory Real-Time Stock Level Report', 105, 20, { align: 'center' });
+
+      // Add report date
+      doc.setFontSize(normalFontSize);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Report Generated: ${new Date().toLocaleString()}`, 105, 30, { align: 'center' });
+
+      // Add summary information
+      doc.setFontSize(headingFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Inventory Summary', 20, 45);
+
+      doc.setFontSize(normalFontSize);
+      doc.setFont('helvetica', 'normal');
+
+      // Summary table data
+      const summaryData = [
+        ['Total Products', inventory.length.toString()],
+        ['Total Items', totalItems.toString()],
+        ['Average Items per Product', inventory.length > 0 ? (totalItems / inventory.length).toFixed(1) : '0']
+      ];
+
+      // Add summary table
+      autoTable(doc, {
+        startY: 50,
+        head: [['Metric', 'Value']],
+        body: summaryData,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        styles: { fontSize: normalFontSize }
+      });
+
+      // Add inventory details heading
+      doc.setFontSize(headingFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Detailed Inventory', 20, doc.lastAutoTable.finalY + 15);
+
+      // Prepare inventory data for table
+      const inventoryData = filteredInventory.map(item => [
+        item.id.toString(),
+        item.product_name,
+        item.number_of_6_packs.toString(),
+        item.number_of_12_packs.toString(),
+        item.extra_items.toString(),
+        item.total_quantity.toString()
+      ]);
+
+      // Add inventory table
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 20,
+        head: [['ID', 'Product Name', '6-Packs', '12-Packs', 'Extra Items', 'Total Quantity']],
+        body: inventoryData,
+        theme: 'striped',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        styles: { fontSize: normalFontSize },
+        columnStyles: {
+          0: { cellWidth: 15 },
+          1: { cellWidth: 60 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 30 }
+        }
+      });
+
+      // Add footer
+      doc.setFontSize(smallFontSize);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Pri Fashion Garment Management System', 105, 280, { align: 'center' });
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 285, { align: 'center' });
+
+      // Save the PDF
+      doc.save(`Packing_Inventory_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+      setPdfLoading(false);
+      setShowPdfModal(false);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      setError(`Failed to generate PDF: ${error.message}`);
+      setPdfLoading(false);
+      setShowPdfModal(false);
+    }
+  };
+
   return (
     <>
       <RoleBasedNavBar />
@@ -311,6 +449,14 @@ const ViewPackingInventory = () => {
                     <BsArrowRepeat className="me-1" />
                   )}
                   Refresh
+                </Button>
+                <Button
+                  variant="outline-success"
+                  className="me-2"
+                  onClick={openPdfModal}
+                >
+                  <FaFilePdf className="me-1" />
+                  Download PDF Report
                 </Button>
                 <Link to="/add-packing-session">
                   <Button variant="primary">Add New Packing Session</Button>
@@ -942,6 +1088,59 @@ const ViewPackingInventory = () => {
               View All Products
             </Button>
           </Link>
+        </Modal.Footer>
+      </Modal>
+
+      {/* PDF Generation Confirmation Modal */}
+      <Modal show={showPdfModal} onHide={closePdfModal} centered>
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title>
+            <FaFilePdf className="me-2 text-success" />
+            Generate Packing Inventory Report
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {pdfLoading ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" variant="success" className="mb-3" />
+              <p>Generating PDF report...</p>
+            </div>
+          ) : (
+            <>
+              <p>
+                This will generate a PDF report containing the current packing inventory stock levels
+                for all products. The report will include:
+              </p>
+              <ul>
+                <li>Summary statistics</li>
+                <li>Detailed inventory for each product</li>
+                <li>Current stock levels (6-packs, 12-packs, extra items)</li>
+              </ul>
+              <p>Do you want to continue?</p>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closePdfModal} disabled={pdfLoading}>
+            Cancel
+          </Button>
+          <Button
+            variant="success"
+            onClick={generatePDF}
+            disabled={pdfLoading}
+          >
+            {pdfLoading ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-1" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FaDownload className="me-1" />
+                Generate PDF
+              </>
+            )}
+          </Button>
         </Modal.Footer>
       </Modal>
     </>
