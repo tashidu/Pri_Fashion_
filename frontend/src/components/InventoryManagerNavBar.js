@@ -1,23 +1,22 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import {
+  FaTshirt,
+  FaCut,
+  FaBoxes,
+  FaCalendarCheck,
+  FaBuilding,
   FaTachometerAlt,
   FaSignOutAlt,
   FaBars,
-  FaCashRegister,
-  FaList,
-  FaImages,
   FaPlus,
-  FaEye,
-  FaClipboardList,
-  FaFileInvoiceDollar,
-  FaChartLine
+  FaList
 } from "react-icons/fa";
 import { logout } from "../utils/auth";
 
-function SalesTeamNavBar() {
+function InventoryManagerNavBar() {
   // Set sidebar to open if window width >= 768px; otherwise, minimized.
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
   const location = useLocation();
@@ -50,47 +49,57 @@ function SalesTeamNavBar() {
     {
       title: "Dashboard",
       icon: <FaTachometerAlt />,
-      path: "/sales-dashboard"
+      path: "/inventory-dashboard"
     },
     {
-      title: "Product List",
-      icon: <FaList />,
-      path: "/sales-products"
-    },
-    {
-      title: "Product Gallery",
-      icon: <FaImages />,
-      path: "/sales-product-gallery"
-    },
-    {
-      title: "Sell Products",
-      icon: <FaCashRegister />,
-      path: "/sell-product"
-    },
-    {
-      title: "View Shops",
-      icon: <FaEye />,
-      path: "/viewshops"
-    },
-    {
-      title: "Add Shop",
+      title: "Add Supplier",
       icon: <FaPlus />,
-      path: "/addshop"
+      path: "/addsupplier"
     },
     {
-      title: "View Orders",
-      icon: <FaClipboardList />,
-      path: "/sales-team-orders"
+      title: "View Suppliers",
+      icon: <FaList />,
+      path: "/viewsuppliers"
     },
     {
-      title: "Create Order",
-      icon: <FaFileInvoiceDollar />,
-      path: "/addorder"
+      title: "Add Fabric",
+      icon: <FaPlus />,
+      path: "/addfabric"
     },
     {
-      title: "Sales Report",
-      icon: <FaChartLine />,
-      path: "/sales-report"
+      title: "View Fabrics",
+      icon: <FaTshirt />,
+      path: "/viewfabric"
+    },
+    {
+      title: "Add Cutting",
+      icon: <FaPlus />,
+      path: "/addcutting"
+    },
+    {
+      title: "View Cutting",
+      icon: <FaCut />,
+      path: "/viewcutting"
+    },
+    {
+      title: "Add Daily Sewing",
+      icon: <FaPlus />,
+      path: "/adddailysewing"
+    },
+    {
+      title: "Sewing History",
+      icon: <FaCalendarCheck />,
+      path: "/daily-sewing-history"
+    },
+    {
+      title: "Add Packing Session",
+      icon: <FaPlus />,
+      path: "/add-packing-session"
+    },
+    {
+      title: "View Packing History",
+      icon: <FaBoxes />,
+      path: "/view-packing-sessions"
     }
   ];
 
@@ -136,11 +145,12 @@ function SalesTeamNavBar() {
           top: "0",
           left: "0",
           paddingTop: "20px",
+          paddingBottom: "20px",
           backgroundColor: "#D9EDFB",
           transition: "all 0.3s ease",
           boxShadow: "2px 0 10px rgba(0, 0, 0, 0.1)",
           overflowX: "hidden",
-          overflowY: "hidden",
+          overflowY: "auto",
           display: "flex",
           flexDirection: "column",
           zIndex: 1000,
@@ -148,33 +158,35 @@ function SalesTeamNavBar() {
         }}
       >
         {/* Brand logo and name */}
-        <div className="d-flex align-items-center justify-content-center mb-4 px-3">
+        <div className="d-flex align-items-center justify-content-center mb-3 px-3">
           <img
             src="/logo.png"
             alt="Pri Fashion Logo"
             className={isSidebarOpen ? "me-2" : ""}
             style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "8px",
+              width: "36px",
+              height: "36px",
+              borderRadius: "6px",
               boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
             }}
           />
           {isSidebarOpen && (
-            <span className="fw-bold fs-5 text-primary">Pri Fashion</span>
+            <span className="fw-bold text-primary" style={{ fontSize: "17px" }}>Pri Fashion</span>
           )}
         </div>
 
+
+
         {/* Navigation items */}
-        <div className="nav-container flex-grow-1" style={{ overflowY: "hidden" }}>
-          <ul className="nav flex-column px-2">
+        <div className="nav-container flex-grow-1" style={{ overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          <ul className="nav flex-column px-2 flex-nowrap">
             {navItems.map((item, index) => (
-              <li key={index} className="nav-item mb-2">
+              <li key={index} className="nav-item mb-1">
                 <Link
                   to={item.path}
                   className="nav-link d-flex align-items-center"
                   style={{
-                    padding: isSidebarOpen ? "10px 15px" : "10px 0",
+                    padding: isSidebarOpen ? "9px 14px" : "9px 0",
                     borderRadius: "8px",
                     backgroundColor: isActive(item.path) ? "rgba(13, 110, 253, 0.1)" : "transparent",
                     color: isActive(item.path) ? "#0d6efd" : "#212529",
@@ -183,12 +195,14 @@ function SalesTeamNavBar() {
                     marginRight: isSidebarOpen ? "0" : "auto",
                     width: isSidebarOpen ? "auto" : "50px",
                     textAlign: isSidebarOpen ? "left" : "center",
-                    transition: "all 0.2s ease"
+                    transition: "all 0.2s ease",
+                    fontSize: "15px",
+                    whiteSpace: "nowrap"
                   }}
                 >
                   <div className="icon-container" style={{
-                    width: "30px",
-                    height: "30px",
+                    width: "26px",
+                    height: "26px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -205,17 +219,18 @@ function SalesTeamNavBar() {
         </div>
 
         {/* Logout button at bottom */}
-        <div style={{ padding: "20px" }}>
+        <div style={{ padding: "15px" }}>
           <button
             onClick={handleLogout}
             className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center"
             style={{
-              padding: "10px",
-              borderRadius: "8px",
-              transition: "all 0.2s ease"
+              padding: "7px",
+              borderRadius: "6px",
+              transition: "all 0.2s ease",
+              fontSize: "15px"
             }}
           >
-            <FaSignOutAlt />
+            <FaSignOutAlt size={16} />
             {isSidebarOpen && <span className="ms-2">Logout</span>}
           </button>
         </div>
@@ -229,7 +244,7 @@ function SalesTeamNavBar() {
           top: "0",
           left: "0",
           right: "0",
-          height: "60px",
+          height: "50px",
           backgroundColor: "#ffffff",
           boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
           zIndex: 999,
@@ -239,7 +254,7 @@ function SalesTeamNavBar() {
           padding: "0 15px"
         }}
       >
-        <h5 className="mb-0 text-primary">Pri Fashion</h5>
+        <h6 className="mb-0 text-primary">Pri Fashion</h6>
       </div>
 
       {/* Main content area to render nested routes */}
@@ -249,7 +264,7 @@ function SalesTeamNavBar() {
           marginLeft: isSidebarOpen ? "240px" : "70px",
           width: "100%",
           transition: "margin-left 0.3s ease",
-          paddingTop: window.innerWidth < 768 ? "60px" : "0"
+          paddingTop: window.innerWidth < 768 ? "50px" : "0"
         }}
       >
         <Outlet />
@@ -258,4 +273,4 @@ function SalesTeamNavBar() {
   );
 }
 
-export default SalesTeamNavBar;
+export default InventoryManagerNavBar;
