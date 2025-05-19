@@ -241,6 +241,76 @@ class FinishedProductCuttingRecordView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class DeleteProductImageView(APIView):
+    """
+    API endpoint for deleting a product image.
+    """
+    def delete(self, request, product_id, image_id, format=None):
+        try:
+            # Get the product image
+            product_image = get_object_or_404(ProductImage, id=image_id, finished_product_id=product_id)
+
+            # Delete the image
+            product_image.delete()
+
+            # Return success response
+            return Response({
+                "message": "Image deleted successfully."
+            }, status=status.HTTP_200_OK)
+
+        except ProductImage.DoesNotExist:
+            return Response({"error": "Product image not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GetProductImagesView(APIView):
+    """
+    API endpoint to get all images for a specific product.
+    """
+    def get(self, request, pk, format=None):
+        try:
+            # Get the finished product
+            finished_product = get_object_or_404(FinishedProduct, pk=pk)
+
+            # Get all images for this product
+            images = []
+
+            # Add the legacy product_image if it exists
+            if finished_product.product_image:
+                images.append({
+                    "id": "legacy",
+                    "url": request.build_absolute_uri(finished_product.product_image.url),
+                    "is_legacy": True
+                })
+
+            # Add all ProductImage instances
+            for image in finished_product.images.all():
+                image_data = {
+                    "id": image.id,
+                    "order": image.order,
+                    "is_legacy": False
+                }
+
+                if image.image:
+                    image_data["url"] = request.build_absolute_uri(image.image.url)
+                elif image.external_url:
+                    image_data["url"] = image.external_url
+
+                images.append(image_data)
+
+            return Response({
+                "product_id": finished_product.id,
+                "product_name": finished_product.cutting_record.product_name or f"Product #{finished_product.id}",
+                "images": images
+            }, status=status.HTTP_200_OK)
+
+        except FinishedProduct.DoesNotExist:
+            return Response({"error": "Finished product not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class FinishedProductDetailView(APIView):
     """
     API endpoint to get details for a specific finished product.
