@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
-import { Container, Row, Col, Card, Button, Badge, Tooltip, OverlayTrigger, Modal, Table } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Tooltip, OverlayTrigger, Modal, Table, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DashboardCard from "../components/DashboardCard";
@@ -12,7 +12,8 @@ import {
   FaBuilding,
   FaInfoCircle,
   FaSearch,
-  FaKeyboard
+  FaKeyboard,
+  FaSync
 } from 'react-icons/fa';
 // No chart imports needed
 
@@ -34,6 +35,11 @@ function InventoryDashboard() {
     const [topFabricColors, setTopFabricColors] = useState([]);
     const dashboardRef = useRef(null);
 
+    // New state variables for activity refresh
+    const [refreshingActivity, setRefreshingActivity] = useState(false);
+    const [lastActivityUpdate, setLastActivityUpdate] = useState(null);
+    const refreshIntervalRef = useRef(null);
+
     // Add resize event listener to update sidebar state
     useEffect(() => {
         const handleResize = () => {
@@ -43,6 +49,29 @@ function InventoryDashboard() {
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
+
+    // Function to fetch only recent activity data
+    const fetchRecentActivity = async (isInitialLoad = false) => {
+        try {
+            if (!isInitialLoad) {
+                setRefreshingActivity(true);
+            }
+
+            const activityResponse = await axios.get('http://localhost:8000/api/reports/dashboard/recent-activity/');
+            setRecentActivity(activityResponse.data);
+
+            // Update last refresh time
+            setLastActivityUpdate(new Date());
+        } catch (error) {
+            console.error('Error fetching recent activity:', error);
+            // Only set empty array on initial load to avoid clearing existing data on refresh errors
+            if (isInitialLoad) {
+                setRecentActivity([]);
+            }
+        } finally {
+            setRefreshingActivity(false);
+        }
+    };
 
     // Fetch dashboard statistics
     useEffect(() => {
@@ -74,15 +103,8 @@ function InventoryDashboard() {
                     });
                 }
 
-                // Fetch recent activity
-                try {
-                    const activityResponse = await axios.get('http://localhost:8000/api/reports/dashboard/recent-activity/');
-                    setRecentActivity(activityResponse.data);
-                } catch (error) {
-                    console.error('Error fetching recent activity:', error);
-                    // Set empty array if API fails
-                    setRecentActivity([]);
-                }
+                // Fetch recent activity (initial load)
+                await fetchRecentActivity(true);
 
                 // Fetch remaining fabric stock
                 try {
@@ -112,6 +134,21 @@ function InventoryDashboard() {
         };
 
         fetchStats();
+    }, []);
+
+    // Set up polling interval for recent activity
+    useEffect(() => {
+        // Set up interval to refresh activity data every 30 seconds
+        refreshIntervalRef.current = setInterval(() => {
+            fetchRecentActivity();
+        }, 30000); // 30 seconds
+
+        // Clean up interval on component unmount
+        return () => {
+            if (refreshIntervalRef.current) {
+                clearInterval(refreshIntervalRef.current);
+            }
+        };
     }, []);
 
     // Keyboard shortcut handler
@@ -481,12 +518,33 @@ function InventoryDashboard() {
                     {/* Recent Activity */}
                     <Col lg={12} className="mb-4">
                         <Card className="shadow-sm">
-                            <Card.Header className="bg-white">
+                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
                                 <h5 className="mb-0">Recent Activity</h5>
+                                <div className="d-flex align-items-center">
+                                    {lastActivityUpdate && (
+                                        <small className="text-muted me-2">
+                                            Last updated: {lastActivityUpdate.toLocaleTimeString()}
+                                        </small>
+                                    )}
+                                    <Button
+                                        variant="outline-secondary"
+                                        size="sm"
+                                        onClick={() => fetchRecentActivity()}
+                                        disabled={refreshingActivity}
+                                    >
+                                        <FaSync className={refreshingActivity ? "fa-spin" : ""} />
+                                        {refreshingActivity ? ' Refreshing...' : ' Refresh'}
+                                    </Button>
+                                </div>
                             </Card.Header>
                             <Card.Body className="p-0">
                                 <div className="activity-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                    {recentActivity.length > 0 ? (
+                                    {refreshingActivity && recentActivity.length === 0 ? (
+                                        <div className="text-center p-4">
+                                            <Spinner animation="border" role="status" size="sm" className="me-2" />
+                                            <span>Loading activity data...</span>
+                                        </div>
+                                    ) : recentActivity.length > 0 ? (
                                         recentActivity.map((activity) => (
                                             <div
                                                 key={activity.id}
