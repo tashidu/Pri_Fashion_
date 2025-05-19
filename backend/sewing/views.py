@@ -56,6 +56,7 @@ class ProductListAPIView(APIView):
                 m_sum=Sum('m'),
                 l_sum=Sum('l'),
                 xl_sum=Sum('xl'),
+                damage_sum=Sum('damage_count'),
                 last_update=Max('date')
             )
             total_sewn = sum([sewing_agg.get('xs_sum') or 0,
@@ -76,7 +77,8 @@ class ProductListAPIView(APIView):
                     s=Sum('s'),
                     m=Sum('m'),
                     l=Sum('l'),
-                    xl=Sum('xl')
+                    xl=Sum('xl'),
+                    damage=Sum('damage_count')
                 )
                 total_for_detail = sum([agg_detail.get('xs') or 0,
                                         agg_detail.get('s') or 0,
@@ -92,8 +94,12 @@ class ProductListAPIView(APIView):
                     'm': agg_detail.get('m') or 0,
                     'l': agg_detail.get('l') or 0,
                     'xl': agg_detail.get('xl') or 0,
+                    'damage_count': agg_detail.get('damage') or 0,
                     'total_sewn': total_for_detail,
                 })
+
+            # Get total damage count
+            total_damage = sewing_agg.get('damage_sum') or 0
 
             # Append data for this product
             data.append({
@@ -102,6 +108,7 @@ class ProductListAPIView(APIView):
                 'last_update_date': sewing_agg.get('last_update'),
                 'total_cut': total_cut,
                 'total_sewn': total_sewn,
+                'total_damage': total_damage,
                 'remaining': remaining,
                 'color_details': color_details
             })

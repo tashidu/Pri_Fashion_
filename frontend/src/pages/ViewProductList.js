@@ -9,8 +9,8 @@ import {
   FaSortAmountDown, FaSortAmountUp
 } from "react-icons/fa";
 
-// Helper function to get color code from color name
-const getColorCode = (colorName) => {
+// Helper function to get color code from color name or hex code
+const getColorCode = (colorInput) => {
   // Common color mapping
   const colorMap = {
     'red': '#FF0000',
@@ -48,21 +48,37 @@ const getColorCode = (colorName) => {
     'salmon': '#FA8072',
   };
 
-  // Try to match the color name (case insensitive)
-  if (!colorName) return '#CCCCCC'; // Default gray for undefined
+  // Default gray for undefined
+  if (!colorInput) return '#CCCCCC';
 
-  const lowerCaseName = colorName.toLowerCase();
+  // Check if the input is already a hex code (starts with #)
+  if (colorInput.startsWith('#')) {
+    // Validate that it's a proper hex code
+    const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+    if (hexRegex.test(colorInput)) {
+      return colorInput;
+    }
+  }
 
-  // Check for exact match
+  // If not a hex code, try to match the color name (case insensitive)
+  const lowerCaseName = colorInput.toLowerCase();
+
+  // Check for exact match in color map
   if (colorMap[lowerCaseName]) {
     return colorMap[lowerCaseName];
   }
 
-  // Check for partial match
+  // Check for partial match in color names
   for (const [key, value] of Object.entries(colorMap)) {
     if (lowerCaseName.includes(key)) {
       return value;
     }
+  }
+
+  // Extract hex code if it's in the format "name - #hexcode" or similar
+  const hexCodeMatch = colorInput.match(/#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/);
+  if (hexCodeMatch) {
+    return hexCodeMatch[0];
   }
 
   // If no match found, return a default color
@@ -154,9 +170,10 @@ const ViewProductList = () => {
   };
 
   // Fetch products data on component mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchProducts();
+    // We only want to fetch products once on component mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle responsive view mode and sidebar state
@@ -292,6 +309,11 @@ const ViewProductList = () => {
                 Total Sewing {renderSortIndicator("total_sewn")}
               </div>
             </th>
+            <th className="cursor-pointer" onClick={() => handleSort("total_damage")}>
+              <div className="d-flex align-items-center">
+                Damage Count {renderSortIndicator("total_damage")}
+              </div>
+            </th>
             <th className="cursor-pointer" onClick={() => handleSort("total_cut")}>
               <div className="d-flex align-items-center">
                 Total Cut {renderSortIndicator("total_cut")}
@@ -331,6 +353,13 @@ const ViewProductList = () => {
                   <td className="fw-medium">{prod.product_name}</td>
                   <td>{prod.last_update_date || "N/A"}</td>
                   <td>{prod.total_sewn}</td>
+                  <td>
+                    {prod.total_damage > 0 ? (
+                      <span className="badge bg-warning text-dark">{prod.total_damage}</span>
+                    ) : (
+                      <span>0</span>
+                    )}
+                  </td>
                   <td>{prod.total_cut}</td>
                   <td>
                     <span className={prod.remaining <= 0 ? "text-success" : "text-danger"}>
@@ -369,7 +398,7 @@ const ViewProductList = () => {
 
                 {expandedRows[prod.id] && (
                   <tr className="expanded-details">
-                    <td colSpan={8}>
+                    <td colSpan={9}>
                       <div className="p-3 bg-light rounded">
                         <h5 className="mb-3 text-primary">Color Details</h5>
                         <div className="table-responsive">
@@ -382,6 +411,7 @@ const ViewProductList = () => {
                                 <th>M</th>
                                 <th>L</th>
                                 <th>XL</th>
+                                <th>Damage</th>
                                 <th>Total Sewing</th>
                               </tr>
                             </thead>
@@ -417,12 +447,19 @@ const ViewProductList = () => {
                                     <td>{color.m || 0}</td>
                                     <td>{color.l || 0}</td>
                                     <td>{color.xl || 0}</td>
+                                    <td>
+                                      {color.damage_count > 0 ? (
+                                        <span className="badge bg-warning text-dark">{color.damage_count}</span>
+                                      ) : (
+                                        <span>0</span>
+                                      )}
+                                    </td>
                                     <td>{color.total_sewn || 0}</td>
                                   </tr>
                                 ))
                               ) : (
                                 <tr>
-                                  <td colSpan="7" className="text-center py-3">
+                                  <td colSpan="8" className="text-center py-3">
                                     No color details available
                                   </td>
                                 </tr>
@@ -479,11 +516,21 @@ const ViewProductList = () => {
                   </div>
                 </div>
                 <div className="row mb-3">
-                  <div className="col-6">
+                  <div className="col-4">
                     <small className="text-muted">Total Sewing:</small>
                     <div>{prod.total_sewn}</div>
                   </div>
-                  <div className="col-6">
+                  <div className="col-4">
+                    <small className="text-muted">Damage:</small>
+                    <div>
+                      {prod.total_damage > 0 ? (
+                        <span className="badge bg-warning text-dark">{prod.total_damage}</span>
+                      ) : (
+                        <span>0</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="col-4">
                     <small className="text-muted">Total Cut:</small>
                     <div>{prod.total_cut}</div>
                   </div>
@@ -513,6 +560,7 @@ const ViewProductList = () => {
                             <th>M</th>
                             <th>L</th>
                             <th>XL</th>
+                            <th>Dmg</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -547,11 +595,20 @@ const ViewProductList = () => {
                                 <td><small>{color.m || 0}</small></td>
                                 <td><small>{color.l || 0}</small></td>
                                 <td><small>{color.xl || 0}</small></td>
+                                <td>
+                                  <small>
+                                    {color.damage_count > 0 ? (
+                                      <span className="badge bg-warning text-dark">{color.damage_count}</span>
+                                    ) : (
+                                      <span>0</span>
+                                    )}
+                                  </small>
+                                </td>
                               </tr>
                             ))
                           ) : (
                             <tr>
-                              <td colSpan="6" className="text-center py-2">
+                              <td colSpan="7" className="text-center py-2">
                                 <small>No color details</small>
                               </td>
                             </tr>

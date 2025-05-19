@@ -36,6 +36,8 @@ import OwnerOrdersPage from "./pages/OwnerOrdersPage.js";
 import SalesTeamOrdersPage from "./pages/SalesTeamOrdersPage.js";
 import ShopAnalysisDashboard from "./pages/ShopAnalysisDashboard.js";
 import OrderAnalysisPage from "./pages/OrderAnalysisPage.js";
+import ViewShops from "./pages/ViewShops.js";
+import SalesReport from "./pages/SalesReport.js";
 
 // Import the ProtectedRoute component
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -153,7 +155,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/view-packing-inventory" element={
-          <ProtectedRoute allowedRoles={['Inventory Manager', 'Owner', 'Sales Team']}>
+          <ProtectedRoute allowedRoles={['Inventory Manager', 'Owner', 'Sales Team', 'Order Coordinator']}>
             <ViewPackingInventory />
           </ProtectedRoute>
         } />
@@ -199,6 +201,16 @@ function App() {
         <Route path="/sales-team-orders" element={
           <ProtectedRoute allowedRoles={['Sales Team']}>
             <SalesTeamOrdersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/viewshops" element={
+          <ProtectedRoute allowedRoles={['Sales Team']}>
+            <ViewShops />
+          </ProtectedRoute>
+        } />
+        <Route path="/sales-report" element={
+          <ProtectedRoute allowedRoles={['Sales Team', 'Inventory Manager', 'Owner']}>
+            <SalesReport />
           </ProtectedRoute>
         } />
 

@@ -949,13 +949,7 @@ function OwnerDashboard() {
                     <FaBoxes className="text-primary me-2" />
                     Packing Overview
                   </h5>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={() => navigate('/packing-report')}
-                  >
-                    View Full Report
-                  </Button>
+                  
                 </Card.Header>
                 <Card.Body>
                   {loading ? (

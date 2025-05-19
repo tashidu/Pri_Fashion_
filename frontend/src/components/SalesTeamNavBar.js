@@ -1,28 +1,30 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { FaStore, FaShoppingCart, FaChartLine, FaTachometerAlt, FaSignOutAlt, FaBars, FaAngleRight, FaTshirt, FaBoxes, FaCashRegister } from "react-icons/fa";
+import {
+  FaTachometerAlt,
+  FaSignOutAlt,
+  FaBars,
+  FaCashRegister,
+  FaList,
+  FaImages,
+  FaPlus,
+  FaEye,
+  FaClipboardList,
+  FaFileInvoiceDollar,
+  FaChartLine
+} from "react-icons/fa";
 import { logout } from "../utils/auth";
 
 function SalesTeamNavBar() {
   // Set sidebar to open if window width >= 768px; otherwise, minimized.
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
-  const [activeSubmenu, setActiveSubmenu] = useState(null);
   const location = useLocation();
 
   // Toggle sidebar
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  // Toggle submenu
-  const toggleSubmenu = (menu) => {
-    if (activeSubmenu === menu) {
-      setActiveSubmenu(null);
-    } else {
-      setActiveSubmenu(menu);
-    }
   };
 
   // Handle logout
@@ -51,21 +53,14 @@ function SalesTeamNavBar() {
       path: "/sales-dashboard"
     },
     {
-      title: "Products",
-      icon: <FaTshirt />,
-      path: "/sales-products",
-      subItems: [
-        { title: "Product List", path: "/sales-products" },
-        { title: "Product Gallery", path: "/sales-product-gallery" }
-      ]
+      title: "Product List",
+      icon: <FaList />,
+      path: "/sales-products"
     },
     {
-      title: "Inventory",
-      icon: <FaBoxes />,
-      path: "/sales-packing-inventory",
-      subItems: [
-        { title: "View Inventory", path: "/sales-packing-inventory" }
-      ]
+      title: "Product Gallery",
+      icon: <FaImages />,
+      path: "/sales-product-gallery"
     },
     {
       title: "Sell Products",
@@ -73,34 +68,35 @@ function SalesTeamNavBar() {
       path: "/sell-product"
     },
     {
-      title: "Shops",
-      icon: <FaStore />,
-      path: "/viewshops",
-      subItems: [
-        { title: "View Shops", path: "/viewshops" },
-        { title: "Add Shop", path: "/addshop" }
-      ]
+      title: "View Shops",
+      icon: <FaEye />,
+      path: "/viewshops"
     },
     {
-      title: "Orders",
-      icon: <FaShoppingCart />,
-      path: "/sales-team-orders",
-      subItems: [
-        { title: "View Orders", path: "/sales-team-orders" },
-        { title: "Create Order", path: "/addorder" }
-      ]
+      title: "Add Shop",
+      icon: <FaPlus />,
+      path: "/addshop"
+    },
+    {
+      title: "View Orders",
+      icon: <FaClipboardList />,
+      path: "/sales-team-orders"
+    },
+    {
+      title: "Create Order",
+      icon: <FaFileInvoiceDollar />,
+      path: "/addorder"
+    },
+    {
+      title: "Sales Report",
+      icon: <FaChartLine />,
+      path: "/sales-report"
     }
   ];
 
   // Check if a path is active
   const isActive = (path) => {
     return location.pathname === path;
-  };
-
-  // Check if a menu has an active subitem
-  const hasActiveSubItem = (item) => {
-    if (!item.subItems) return false;
-    return item.subItems.some(subItem => location.pathname === subItem.path);
   };
 
   return (
@@ -174,103 +170,35 @@ function SalesTeamNavBar() {
           <ul className="nav flex-column px-2">
             {navItems.map((item, index) => (
               <li key={index} className="nav-item mb-2">
-                {item.subItems ? (
-                  <>
-                    <div
-                      className={`nav-link d-flex align-items-center justify-content-between ${hasActiveSubItem(item) ? 'active' : ''}`}
-                      onClick={() => toggleSubmenu(index)}
-                      style={{
-                        padding: isSidebarOpen ? "10px 15px" : "10px 0",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        backgroundColor: hasActiveSubItem(item) ? "rgba(13, 110, 253, 0.1)" : "transparent",
-                        color: hasActiveSubItem(item) ? "#0d6efd" : "#212529",
-                        fontWeight: hasActiveSubItem(item) ? "600" : "normal",
-                        marginLeft: isSidebarOpen ? "0" : "auto",
-                        marginRight: isSidebarOpen ? "0" : "auto",
-                        width: isSidebarOpen ? "auto" : "50px",
-                        textAlign: isSidebarOpen ? "left" : "center",
-                        transition: "all 0.2s ease"
-                      }}
-                    >
-                      <div className="d-flex align-items-center">
-                        <div className="icon-container" style={{
-                          width: "30px",
-                          height: "30px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: hasActiveSubItem(item) ? "#0d6efd" : "#6c757d",
-                          fontSize: "16px"
-                        }}>
-                          {item.icon}
-                        </div>
-                        {isSidebarOpen && <span className="ms-2">{item.title}</span>}
-                      </div>
-                      {isSidebarOpen && (
-                        <FaAngleRight
-                          style={{
-                            transform: activeSubmenu === index ? 'rotate(90deg)' : 'none',
-                            transition: 'transform 0.3s ease'
-                          }}
-                        />
-                      )}
-                    </div>
-                    {isSidebarOpen && activeSubmenu === index && (
-                      <ul className="submenu list-unstyled ms-4 mt-1">
-                        {item.subItems.map((subItem, subIndex) => (
-                          <li key={subIndex} className="mb-1">
-                            <Link
-                              to={subItem.path}
-                              className="submenu-link d-block py-2 px-3"
-                              style={{
-                                textDecoration: "none",
-                                color: isActive(subItem.path) ? "#0d6efd" : "#6c757d",
-                                backgroundColor: isActive(subItem.path) ? "rgba(13, 110, 253, 0.05)" : "transparent",
-                                borderRadius: "6px",
-                                fontSize: "0.9rem",
-                                fontWeight: isActive(subItem.path) ? "600" : "normal",
-                                transition: "all 0.2s ease"
-                              }}
-                            >
-                              {subItem.title}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </>
-                ) : (
-                  <Link
-                    to={item.path}
-                    className="nav-link d-flex align-items-center"
-                    style={{
-                      padding: isSidebarOpen ? "10px 15px" : "10px 0",
-                      borderRadius: "8px",
-                      backgroundColor: isActive(item.path) ? "rgba(13, 110, 253, 0.1)" : "transparent",
-                      color: isActive(item.path) ? "#0d6efd" : "#212529",
-                      fontWeight: isActive(item.path) ? "600" : "normal",
-                      marginLeft: isSidebarOpen ? "0" : "auto",
-                      marginRight: isSidebarOpen ? "0" : "auto",
-                      width: isSidebarOpen ? "auto" : "50px",
-                      textAlign: isSidebarOpen ? "left" : "center",
-                      transition: "all 0.2s ease"
-                    }}
-                  >
-                    <div className="icon-container" style={{
-                      width: "30px",
-                      height: "30px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: isActive(item.path) ? "#0d6efd" : "#6c757d",
-                      fontSize: "16px"
-                    }}>
-                      {item.icon}
-                    </div>
-                    {isSidebarOpen && <span className="ms-2">{item.title}</span>}
-                  </Link>
-                )}
+                <Link
+                  to={item.path}
+                  className="nav-link d-flex align-items-center"
+                  style={{
+                    padding: isSidebarOpen ? "10px 15px" : "10px 0",
+                    borderRadius: "8px",
+                    backgroundColor: isActive(item.path) ? "rgba(13, 110, 253, 0.1)" : "transparent",
+                    color: isActive(item.path) ? "#0d6efd" : "#212529",
+                    fontWeight: isActive(item.path) ? "600" : "normal",
+                    marginLeft: isSidebarOpen ? "0" : "auto",
+                    marginRight: isSidebarOpen ? "0" : "auto",
+                    width: isSidebarOpen ? "auto" : "50px",
+                    textAlign: isSidebarOpen ? "left" : "center",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  <div className="icon-container" style={{
+                    width: "30px",
+                    height: "30px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: isActive(item.path) ? "#0d6efd" : "#6c757d",
+                    fontSize: "16px"
+                  }}>
+                    {item.icon}
+                  </div>
+                  {isSidebarOpen && <span className="ms-2">{item.title}</span>}
+                </Link>
               </li>
             ))}
           </ul>
