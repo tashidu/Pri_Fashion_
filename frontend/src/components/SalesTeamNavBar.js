@@ -59,14 +59,7 @@ function SalesTeamNavBar() {
         { title: "Product Gallery", path: "/sales-product-gallery" }
       ]
     },
-    {
-      title: "Inventory",
-      icon: <FaBoxes />,
-      path: "/sales-packing-inventory",
-      subItems: [
-        { title: "View Inventory", path: "/sales-packing-inventory" }
-      ]
-    },
+    
     {
       title: "Sell Products",
       icon: <FaCashRegister />,

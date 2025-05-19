@@ -187,10 +187,26 @@ const AddOrderForm = () => {
         };
       });
 
-      // Filter out products without selling price for Sales Team
-      const filteredProducts = userRole === 'Sales Team'
-        ? productsWithInventory.filter(product => product.selling_price !== null)
-        : productsWithInventory;
+      // Filter out products without selling price for Sales Team and products without packing stock
+      let filteredProducts = productsWithInventory;
+
+      // First filter by selling price for Sales Team
+      if (userRole === 'Sales Team') {
+        filteredProducts = filteredProducts.filter(product => product.selling_price !== null);
+      }
+
+      // Then filter to only include products with packing stock
+      filteredProducts = filteredProducts.filter(product => {
+        // Check if the product has any packing inventory
+        const inventory = product.inventory;
+        const totalPackingStock =
+          (inventory.number_of_6_packs * 6) +
+          (inventory.number_of_12_packs * 12) +
+          (inventory.extra_items);
+
+        // Only include products with packing stock > 0
+        return totalPackingStock > 0;
+      });
 
       setFinishedProducts(filteredProducts);
       setFilteredProducts(filteredProducts);
@@ -264,7 +280,44 @@ const AddOrderForm = () => {
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const updatedItems = [...orderData.items];
-    updatedItems[index][name] = value;
+
+    // If changing the product, reset quantities
+    if (name === "finished_product") {
+      updatedItems[index] = {
+        ...updatedItems[index],
+        [name]: value,
+        quantity_6_packs: 0,
+        quantity_12_packs: 0,
+        quantity_extra_items: 0
+      };
+    } else if (name.includes("quantity_")) {
+      // For quantity fields, validate against available stock
+      const product = finishedProducts.find(p => p.id === parseInt(updatedItems[index].finished_product));
+
+      if (product && product.inventory) {
+        const inventory = product.inventory;
+        let newValue = parseInt(value) || 0;
+
+        // Prevent negative values
+        if (newValue < 0) newValue = 0;
+
+        // Check against available stock for each pack type
+        if (name === "quantity_6_packs" && newValue > inventory.number_of_6_packs) {
+          newValue = inventory.number_of_6_packs;
+        } else if (name === "quantity_12_packs" && newValue > inventory.number_of_12_packs) {
+          newValue = inventory.number_of_12_packs;
+        } else if (name === "quantity_extra_items" && newValue > inventory.extra_items) {
+          newValue = inventory.extra_items;
+        }
+
+        updatedItems[index][name] = newValue;
+      } else {
+        updatedItems[index][name] = value;
+      }
+    } else {
+      updatedItems[index][name] = value;
+    }
+
     setOrderData({ ...orderData, items: updatedItems });
   };
 
@@ -342,76 +395,61 @@ const AddOrderForm = () => {
       };
     }
 
-    // Different validation logic based on user role
-    if (userRole === 'Order Coordinator') {
-      // Order Coordinators need to check actual inventory
-      const inventory = product.inventory;
-      const warnings = [];
+    // Check if there's any packing stock at all
+    const inventory = product.inventory;
+    const totalAvailable =
+      (parseInt(inventory.number_of_6_packs) || 0) * 6 +
+      (parseInt(inventory.number_of_12_packs) || 0) * 12 +
+      (parseInt(inventory.extra_items) || 0);
 
-      // Make sure we're comparing numbers, not strings
-      const requestedSixPacks = parseInt(item.quantity_6_packs) || 0;
-      const requestedTwelvePacks = parseInt(item.quantity_12_packs) || 0;
-      const requestedExtraItems = parseInt(item.quantity_extra_items) || 0;
-
-      const availableSixPacks = parseInt(inventory.number_of_6_packs) || 0;
-      const availableTwelvePacks = parseInt(inventory.number_of_12_packs) || 0;
-      const availableExtraItems = parseInt(inventory.extra_items) || 0;
-
-      if (requestedSixPacks > availableSixPacks) {
-        warnings.push(`Not enough 6-packs in stock (requested: ${requestedSixPacks}, available: ${availableSixPacks})`);
-      }
-
-      if (requestedTwelvePacks > availableTwelvePacks) {
-        warnings.push(`Not enough 12-packs in stock (requested: ${requestedTwelvePacks}, available: ${availableTwelvePacks})`);
-      }
-
-      if (requestedExtraItems > availableExtraItems) {
-        warnings.push(`Not enough extra items in stock (requested: ${requestedExtraItems}, available: ${availableExtraItems})`);
-      }
-
+    if (totalAvailable === 0) {
       return {
-        hasWarning: warnings.length > 0,
-        message: warnings.join(", "),
-        productName: product.product_name
-      };
-    } else {
-      // Sales Team can create orders for items in production
-      // They only need a warning if there's no stock AND no items in production
-      const inventory = product.inventory;
-      const totalRequested =
-        (parseInt(item.quantity_6_packs) || 0) * 6 +
-        (parseInt(item.quantity_12_packs) || 0) * 12 +
-        (parseInt(item.quantity_extra_items) || 0);
-
-      const totalAvailable =
-        (parseInt(inventory.number_of_6_packs) || 0) * 6 +
-        (parseInt(inventory.number_of_12_packs) || 0) * 12 +
-        (parseInt(inventory.extra_items) || 0);
-
-      // If there's not enough in stock but there are items in production, just inform
-      if (totalRequested > totalAvailable) {
-        if (product.inProduction > 0) {
-          return {
-            hasWarning: false, // Not a blocking warning for Sales Team
-            message: `This order will require ${totalRequested - totalAvailable} items from production (${product.inProduction} in production)`,
-            productName: product.product_name,
-            isInfo: true // Flag to show as info, not warning
-          };
-        } else {
-          return {
-            hasWarning: true,
-            message: `Not enough items in stock (requested: ${totalRequested}, available: ${totalAvailable}) and no items in production`,
-            productName: product.product_name
-          };
-        }
-      }
-
-      return {
-        hasWarning: false,
-        message: "",
+        hasWarning: true,
+        message: "This product has no packing stock available",
         productName: product.product_name
       };
     }
+
+    // Make sure we're comparing numbers, not strings
+    const requestedSixPacks = parseInt(item.quantity_6_packs) || 0;
+    const requestedTwelvePacks = parseInt(item.quantity_12_packs) || 0;
+    const requestedExtraItems = parseInt(item.quantity_extra_items) || 0;
+
+    const availableSixPacks = parseInt(inventory.number_of_6_packs) || 0;
+    const availableTwelvePacks = parseInt(inventory.number_of_12_packs) || 0;
+    const availableExtraItems = parseInt(inventory.extra_items) || 0;
+
+    const warnings = [];
+
+    // Check specific pack types
+    if (requestedSixPacks > availableSixPacks) {
+      warnings.push(`Not enough 6-packs in stock (requested: ${requestedSixPacks}, available: ${availableSixPacks})`);
+    }
+
+    if (requestedTwelvePacks > availableTwelvePacks) {
+      warnings.push(`Not enough 12-packs in stock (requested: ${requestedTwelvePacks}, available: ${availableTwelvePacks})`);
+    }
+
+    if (requestedExtraItems > availableExtraItems) {
+      warnings.push(`Not enough extra items in stock (requested: ${requestedExtraItems}, available: ${availableExtraItems})`);
+    }
+
+    // Calculate total requested items
+    const totalRequested =
+      (requestedSixPacks * 6) +
+      (requestedTwelvePacks * 12) +
+      requestedExtraItems;
+
+    // If no specific warnings but total requested exceeds total available
+    if (warnings.length === 0 && totalRequested > totalAvailable) {
+      warnings.push(`Total requested items (${totalRequested}) exceeds available stock (${totalAvailable})`);
+    }
+
+    return {
+      hasWarning: warnings.length > 0,
+      message: warnings.join(", "),
+      productName: product.product_name
+    };
   };
 
   // Validate the entire order
@@ -429,6 +467,24 @@ const AddOrderForm = () => {
 
     if (invalidItems.length > 0) {
       setError("Please select a product and add at least one quantity for each item.");
+      return false;
+    }
+
+    // Validate that all selected products have packing stock
+    const noPackingStockItems = orderData.items.filter(item => {
+      const product = finishedProducts.find(p => p.id === parseInt(item.finished_product));
+      if (!product || !product.inventory) return true;
+
+      const totalPackingStock =
+        (product.inventory.number_of_6_packs * 6) +
+        (product.inventory.number_of_12_packs * 12) +
+        (product.inventory.extra_items);
+
+      return totalPackingStock === 0;
+    });
+
+    if (noPackingStockItems.length > 0) {
+      setError("Some selected products have no packing stock. Only products with packing stock can be ordered.");
       return false;
     }
 
@@ -810,7 +866,7 @@ const AddOrderForm = () => {
         }}
       >
         <Row className="justify-content-center">
-          <Col lg={10} xl={9}>
+          <Col lg={12} xl={12}>
             <Card className="shadow-sm mb-4">
               <Card.Header className="bg-primary text-white d-flex align-items-center justify-content-between">
                 <div className="d-flex align-items-center">
@@ -961,6 +1017,10 @@ const AddOrderForm = () => {
                         </Tab>
 
                         <Tab eventKey="order-items" title="Order Items">
+                          <Alert variant="info" className="mb-3">
+                            <FaInfoCircle className="me-2" />
+                            Only products with available packing stock are displayed. Orders can only include items that are already packed.
+                          </Alert>
                           <div className="mb-3 d-flex justify-content-between align-items-center">
                             <InputGroup className="w-50">
                               <InputGroup.Text>
@@ -968,7 +1028,7 @@ const AddOrderForm = () => {
                               </InputGroup.Text>
                               <Form.Control
                                 type="text"
-                                placeholder="Search products..."
+                                placeholder="Search packed products..."
                                 value={productSearch}
                                 onChange={(e) => setProductSearch(e.target.value)}
                                 disabled={isSubmitting}
@@ -1057,143 +1117,288 @@ const AddOrderForm = () => {
 
                                             {item.finished_product && (
                                               <Col md={12} className="mb-3">
-                                                {userRole === 'Order Coordinator' ? (
-                                                  // Detailed inventory view for Order Coordinators
-                                                  <div className="stock-info p-2 rounded" style={{ backgroundColor: '#e9ecef' }}>
-                                                    <small className="d-flex justify-content-between">
-                                                      <span>Available 6-Packs: <strong>{inventory.number_of_6_packs || 0}</strong></span>
-                                                      <span>Available 12-Packs: <strong>{inventory.number_of_12_packs || 0}</strong></span>
-                                                      <span>Available Extra Items: <strong>{inventory.extra_items || 0}</strong></span>
-                                                    </small>
-                                                    {(!inventory.number_of_6_packs && !inventory.number_of_12_packs && !inventory.extra_items) && (
-                                                      <div className="mt-1 text-danger">
-                                                        <small>No inventory data available for this product</small>
-                                                      </div>
-                                                    )}
-                                                  </div>
-                                                ) : (
-                                                  // Simplified view for Sales Team
-                                                  <div className="stock-info p-2 rounded" style={{ backgroundColor: '#e9ecef' }}>
-                                                    <div className="d-flex justify-content-between align-items-center">
-                                                      <div>
-                                                        {product && (
-                                                          <div className="d-flex align-items-center">
-                                                            <span className="me-2">Stock Status:</span>
-                                                            {product.stockStatus === 'in-stock' && (
-                                                              <Badge bg="success">In Stock</Badge>
-                                                            )}
-                                                            {product.stockStatus === 'low-stock' && (
-                                                              <Badge bg="warning">Low Stock</Badge>
-                                                            )}
-                                                            {product.stockStatus === 'out-of-stock' && (
-                                                              <Badge bg="danger">Out of Stock</Badge>
-                                                            )}
-                                                          </div>
-                                                        )}
-                                                      </div>
-                                                      <div>
-                                                        {product && product.inProduction > 0 && (
-                                                          <Badge bg="info" className="ms-2">
-                                                            {product.inProduction} items in production
-                                                          </Badge>
-                                                        )}
-                                                      </div>
+                                                <Card className="border-primary">
+                                                  <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                      <FaBoxOpen className="me-2" />
+                                                      <strong>Available Packing Stock</strong>
                                                     </div>
-                                                    {product && product.selling_price && (
-                                                      <div className="mt-2">
-                                                        <small>Selling Price: <strong>Rs. {product.selling_price.toFixed(2)}</strong></small>
+                                                    {product && (
+                                                      <Badge bg={
+                                                        product.stockStatus === 'in-stock' ? 'success' :
+                                                        product.stockStatus === 'low-stock' ? 'warning' : 'danger'
+                                                      } pill>
+                                                        {product.stockStatus === 'in-stock' ? 'In Stock' :
+                                                         product.stockStatus === 'low-stock' ? 'Low Stock' : 'Out of Stock'}
+                                                      </Badge>
+                                                    )}
+                                                  </Card.Header>
+                                                  <Card.Body className="p-3">
+                                                    <Row>
+                                                      <Col md={4} className="text-center mb-2">
+                                                        <div className="stock-item p-2 rounded" style={{ backgroundColor: '#e9ecef' }}>
+                                                          <h5 className="mb-1">{inventory.number_of_6_packs || 0}</h5>
+                                                          <small className="text-muted">Available 6-Packs</small>
+                                                        </div>
+                                                      </Col>
+                                                      <Col md={4} className="text-center mb-2">
+                                                        <div className="stock-item p-2 rounded" style={{ backgroundColor: '#e9ecef' }}>
+                                                          <h5 className="mb-1">{inventory.number_of_12_packs || 0}</h5>
+                                                          <small className="text-muted">Available 12-Packs</small>
+                                                        </div>
+                                                      </Col>
+                                                      <Col md={4} className="text-center mb-2">
+                                                        <div className="stock-item p-2 rounded" style={{ backgroundColor: '#e9ecef' }}>
+                                                          <h5 className="mb-1">{inventory.extra_items || 0}</h5>
+                                                          <small className="text-muted">Available Extra Items</small>
+                                                        </div>
+                                                      </Col>
+                                                    </Row>
+
+                                                    <div className="mt-3 d-flex justify-content-between align-items-center">
+                                                      <div>
+                                                        <strong>Total Available Units: </strong>
+                                                        <Badge bg="info" pill className="ms-1">
+                                                          {(inventory.number_of_6_packs * 6) +
+                                                           (inventory.number_of_12_packs * 12) +
+                                                           (inventory.extra_items) || 0}
+                                                        </Badge>
+                                                      </div>
+
+                                                      {product && product.selling_price && (
+                                                        <div>
+                                                          <strong>Selling Price: </strong>
+                                                          <Badge bg="secondary" pill className="ms-1">
+                                                            Rs. {product.selling_price.toFixed(2)}
+                                                          </Badge>
+                                                        </div>
+                                                      )}
+                                                    </div>
+
+                                                    {product && product.inProduction > 0 && (
+                                                      <div className="mt-2 text-info">
+                                                        <small>
+                                                          <FaInfoCircle className="me-1" />
+                                                          {product.inProduction} additional items in production
+                                                        </small>
                                                       </div>
                                                     )}
-                                                  </div>
-                                                )}
+                                                  </Card.Body>
+                                                </Card>
                                               </Col>
                                             )}
 
                                             <Col md={4}>
                                               <Form.Group>
-                                                <Form.Label>6-Packs</Form.Label>
+                                                <Form.Label className="d-flex justify-content-between">
+                                                  <span>6-Packs</span>
+                                                  <small className="text-muted">Available: {inventory.number_of_6_packs || 0}</small>
+                                                </Form.Label>
                                                 <InputGroup>
+                                                  <Button
+                                                    variant="outline-secondary"
+                                                    onClick={() => {
+                                                      const updatedItems = [...orderData.items];
+                                                      const currentValue = parseInt(updatedItems[index].quantity_6_packs) || 0;
+                                                      if (currentValue > 0) {
+                                                        updatedItems[index].quantity_6_packs = currentValue - 1;
+                                                        setOrderData({ ...orderData, items: updatedItems });
+                                                      }
+                                                    }}
+                                                    disabled={isSubmitting || parseInt(item.quantity_6_packs) <= 0}
+                                                  >
+                                                    -
+                                                  </Button>
                                                   <Form.Control
                                                     type="number"
                                                     name="quantity_6_packs"
                                                     min="0"
+                                                    max={inventory.number_of_6_packs}
                                                     value={item.quantity_6_packs}
                                                     onChange={(e) => handleItemChange(index, e)}
-                                                    disabled={isSubmitting}
-                                                    className={parseInt(item.quantity_6_packs) > inventory.number_of_6_packs ? "border-danger" : ""}
+                                                    disabled={isSubmitting || !item.finished_product}
+                                                    className={parseInt(item.quantity_6_packs) > 0 ? "bg-light text-center" : "text-center"}
                                                   />
+                                                  <Button
+                                                    variant="outline-secondary"
+                                                    onClick={() => {
+                                                      const updatedItems = [...orderData.items];
+                                                      const currentValue = parseInt(updatedItems[index].quantity_6_packs) || 0;
+                                                      const maxValue = inventory.number_of_6_packs || 0;
+                                                      if (currentValue < maxValue) {
+                                                        updatedItems[index].quantity_6_packs = currentValue + 1;
+                                                        setOrderData({ ...orderData, items: updatedItems });
+                                                      }
+                                                    }}
+                                                    disabled={isSubmitting || !item.finished_product || parseInt(item.quantity_6_packs) >= inventory.number_of_6_packs}
+                                                  >
+                                                    +
+                                                  </Button>
                                                   <InputGroup.Text>packs</InputGroup.Text>
                                                 </InputGroup>
-                                                {parseInt(item.quantity_6_packs) > inventory.number_of_6_packs && (
-                                                  <Form.Text className="text-danger">
-                                                    Exceeds available stock
-                                                  </Form.Text>
-                                                )}
+                                                <div className="mt-1">
+                                                  <small className="text-muted">
+                                                    Total: {parseInt(item.quantity_6_packs) * 6 || 0} units
+                                                  </small>
+                                                </div>
                                               </Form.Group>
                                             </Col>
 
                                             <Col md={4}>
                                               <Form.Group>
-                                                <Form.Label>12-Packs</Form.Label>
+                                                <Form.Label className="d-flex justify-content-between">
+                                                  <span>12-Packs</span>
+                                                  <small className="text-muted">Available: {inventory.number_of_12_packs || 0}</small>
+                                                </Form.Label>
                                                 <InputGroup>
+                                                  <Button
+                                                    variant="outline-secondary"
+                                                    onClick={() => {
+                                                      const updatedItems = [...orderData.items];
+                                                      const currentValue = parseInt(updatedItems[index].quantity_12_packs) || 0;
+                                                      if (currentValue > 0) {
+                                                        updatedItems[index].quantity_12_packs = currentValue - 1;
+                                                        setOrderData({ ...orderData, items: updatedItems });
+                                                      }
+                                                    }}
+                                                    disabled={isSubmitting || parseInt(item.quantity_12_packs) <= 0}
+                                                  >
+                                                    -
+                                                  </Button>
                                                   <Form.Control
                                                     type="number"
                                                     name="quantity_12_packs"
                                                     min="0"
+                                                    max={inventory.number_of_12_packs}
                                                     value={item.quantity_12_packs}
                                                     onChange={(e) => handleItemChange(index, e)}
-                                                    disabled={isSubmitting}
-                                                    className={parseInt(item.quantity_12_packs) > inventory.number_of_12_packs ? "border-danger" : ""}
+                                                    disabled={isSubmitting || !item.finished_product}
+                                                    className={parseInt(item.quantity_12_packs) > 0 ? "bg-light text-center" : "text-center"}
                                                   />
+                                                  <Button
+                                                    variant="outline-secondary"
+                                                    onClick={() => {
+                                                      const updatedItems = [...orderData.items];
+                                                      const currentValue = parseInt(updatedItems[index].quantity_12_packs) || 0;
+                                                      const maxValue = inventory.number_of_12_packs || 0;
+                                                      if (currentValue < maxValue) {
+                                                        updatedItems[index].quantity_12_packs = currentValue + 1;
+                                                        setOrderData({ ...orderData, items: updatedItems });
+                                                      }
+                                                    }}
+                                                    disabled={isSubmitting || !item.finished_product || parseInt(item.quantity_12_packs) >= inventory.number_of_12_packs}
+                                                  >
+                                                    +
+                                                  </Button>
                                                   <InputGroup.Text>packs</InputGroup.Text>
                                                 </InputGroup>
-                                                {parseInt(item.quantity_12_packs) > inventory.number_of_12_packs && (
-                                                  <Form.Text className="text-danger">
-                                                    Exceeds available stock
-                                                  </Form.Text>
-                                                )}
+                                                <div className="mt-1">
+                                                  <small className="text-muted">
+                                                    Total: {parseInt(item.quantity_12_packs) * 12 || 0} units
+                                                  </small>
+                                                </div>
                                               </Form.Group>
                                             </Col>
 
                                             <Col md={4}>
                                               <Form.Group>
-                                                <Form.Label>Extra Items</Form.Label>
+                                                <Form.Label className="d-flex justify-content-between">
+                                                  <span>Extra Items</span>
+                                                  <small className="text-muted">Available: {inventory.extra_items || 0}</small>
+                                                </Form.Label>
                                                 <InputGroup>
+                                                  <Button
+                                                    variant="outline-secondary"
+                                                    onClick={() => {
+                                                      const updatedItems = [...orderData.items];
+                                                      const currentValue = parseInt(updatedItems[index].quantity_extra_items) || 0;
+                                                      if (currentValue > 0) {
+                                                        updatedItems[index].quantity_extra_items = currentValue - 1;
+                                                        setOrderData({ ...orderData, items: updatedItems });
+                                                      }
+                                                    }}
+                                                    disabled={isSubmitting || parseInt(item.quantity_extra_items) <= 0}
+                                                  >
+                                                    -
+                                                  </Button>
                                                   <Form.Control
                                                     type="number"
                                                     name="quantity_extra_items"
                                                     min="0"
+                                                    max={inventory.extra_items}
                                                     value={item.quantity_extra_items}
                                                     onChange={(e) => handleItemChange(index, e)}
-                                                    disabled={isSubmitting}
-                                                    className={parseInt(item.quantity_extra_items) > inventory.extra_items ? "border-danger" : ""}
+                                                    disabled={isSubmitting || !item.finished_product}
+                                                    className={parseInt(item.quantity_extra_items) > 0 ? "bg-light text-center" : "text-center"}
                                                   />
+                                                  <Button
+                                                    variant="outline-secondary"
+                                                    onClick={() => {
+                                                      const updatedItems = [...orderData.items];
+                                                      const currentValue = parseInt(updatedItems[index].quantity_extra_items) || 0;
+                                                      const maxValue = inventory.extra_items || 0;
+                                                      if (currentValue < maxValue) {
+                                                        updatedItems[index].quantity_extra_items = currentValue + 1;
+                                                        setOrderData({ ...orderData, items: updatedItems });
+                                                      }
+                                                    }}
+                                                    disabled={isSubmitting || !item.finished_product || parseInt(item.quantity_extra_items) >= inventory.extra_items}
+                                                  >
+                                                    +
+                                                  </Button>
                                                   <InputGroup.Text>units</InputGroup.Text>
                                                 </InputGroup>
-                                                {parseInt(item.quantity_extra_items) > inventory.extra_items && (
-                                                  <Form.Text className="text-danger">
-                                                    Exceeds available stock
-                                                  </Form.Text>
-                                                )}
+                                                <div className="mt-1">
+                                                  <small className="text-muted">
+                                                    Total: {parseInt(item.quantity_extra_items) || 0} units
+                                                  </small>
+                                                </div>
                                               </Form.Group>
                                             </Col>
                                           </Row>
 
-                                          <div className="d-flex justify-content-between align-items-center mt-3">
-                                            <div>
-                                              <Badge bg="info" className="me-2">
-                                                Total Units: {calculateTotalUnits(item)}
-                                              </Badge>
-                                            </div>
-                                            <Button
-                                              variant="outline-danger"
-                                              size="sm"
-                                              onClick={() => removeItem(index)}
-                                              disabled={isSubmitting}
-                                              className="d-flex align-items-center"
-                                            >
-                                              <FaTrash className="me-1" /> Remove
-                                            </Button>
+                                          <div className="mt-4 p-3 rounded" style={{ backgroundColor: '#f0f8ff' }}>
+                                            <Row className="align-items-center">
+                                              <Col md={8}>
+                                                <h6 className="mb-2">Order Summary</h6>
+                                                <div className="d-flex flex-wrap">
+                                                  {parseInt(item.quantity_6_packs) > 0 && (
+                                                    <Badge bg="primary" className="me-2 mb-2 p-2">
+                                                      {item.quantity_6_packs} 6-Packs ({parseInt(item.quantity_6_packs) * 6} units)
+                                                    </Badge>
+                                                  )}
+                                                  {parseInt(item.quantity_12_packs) > 0 && (
+                                                    <Badge bg="primary" className="me-2 mb-2 p-2">
+                                                      {item.quantity_12_packs} 12-Packs ({parseInt(item.quantity_12_packs) * 12} units)
+                                                    </Badge>
+                                                  )}
+                                                  {parseInt(item.quantity_extra_items) > 0 && (
+                                                    <Badge bg="primary" className="me-2 mb-2 p-2">
+                                                      {item.quantity_extra_items} Extra Items
+                                                    </Badge>
+                                                  )}
+                                                  {calculateTotalUnits(item) === 0 && (
+                                                    <span className="text-muted">No items selected yet</span>
+                                                  )}
+                                                </div>
+                                              </Col>
+                                              <Col md={4} className="text-end">
+                                                <div className="mb-2">
+                                                  <Badge bg="info" pill className="p-2 px-3">
+                                                    Total Units: {calculateTotalUnits(item)}
+                                                  </Badge>
+                                                </div>
+                                                <Button
+                                                  variant="outline-danger"
+                                                  size="sm"
+                                                  onClick={() => removeItem(index)}
+                                                  disabled={isSubmitting}
+                                                  className="d-flex align-items-center ms-auto"
+                                                >
+                                                  <FaTrash className="me-1" /> Remove Item
+                                                </Button>
+                                              </Col>
+                                            </Row>
                                           </div>
                                         </Card.Body>
                                       </Card>
