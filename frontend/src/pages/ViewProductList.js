@@ -309,6 +309,11 @@ const ViewProductList = () => {
                 Total Sewing {renderSortIndicator("total_sewn")}
               </div>
             </th>
+            <th className="cursor-pointer" onClick={() => handleSort("total_damage")}>
+              <div className="d-flex align-items-center">
+                Damage Count {renderSortIndicator("total_damage")}
+              </div>
+            </th>
             <th className="cursor-pointer" onClick={() => handleSort("total_cut")}>
               <div className="d-flex align-items-center">
                 Total Cut {renderSortIndicator("total_cut")}
@@ -348,6 +353,13 @@ const ViewProductList = () => {
                   <td className="fw-medium">{prod.product_name}</td>
                   <td>{prod.last_update_date || "N/A"}</td>
                   <td>{prod.total_sewn}</td>
+                  <td>
+                    {prod.total_damage > 0 ? (
+                      <span className="badge bg-warning text-dark">{prod.total_damage}</span>
+                    ) : (
+                      <span>0</span>
+                    )}
+                  </td>
                   <td>{prod.total_cut}</td>
                   <td>
                     <span className={prod.remaining <= 0 ? "text-success" : "text-danger"}>
@@ -386,7 +398,7 @@ const ViewProductList = () => {
 
                 {expandedRows[prod.id] && (
                   <tr className="expanded-details">
-                    <td colSpan={8}>
+                    <td colSpan={9}>
                       <div className="p-3 bg-light rounded">
                         <h5 className="mb-3 text-primary">Color Details</h5>
                         <div className="table-responsive">
@@ -399,6 +411,7 @@ const ViewProductList = () => {
                                 <th>M</th>
                                 <th>L</th>
                                 <th>XL</th>
+                                <th>Damage</th>
                                 <th>Total Sewing</th>
                               </tr>
                             </thead>
@@ -434,12 +447,19 @@ const ViewProductList = () => {
                                     <td>{color.m || 0}</td>
                                     <td>{color.l || 0}</td>
                                     <td>{color.xl || 0}</td>
+                                    <td>
+                                      {color.damage_count > 0 ? (
+                                        <span className="badge bg-warning text-dark">{color.damage_count}</span>
+                                      ) : (
+                                        <span>0</span>
+                                      )}
+                                    </td>
                                     <td>{color.total_sewn || 0}</td>
                                   </tr>
                                 ))
                               ) : (
                                 <tr>
-                                  <td colSpan="7" className="text-center py-3">
+                                  <td colSpan="8" className="text-center py-3">
                                     No color details available
                                   </td>
                                 </tr>
@@ -496,11 +516,21 @@ const ViewProductList = () => {
                   </div>
                 </div>
                 <div className="row mb-3">
-                  <div className="col-6">
+                  <div className="col-4">
                     <small className="text-muted">Total Sewing:</small>
                     <div>{prod.total_sewn}</div>
                   </div>
-                  <div className="col-6">
+                  <div className="col-4">
+                    <small className="text-muted">Damage:</small>
+                    <div>
+                      {prod.total_damage > 0 ? (
+                        <span className="badge bg-warning text-dark">{prod.total_damage}</span>
+                      ) : (
+                        <span>0</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="col-4">
                     <small className="text-muted">Total Cut:</small>
                     <div>{prod.total_cut}</div>
                   </div>
@@ -530,6 +560,7 @@ const ViewProductList = () => {
                             <th>M</th>
                             <th>L</th>
                             <th>XL</th>
+                            <th>Dmg</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -564,11 +595,20 @@ const ViewProductList = () => {
                                 <td><small>{color.m || 0}</small></td>
                                 <td><small>{color.l || 0}</small></td>
                                 <td><small>{color.xl || 0}</small></td>
+                                <td>
+                                  <small>
+                                    {color.damage_count > 0 ? (
+                                      <span className="badge bg-warning text-dark">{color.damage_count}</span>
+                                    ) : (
+                                      <span>0</span>
+                                    )}
+                                  </small>
+                                </td>
                               </tr>
                             ))
                           ) : (
                             <tr>
-                              <td colSpan="6" className="text-center py-2">
+                              <td colSpan="7" className="text-center py-2">
                                 <small>No color details</small>
                               </td>
                             </tr>
