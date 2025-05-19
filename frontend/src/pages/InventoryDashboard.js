@@ -12,7 +12,6 @@ import {
   FaBuilding,
   FaInfoCircle,
   FaSearch,
-  FaHistory,
   FaKeyboard
 } from 'react-icons/fa';
 // No chart imports needed
@@ -462,11 +461,8 @@ function InventoryDashboard() {
                     {/* Recent Activity */}
                     <Col lg={12} className="mb-4">
                         <Card className="shadow-sm">
-                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+                            <Card.Header className="bg-white">
                                 <h5 className="mb-0">Recent Activity</h5>
-                                <Button variant="link" size="sm">
-                                    <FaHistory /> View All
-                                </Button>
                             </Card.Header>
                             <Card.Body className="p-0">
                                 <div className="activity-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
@@ -487,9 +483,16 @@ function InventoryDashboard() {
                                                     <div className="d-flex justify-content-between align-items-center">
                                                         <div>
                                                             {getActionBadge(activity.action)}
-                                                            <small className="ms-2 text-muted">by {activity.user}</small>
+                                                            {activity.user && activity.user.toLowerCase() !== 'system' && (
+                                                                <small className="ms-2 text-muted">by {activity.user}</small>
+                                                            )}
                                                         </div>
                                                     </div>
+                                                    {activity.details && (
+                                                        <div className="mt-1">
+                                                            <small className="text-muted">{activity.details}</small>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))
@@ -508,14 +511,11 @@ function InventoryDashboard() {
                 <Row className="mb-4">
                     <Col lg={6}>
                         <Card className="shadow-sm h-100">
-                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+                            <Card.Header className="bg-white">
                                 <h5 className="mb-0">
                                     <FaTshirt className="text-primary me-2" />
                                     Most Used Fabric Colors
                                 </h5>
-                                <Button variant="link" size="sm" onClick={() => navigate('/viewcutting')}>
-                                    View All Cutting
-                                </Button>
                             </Card.Header>
                             <Card.Body>
                                 <div className="color-analysis">
@@ -597,14 +597,11 @@ function InventoryDashboard() {
                     {/* Remaining Fabric Stock */}
                     <Col lg={6} id="fabric-stock">
                         <Card className="shadow-sm h-100">
-                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+                            <Card.Header className="bg-white">
                                 <h5 className="mb-0">
                                     <FaTshirt className="text-success me-2" />
                                     Remaining Fabric Stock
                                 </h5>
-                                <Button variant="link" size="sm" onClick={() => navigate('/viewfabric')}>
-                                    View All Fabrics
-                                </Button>
                             </Card.Header>
                             <Card.Body>
                                 {loading ? (
