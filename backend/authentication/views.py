@@ -8,12 +8,13 @@ from .models import Role
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.conf import settings
 
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer, UserSerializer
 
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import IsOwner, IsInventoryManager, IsOrderCoordinator, IsSalesTeam
 
 User = get_user_model()
@@ -156,3 +157,19 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
             instance.save()
 
         return Response(serializer.data)
+
+
+class HealthCheckView(APIView):
+    """
+    Simple health check endpoint to verify the API is working.
+    This endpoint is public and does not require authentication.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({
+            "status": "ok",
+            "message": "Pri Fashion API is running",
+            "version": "1.0.0",
+            "environment": "production" if not settings.DEBUG else "development"
+        }, status=status.HTTP_200_OK)

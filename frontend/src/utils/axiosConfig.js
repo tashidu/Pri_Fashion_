@@ -1,4 +1,8 @@
 import axios from 'axios';
+import API_BASE_URL from './apiConfig';
+
+// Set default base URL for all axios requests
+axios.defaults.baseURL = API_BASE_URL;
 
 // Add a request interceptor to include the JWT token in all requests
 axios.interceptors.request.use(

@@ -88,9 +88,27 @@ const AddCuttingRecord = () => {
     setDetails(newDetails);
   };
 
+  // Check if a fabric variant is already selected in another detail row
+  const isDuplicateFabricVariant = (variantId, currentIndex) => {
+    return details.some((detail, idx) =>
+      idx !== currentIndex && detail.fabric_variant === variantId && variantId !== ''
+    );
+  };
+
   // Handle change for each detail row field
   const handleDetailChange = (index, field, value) => {
     const newDetails = [...details];
+
+    // If changing fabric variant, check for duplicates
+    if (field === 'fabric_variant') {
+      if (isDuplicateFabricVariant(value, index)) {
+        setError(`This fabric variant is already selected in another detail. Please select a different variant.`);
+        return; // Don't update the state if duplicate
+      } else {
+        setError(''); // Clear error if no duplicate
+      }
+    }
+
     newDetails[index][field] = value;
     setDetails(newDetails);
   };
@@ -111,6 +129,16 @@ const AddCuttingRecord = () => {
     const hasValidDetails = details.some(detail => detail.fabric_variant);
     if (!hasValidDetails) {
       setError('Please select at least one fabric variant for your cutting details.');
+      return;
+    }
+
+    // Check for duplicate fabric variants
+    const selectedVariants = details.map(detail => detail.fabric_variant).filter(Boolean);
+    const uniqueVariants = [...new Set(selectedVariants)];
+
+    if (selectedVariants.length !== uniqueVariants.length) {
+      setError('You have selected the same fabric variant in multiple details. Please use unique fabric variants for each detail.');
+      setValidated(true);
       return;
     }
 
@@ -225,7 +253,7 @@ const AddCuttingRecord = () => {
       ];
 
       let yPos = 45;
-      generalInfoData.forEach((row, index) => {
+      generalInfoData.forEach((row) => {
         pdf.setFont('helvetica', 'bold');
         pdf.text(row[0], 25, yPos);
         pdf.setFont('helvetica', 'normal');
@@ -271,7 +299,7 @@ const AddCuttingRecord = () => {
 
       // Draw table rows
       pdf.setFont('helvetica', 'normal');
-      submittedRecord.details.forEach((detail, index) => {
+      submittedRecord.details.forEach((detail) => {
         yPos += 8;
 
         // Calculate total for this row
@@ -509,13 +537,19 @@ const AddCuttingRecord = () => {
                   : null;
 
                 // Prepare the variant options for React-Select
-                const variantOptions = fabricVariants.map((variant) => ({
-                  value: variant.id,
-                  label: `${variant.color_name || variant.color} (${variant.available_yard || variant.total_yard} yards available)`,
-                  color: variant.color,
-                  available_yard: variant.available_yard || variant.total_yard,
-                  total_yard: variant.total_yard
-                }));
+                const variantOptions = fabricVariants.map((variant) => {
+                  // Check if this variant is already selected in another detail
+                  const isAlreadySelected = isDuplicateFabricVariant(variant.id, index);
+
+                  return {
+                    value: variant.id,
+                    label: `${variant.color_name || variant.color} (${variant.available_yard || variant.total_yard} yards available)${isAlreadySelected ? ' - Already Selected' : ''}`,
+                    color: variant.color,
+                    available_yard: variant.available_yard || variant.total_yard,
+                    total_yard: variant.total_yard,
+                    isDisabled: isAlreadySelected // Disable options that are already selected
+                  };
+                });
 
                 return (
                   <Card key={index} className="mb-3 border">
@@ -565,6 +599,22 @@ const AddCuttingRecord = () => {
                                       ...provided,
                                       height: '38px',
                                       padding: '0 8px'
+                                    }),
+                                    option: (provided, state) => ({
+                                      ...provided,
+                                      backgroundColor: state.isDisabled
+                                        ? '#f8f9fa'
+                                        : state.isSelected
+                                          ? '#007bff'
+                                          : state.isFocused
+                                            ? '#e9ecef'
+                                            : 'white',
+                                      color: state.isDisabled
+                                        ? '#6c757d'
+                                        : state.isSelected
+                                          ? 'white'
+                                          : 'black',
+                                      cursor: state.isDisabled ? 'not-allowed' : 'default'
                                     })
                                   }}
                                 />
