@@ -9,8 +9,8 @@ import {
   FaSortAmountDown, FaSortAmountUp
 } from "react-icons/fa";
 
-// Helper function to get color code from color name
-const getColorCode = (colorName) => {
+// Helper function to get color code from color name or hex code
+const getColorCode = (colorInput) => {
   // Common color mapping
   const colorMap = {
     'red': '#FF0000',
@@ -48,21 +48,37 @@ const getColorCode = (colorName) => {
     'salmon': '#FA8072',
   };
 
-  // Try to match the color name (case insensitive)
-  if (!colorName) return '#CCCCCC'; // Default gray for undefined
+  // Default gray for undefined
+  if (!colorInput) return '#CCCCCC';
 
-  const lowerCaseName = colorName.toLowerCase();
+  // Check if the input is already a hex code (starts with #)
+  if (colorInput.startsWith('#')) {
+    // Validate that it's a proper hex code
+    const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+    if (hexRegex.test(colorInput)) {
+      return colorInput;
+    }
+  }
 
-  // Check for exact match
+  // If not a hex code, try to match the color name (case insensitive)
+  const lowerCaseName = colorInput.toLowerCase();
+
+  // Check for exact match in color map
   if (colorMap[lowerCaseName]) {
     return colorMap[lowerCaseName];
   }
 
-  // Check for partial match
+  // Check for partial match in color names
   for (const [key, value] of Object.entries(colorMap)) {
     if (lowerCaseName.includes(key)) {
       return value;
     }
+  }
+
+  // Extract hex code if it's in the format "name - #hexcode" or similar
+  const hexCodeMatch = colorInput.match(/#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/);
+  if (hexCodeMatch) {
+    return hexCodeMatch[0];
   }
 
   // If no match found, return a default color
@@ -154,9 +170,10 @@ const ViewProductList = () => {
   };
 
   // Fetch products data on component mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchProducts();
+    // We only want to fetch products once on component mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle responsive view mode and sidebar state
