@@ -1,5 +1,6 @@
 // API utility functions
 import axios from 'axios';
+import API_BASE_URL from './apiConfig';
 
 /**
  * Create an axios instance with authentication headers
@@ -9,7 +10,7 @@ export const createAuthenticatedAxios = () => {
   const token = localStorage.getItem('token');
 
   const instance = axios.create({
-    baseURL: 'http://localhost:8000/api/',
+    baseURL: API_BASE_URL,
     headers: {
       'Content-Type': 'application/json',
       'Authorization': token ? `JWT ${token}` : ''
