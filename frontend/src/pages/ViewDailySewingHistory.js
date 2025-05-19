@@ -3,7 +3,7 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
 import { format } from "date-fns"; // Import date-fns for formatting
-import { FaSearch, FaEdit, FaTrash, FaPlus, FaTshirt, FaExclamationTriangle, FaCheck } from "react-icons/fa";
+import { FaSearch, FaPlus, FaTshirt, FaExclamationTriangle } from "react-icons/fa";
 import { Card, Row, Col, Badge, Button, Form, InputGroup, Spinner, Alert } from "react-bootstrap";
 
 const ViewDailySewingHistory = () => {
@@ -17,7 +17,6 @@ const ViewDailySewingHistory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
-  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     // Fetch records on component mount
@@ -81,32 +80,7 @@ const ViewDailySewingHistory = () => {
   // Calculate total pages
   const totalPages = Math.ceil(sortedRecords.length / recordsPerPage);
 
-  // Delete a record by ID
-  const deleteRecord = async (id) => {
-    if (window.confirm("Are you sure you want to delete this record?")) {
-      try {
-        await axios.delete(`http://localhost:8000/api/sewing/daily-records/${id}/`);
-        // Remove the record from state after successful deletion
-        const updatedRecords = records.filter((record) => record.id !== id);
-        setRecords(updatedRecords);
-        setTotalItems(updatedRecords.length);
-        setSuccessMessage("Record deleted successfully!");
 
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-          setSuccessMessage("");
-        }, 3000);
-      } catch (err) {
-        console.error("Error deleting record:", err);
-        setError("Error deleting record. Please try again.");
-
-        // Clear error message after 3 seconds
-        setTimeout(() => {
-          setError("");
-        }, 3000);
-      }
-    }
-  };
 
   return (
     <>
@@ -145,13 +119,7 @@ const ViewDailySewingHistory = () => {
           </Col>
         </Row>
 
-        {/* Success and Error Messages */}
-        {successMessage && (
-          <Alert variant="success" className="mb-3 d-flex align-items-center">
-            <FaCheck className="me-2" /> {successMessage}
-          </Alert>
-        )}
-
+        {/* Error Message */}
         {error && (
           <Alert variant="danger" className="mb-3 d-flex align-items-center">
             <FaExclamationTriangle className="me-2" /> {error}
@@ -253,7 +221,6 @@ const ViewDailySewingHistory = () => {
                         <th className="px-3 py-3">L</th>
                         <th className="px-3 py-3">XL</th>
                         <th className="px-3 py-3">Damage</th>
-                        <th className="px-3 py-3">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -298,22 +265,7 @@ const ViewDailySewingHistory = () => {
                                 <span>0</span>
                               )}
                             </td>
-                            <td className="px-3 py-3">
-                              <div className="d-flex gap-2">
-                                <Link to={`/edit-daily-sewing-record/${record.id}`}>
-                                  <Button variant="outline-primary" size="sm">
-                                    <FaEdit /> Edit
-                                  </Button>
-                                </Link>
-                                <Button
-                                  variant="outline-danger"
-                                  size="sm"
-                                  onClick={() => deleteRecord(record.id)}
-                                >
-                                  <FaTrash /> Delete
-                                </Button>
-                              </div>
-                            </td>
+
                           </tr>
                         ))
                       )}

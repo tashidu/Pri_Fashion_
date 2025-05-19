@@ -32,13 +32,15 @@ const ViewApproveProduct = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  // State for image upload
+  // State for image upload and management
   const [showImageModal, setShowImageModal] = useState(false);
   const [productImage, setProductImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploadSuccess, setUploadSuccess] = useState("");
+  const [productImages, setProductImages] = useState([]);
+  const [loadingImages, setLoadingImages] = useState(false);
 
   // State for product order history
   const [productSales, setProductSales] = useState([]);
@@ -315,7 +317,57 @@ const ViewApproveProduct = () => {
     }
   };
 
-  // Open image upload modal
+  // Fetch product images
+  const fetchProductImages = async (productId) => {
+    setLoadingImages(true);
+    try {
+      const response = await axios.get(`http://localhost:8000/api/finished_product/${productId}/images/`);
+      setProductImages(response.data.images || []);
+    } catch (err) {
+      console.error("Error fetching product images:", err);
+      setUploadError("Failed to load product images. Please try again.");
+    } finally {
+      setLoadingImages(false);
+    }
+  };
+
+  // Delete product image
+  const handleDeleteImage = async (imageId) => {
+    if (!selectedProduct) return;
+
+    if (!window.confirm("Are you sure you want to delete this image?")) {
+      return;
+    }
+
+    setUploadLoading(true);
+    try {
+      await axios.delete(`http://localhost:8000/api/finished_product/${selectedProduct.id}/images/${imageId}/`);
+
+      // Remove the deleted image from the list
+      setProductImages(prevImages => prevImages.filter(img => img.id !== imageId));
+
+      // Show success message
+      setUploadSuccess("Image deleted successfully!");
+
+      // If this was the last image, close the modal after a delay
+      if (productImages.length <= 1) {
+        setTimeout(() => {
+          fetchProducts();
+          setShowImageModal(false);
+        }, 1500);
+      } else {
+        // Refresh the product data
+        fetchProducts();
+      }
+    } catch (err) {
+      console.error("Error deleting product image:", err);
+      setUploadError("Failed to delete image. Please try again.");
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  // Open image management modal
   const handleAddImage = (product) => {
     setSelectedProduct(product);
     setImagePreview(null);
@@ -323,6 +375,9 @@ const ViewApproveProduct = () => {
     setUploadError("");
     setUploadSuccess("");
     setShowImageModal(true);
+
+    // Fetch product images
+    fetchProductImages(product.id);
   };
 
   // Handle image selection from file input
@@ -431,11 +486,15 @@ const ViewApproveProduct = () => {
         }
       }
 
-      // Refresh the products list after a short delay
-      setTimeout(() => {
-        fetchProducts();
-        setShowImageModal(false);
-      }, 1500);
+      // Clear the image preview and selected file
+      setImagePreview(null);
+      setProductImage(null);
+
+      // Refresh the product images
+      fetchProductImages(selectedProduct.id);
+
+      // Refresh the products list
+      fetchProducts();
 
     } catch (err) {
       console.error("Error uploading product image:", err);
@@ -1810,7 +1869,10 @@ const ViewApproveProduct = () => {
                                   }}
                                   onClick={() => handleAddImage(product)}
                                 >
-                                  <FaImage size={20} className="text-secondary" />
+                                  <div className="text-center">
+                                    <FaImage size={20} className="text-secondary mb-1" />
+                                    <div className="small text-muted" style={{ fontSize: '9px' }}>Add Images</div>
+                                  </div>
                                 </div>
                               )}
                             </td>
@@ -2003,7 +2065,7 @@ const ViewApproveProduct = () => {
                             </>
                           )}
 
-                          {/* Add/Change Image Button */}
+                          {/* Manage Images Button */}
                           <Button
                             variant="outline-primary"
                             size="sm"
@@ -2013,7 +2075,7 @@ const ViewApproveProduct = () => {
                               handleAddImage(selectedProduct);
                             }}
                           >
-                            <FaUpload className="me-1" /> Add More
+                            <FaImage className="me-1" /> Manage Images
                           </Button>
                         </div>
 
@@ -2054,6 +2116,18 @@ const ViewApproveProduct = () => {
                             : `Product image for ${selectedProduct.product_name}`
                           }
                         </p>
+
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            setShowDetailModal(false);
+                            handleAddImage(selectedProduct);
+                          }}
+                          className="mt-3"
+                        >
+                          <FaImage className="me-2" />
+                          Manage Images
+                        </Button>
                       </div>
                     ) : selectedProduct.product_image ? (
                       <div>
@@ -2079,10 +2153,22 @@ const ViewApproveProduct = () => {
                               handleAddImage(selectedProduct);
                             }}
                           >
-                            <FaUpload className="me-1" /> Change
+                            <FaImage className="me-1" /> Manage Images
                           </Button>
                         </div>
                         <p className="text-muted">Product image for {selectedProduct.product_name}</p>
+
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            setShowDetailModal(false);
+                            handleAddImage(selectedProduct);
+                          }}
+                          className="mt-3"
+                        >
+                          <FaImage className="me-2" />
+                          Manage Images
+                        </Button>
                       </div>
                     ) : (
                       <div className="p-5 bg-light rounded shadow-sm" style={{ maxWidth: '500px', margin: '0 auto' }}>
@@ -2095,8 +2181,8 @@ const ViewApproveProduct = () => {
                             handleAddImage(selectedProduct);
                           }}
                         >
-                          <FaUpload className="me-2" />
-                          Add Product Image
+                          <FaImage className="me-2" />
+                          Manage Images
                         </Button>
                       </div>
                     )}
@@ -2176,35 +2262,22 @@ const ViewApproveProduct = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Image Upload Modal */}
+      {/* Image Management Modal */}
       <Modal
         show={showImageModal}
         onHide={() => setShowImageModal(false)}
         centered
+        size="lg"
       >
         <Modal.Header closeButton>
           <Modal.Title>
             <FaImage className="me-2" />
-            {selectedProduct && selectedProduct.product_images && selectedProduct.product_images.length > 0
-              ? `Add More Images for ${selectedProduct.product_name}`
-              : selectedProduct && selectedProduct.product_image
-                ? `Change Product Image for ${selectedProduct.product_name}`
-                : `Add Product Image`
-            }
+            Manage Images for {selectedProduct?.product_name}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {selectedProduct && (
             <>
-              <p className="mb-3">
-                {selectedProduct.product_images && selectedProduct.product_images.length > 0
-                  ? `Add another image for ${selectedProduct.product_name}. Current images: ${selectedProduct.product_images.length}`
-                  : selectedProduct.product_image
-                    ? `Replace the current image for ${selectedProduct.product_name}`
-                    : `Add an image for ${selectedProduct.product_name}`
-                }
-              </p>
-
               {uploadError && (
                 <Alert variant="danger" className="mb-3">
                   <FaExclamationTriangle className="me-2" />
@@ -2219,97 +2292,168 @@ const ViewApproveProduct = () => {
                 </Alert>
               )}
 
-              <div
-                {...getRootProps()}
-                className={`border rounded p-4 text-center mb-3 ${isDragActive ? 'bg-light border-primary' : ''}`}
-                style={{
-                  cursor: 'pointer',
-                  borderStyle: 'dashed',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                <input {...getInputProps()} />
+              {/* Current Images Section */}
+              <div className="mb-4">
+                <h5 className="mb-3 d-flex align-items-center">
+                  <FaImage className="me-2" />
+                  Current Images
+                  <Badge bg="primary" className="ms-2">
+                    {productImages.length} {productImages.length === 1 ? 'image' : 'images'}
+                  </Badge>
+                </h5>
 
-                {imagePreview ? (
-                  <div className="text-center">
-                    <div className="position-relative mb-3" style={{ maxWidth: '400px', margin: '0 auto' }}>
-                      <Image
-                        src={imagePreview}
-                        alt="Preview"
-                        className="shadow-sm"
-                        style={{
-                          maxHeight: '250px',
-                          borderRadius: '8px',
-                          objectFit: 'contain'
-                        }}
-                      />
-                      <div className="position-absolute top-0 end-0 m-2">
-                        <Button
-                          variant="light"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeImage();
-                          }}
-                          className="me-2 shadow-sm"
-                        >
-                          <FaTrash className="text-danger" />
-                        </Button>
-                        <Button
-                          variant="light"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            triggerFileInput();
-                          }}
+                {loadingImages ? (
+                  <div className="text-center py-4">
+                    <Spinner animation="border" role="status" className="me-2">
+                      <span className="visually-hidden">Loading...</span>
+                    </Spinner>
+                    <span>Loading images...</span>
+                  </div>
+                ) : productImages.length === 0 ? (
+                  <div className="text-center py-4 bg-light rounded">
+                    <FaImage size={40} className="mb-3 text-secondary" />
+                    <p>No images available for this product</p>
+                  </div>
+                ) : (
+                  <Row className="g-3">
+                    {productImages.map((image, index) => (
+                      <Col md={4} key={image.id || index}>
+                        <Card className="h-100 shadow-sm">
+                          <div className="position-relative">
+                            <Card.Img
+                              variant="top"
+                              src={image.url}
+                              style={{ height: '180px', objectFit: 'cover' }}
+                            />
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              className="position-absolute top-0 end-0 m-2"
+                              onClick={() => handleDeleteImage(image.id)}
+                              disabled={uploadLoading || image.is_legacy}
+                            >
+                              <FaTrash />
+                            </Button>
+                          </div>
+                          <Card.Body className="text-center">
+                            <Card.Text>
+                              Image {index + 1}
+                              {image.is_legacy && <Badge bg="secondary" className="ms-2">Legacy</Badge>}
+                            </Card.Text>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+                )}
+              </div>
+
+              {/* Upload New Image Section */}
+              <div className="mt-4">
+                <h5 className="mb-3 d-flex align-items-center">
+                  <FaUpload className="me-2" />
+                  Upload New Image
+                </h5>
+
+                {/* Wrap the dropzone in a div to isolate it from the rest of the modal */}
+                <div className="upload-container">
+                  <div
+                    {...getRootProps()}
+                    className={`border rounded p-4 text-center mb-3 ${isDragActive ? 'bg-light border-primary' : ''}`}
+                    style={{
+                      cursor: 'pointer',
+                      borderStyle: 'dashed',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    <input {...getInputProps()} />
+
+                  {imagePreview ? (
+                    <div className="text-center">
+                      <div className="position-relative mb-3" style={{ maxWidth: '400px', margin: '0 auto' }}>
+                        <Image
+                          src={imagePreview}
+                          alt="Preview"
                           className="shadow-sm"
+                          style={{
+                            maxHeight: '250px',
+                            borderRadius: '8px',
+                            objectFit: 'contain'
+                          }}
+                        />
+                        <div className="position-absolute top-0 end-0 m-2">
+                          <Button
+                            variant="light"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeImage();
+                            }}
+                            className="me-2 shadow-sm"
+                          >
+                            <FaTrash className="text-danger" />
+                          </Button>
+                          <Button
+                            variant="light"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerFileInput();
+                            }}
+                            className="shadow-sm"
+                          >
+                            <FaUndo className="text-primary" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-muted">Image selected for {selectedProduct.product_name}</p>
+
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="primary"
+                          onClick={handleUploadImage}
+                          disabled={!productImage || uploadLoading}
+                          className="mt-3"
                         >
-                          <FaUndo className="text-primary" />
+                          {uploadLoading ? (
+                            <>
+                              <Spinner as="span" animation="border" size="sm" className="me-2" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <FaUpload className="me-2" />
+                              Upload Image
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
-                    <p className="text-muted">Image selected for {selectedProduct.product_name}</p>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <FaUpload size={40} className="mb-3 text-primary" />
-                    <h5>Drag & drop a product image here</h5>
-                    <p>or click to select from your device</p>
-                    <p className="text-muted small mt-3">Supported formats: JPEG, PNG, GIF (Max: 5MB)</p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="text-center py-4">
+                      <FaUpload size={40} className="mb-3 text-primary" />
+                      <h5>Drag & drop a product image here</h5>
+                      <p>or click to select from your device</p>
+                      <p className="text-muted small mt-3">Supported formats: JPEG, PNG, GIF (Max: 5MB)</p>
+                    </div>
+                  )}
 
-                <Form.Control
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageChange}
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                />
+                    <Form.Control
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageChange}
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                </div>
               </div>
             </>
           )}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowImageModal(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleUploadImage}
-            disabled={!productImage || uploadLoading}
-          >
-            {uploadLoading ? (
-              <>
-                <Spinner as="span" animation="border" size="sm" className="me-2" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <FaUpload className="me-2" />
-                Upload Image
-              </>
-            )}
+            Close
           </Button>
         </Modal.Footer>
       </Modal>
