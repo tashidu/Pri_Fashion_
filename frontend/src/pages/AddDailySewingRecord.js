@@ -115,8 +115,25 @@ const AddDailySewingRecord = () => {
                     parseInt(l || 0) > 0 ||
                     parseInt(xl || 0) > 0;
 
-    setFormValid(hasProduct && hasColor && hasSizes);
-  }, [selectedProduct, selectedColor, xs, s, m, l, xl]);
+    // Calculate total sewn for validation
+    const totalSewnItems = parseInt(xs || 0) + parseInt(s || 0) + parseInt(m || 0) + parseInt(l || 0) + parseInt(xl || 0);
+    const isDamageValid = parseInt(damageCount || 0) <= totalSewnItems;
+
+    // Check if total sewn + damage exceeds available quantity
+    let isTotalValid = true;
+    if (selectedColor && alreadySewn) {
+      const option = productColors.find(opt => opt.value === selectedColor);
+      if (option) {
+        const totalAvailable = option.totalCut -
+          (alreadySewn.xs || 0) - (alreadySewn.s || 0) -
+          (alreadySewn.m || 0) - (alreadySewn.l || 0) -
+          (alreadySewn.xl || 0) - (alreadySewn.damage_count || 0);
+        isTotalValid = (totalSewnItems + parseInt(damageCount || 0)) <= totalAvailable;
+      }
+    }
+
+    setFormValid(hasProduct && hasColor && hasSizes && isDamageValid && isTotalValid);
+  }, [selectedProduct, selectedColor, xs, s, m, l, xl, damageCount, alreadySewn, productColors]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -156,6 +173,14 @@ const AddDailySewingRecord = () => {
     // Check for negative values
     if (parsedXs < 0 || parsedS < 0 || parsedM < 0 || parsedL < 0 || parsedXl < 0 || parsedDamage < 0) {
       setMessage("All quantities must be non-negative values.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate that damage count doesn't exceed total sewn items
+    const totalSewnItems = parsedXs + parsedS + parsedM + parsedL + parsedXl;
+    if (parsedDamage > totalSewnItems) {
+      setMessage(`Damage count (${parsedDamage}) cannot exceed the total number of sewn items (${totalSewnItems}).`);
       setIsSubmitting(false);
       return;
     }
@@ -204,6 +229,17 @@ const AddDailySewingRecord = () => {
 
     if (newDailyTotal + alreadySewnTotal > selectedOption.totalCut) {
       setMessage(`The total sewing count (${newDailyTotal}) exceeds the available quantity (${selectedOption.totalCut - alreadySewnTotal}). Already sewn: ${alreadySewnTotal}`);
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate that daily sewing count + damage count doesn't exceed available fabric variant count
+    const totalAlreadyDamage = alreadySewn.damage_count || 0;
+    const totalAvailable = selectedOption.totalCut - alreadySewnTotal - totalAlreadyDamage;
+
+    // Check if daily sewing + damage exceeds available
+    if (newDailyTotal + parsedDamage > totalAvailable) {
+      setMessage(`The total of sewn items (${newDailyTotal}) plus damage count (${parsedDamage}) exceeds the available quantity (${totalAvailable}).`);
       setIsSubmitting(false);
       return;
     }
@@ -274,17 +310,39 @@ const AddDailySewingRecord = () => {
     const selectedOption = productColors.find(opt => opt.value === selectedColor);
     if (!selectedOption) return null;
 
+    // Calculate total available after accounting for already sewn and damage
+    const totalCut = selectedOption.totalCut;
+    const totalAlreadySewn = (alreadySewn.xs || 0) + (alreadySewn.s || 0) +
+                            (alreadySewn.m || 0) + (alreadySewn.l || 0) +
+                            (alreadySewn.xl || 0);
+    const totalAlreadyDamaged = alreadySewn.damage_count || 0;
+    const totalAvailable = totalCut - totalAlreadySewn - totalAlreadyDamaged;
+
+    // Calculate remaining per size
     return {
       xs: selectedOption.xs_cut - (alreadySewn.xs || 0) - parseInt(xs || 0),
       s: selectedOption.s_cut - (alreadySewn.s || 0) - parseInt(s || 0),
       m: selectedOption.m_cut - (alreadySewn.m || 0) - parseInt(m || 0),
       l: selectedOption.l_cut - (alreadySewn.l || 0) - parseInt(l || 0),
       xl: selectedOption.xl_cut - (alreadySewn.xl || 0) - parseInt(xl || 0),
+      total: totalAvailable - parseInt(xs || 0) - parseInt(s || 0) -
+             parseInt(m || 0) - parseInt(l || 0) - parseInt(xl || 0) -
+             parseInt(damageCount || 0)
     };
   };
 
   // Calculate total sewn
   const totalSewn = parseInt(xs || 0) + parseInt(s || 0) + parseInt(m || 0) + parseInt(l || 0) + parseInt(xl || 0);
+
+  // Check if damage count exceeds total sewn items
+  const isDamageExceeded = parseInt(damageCount || 0) > totalSewn;
+
+  // Check if total sewn + damage exceeds available quantity
+  const selectedColorOption = productColors.find(opt => opt.value === selectedColor);
+  const isTotalExceeded = selectedColorOption && alreadySewn ?
+    (totalSewn + parseInt(damageCount || 0)) >
+    (selectedColorOption.totalCut - (alreadySewn.xs || 0) - (alreadySewn.s || 0) - (alreadySewn.m || 0) - (alreadySewn.l || 0) - (alreadySewn.xl || 0) - (alreadySewn.damage_count || 0))
+    : false;
 
   // Get remaining quantities
   const remainingQuantities = getRemainingQuantities();
@@ -457,6 +515,54 @@ const AddDailySewingRecord = () => {
                                   </tr>
                                 );
                               })}
+
+                              {/* Add a row for damage count */}
+                              <tr className="table-light">
+                                <td className="text-center">
+                                  <Badge bg="warning" text="dark" className="px-3 py-2">Damage</Badge>
+                                </td>
+                                <td className="text-center">-</td>
+                                <td className="text-center">
+                                  <Badge bg="warning" text="dark" pill className="px-3">
+                                    {alreadySewn ? alreadySewn.damage_count || 0 : 0}
+                                  </Badge>
+                                </td>
+                                <td className="text-center">-</td>
+                              </tr>
+
+                              {/* Add a row for total */}
+                              <tr className="table-primary">
+                                <td className="text-center">
+                                  <strong>TOTAL</strong>
+                                </td>
+                                <td className="text-center">
+                                  <Badge bg="primary" pill className="px-3">
+                                    {selectedColorOption ? selectedColorOption.totalCut : 0}
+                                  </Badge>
+                                </td>
+                                <td className="text-center">
+                                  <Badge bg="primary" pill className="px-3">
+                                    {alreadySewn ?
+                                      (alreadySewn.xs || 0) + (alreadySewn.s || 0) +
+                                      (alreadySewn.m || 0) + (alreadySewn.l || 0) +
+                                      (alreadySewn.xl || 0) + (alreadySewn.damage_count || 0) : 0}
+                                  </Badge>
+                                </td>
+                                <td className="text-center">
+                                  {selectedColorOption && alreadySewn && (
+                                    <Badge
+                                      bg={remainingQuantities && remainingQuantities.total >= 0 ? 'success' : 'danger'}
+                                      pill
+                                      className="px-3"
+                                    >
+                                      {Math.max(0, selectedColorOption.totalCut -
+                                        ((alreadySewn.xs || 0) + (alreadySewn.s || 0) +
+                                        (alreadySewn.m || 0) + (alreadySewn.l || 0) +
+                                        (alreadySewn.xl || 0) + (alreadySewn.damage_count || 0)))}
+                                    </Badge>
+                                  )}
+                                </td>
+                              </tr>
                             </tbody>
                           </table>
                         </div>
@@ -466,8 +572,11 @@ const AddDailySewingRecord = () => {
                             <FaInfoCircle className="me-1" />
                             The quantities above show how many items are available for sewing in each size.
                           </small>
-                          <small className="text-muted d-block">
+                          <small className="text-muted d-block mb-1">
                             You cannot add more than the available quantity for each size.
+                          </small>
+                          <small className="text-muted d-block">
+                            <strong>Important:</strong> The total of sewn items plus damage count cannot exceed the total available quantity.
                           </small>
                         </div>
                       </>
@@ -540,9 +649,21 @@ const AddDailySewingRecord = () => {
                         const val = Math.max(0, parseInt(e.target.value || 0));
                         setDamageCount(val);
                       }}
-                      className="text-center"
+                      className={`text-center ${isDamageExceeded || isTotalExceeded ? 'border-danger' : ''}`}
                       disabled={!selectedColor}
                     />
+                    {isDamageExceeded && (
+                      <div className="text-danger small mt-1 text-center">
+                        <FaExclamationTriangle className="me-1" size={12} />
+                        Exceeds total sewn
+                      </div>
+                    )}
+                    {!isDamageExceeded && isTotalExceeded && (
+                      <div className="text-danger small mt-1 text-center">
+                        <FaExclamationTriangle className="me-1" size={12} />
+                        Exceeds available
+                      </div>
+                    )}
                   </Form.Group>
                 </Col>
               </Row>
@@ -563,9 +684,23 @@ const AddDailySewingRecord = () => {
                       {damageCount > 0 && (
                         <div className="d-flex align-items-center">
                           <strong className="me-2">Damage Count:</strong>
-                          <Badge bg="warning" text="dark">{damageCount}</Badge>
+                          <Badge bg={isDamageExceeded || isTotalExceeded ? "danger" : "warning"} text={isDamageExceeded || isTotalExceeded ? "white" : "dark"}>
+                            {damageCount} {(isDamageExceeded || isTotalExceeded) && <FaExclamationTriangle className="ms-1" size={12} />}
+                          </Badge>
                           <strong className="mx-2">Good Items:</strong>
-                          <Badge bg="success">{totalSewn - damageCount}</Badge>
+                          <Badge bg="success">{Math.max(0, totalSewn - damageCount)}</Badge>
+                          {isDamageExceeded && (
+                            <span className="text-danger ms-2 small">
+                              <FaExclamationTriangle className="me-1" />
+                              Damage count cannot exceed total sewn items
+                            </span>
+                          )}
+                          {!isDamageExceeded && isTotalExceeded && (
+                            <span className="text-danger ms-2 small">
+                              <FaExclamationTriangle className="me-1" />
+                              Total sewn + damage exceeds available quantity
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -598,7 +733,11 @@ const AddDailySewingRecord = () => {
                     <FaInfoCircle className="me-1" />
                     {!selectedProduct ? "Please select a product" :
                      !selectedColor ? "Please select a color" :
-                     "Please enter at least one size quantity"}
+                     parseInt(xs || 0) + parseInt(s || 0) + parseInt(m || 0) + parseInt(l || 0) + parseInt(xl || 0) === 0 ?
+                     "Please enter at least one size quantity" :
+                     isDamageExceeded ? "Damage count cannot exceed total sewn items" :
+                     isTotalExceeded ? "Total sewn items plus damage count exceeds available quantity" :
+                     "Please check your inputs"}
                   </small>
                 </div>
               )}

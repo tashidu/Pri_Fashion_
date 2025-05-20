@@ -142,7 +142,8 @@ class AlreadySewnQuantitiesView(APIView):
                 s_sum=Sum('s'),
                 m_sum=Sum('m'),
                 l_sum=Sum('l'),
-                xl_sum=Sum('xl')
+                xl_sum=Sum('xl'),
+                damage_sum=Sum('damage_count')
             )
 
             # Prepare the response
@@ -151,7 +152,8 @@ class AlreadySewnQuantitiesView(APIView):
                 's': aggregates.get('s_sum') or 0,
                 'm': aggregates.get('m_sum') or 0,
                 'l': aggregates.get('l_sum') or 0,
-                'xl': aggregates.get('xl_sum') or 0
+                'xl': aggregates.get('xl_sum') or 0,
+                'damage_count': aggregates.get('damage_sum') or 0
             }
 
             return Response(response_data)
