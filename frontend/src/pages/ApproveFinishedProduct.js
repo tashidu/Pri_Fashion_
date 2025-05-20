@@ -52,6 +52,11 @@ const ApproveFinishedProduct = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [profitMargin, setProfitMargin] = useState(0);
 
+  // Product name editing state
+  const [productName, setProductName] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [productNameError, setProductNameError] = useState('');
+
   // Calculate profit margin whenever prices change
   useEffect(() => {
     if (manufacturePrice && sellingPrice) {
@@ -101,6 +106,14 @@ const ApproveFinishedProduct = () => {
 
       if (cuttingRes.data) {
         setProductDetails(cuttingRes.data);
+
+        // Set product name from API response
+        if (cuttingRes.data.product_name) {
+          setProductName(cuttingRes.data.product_name);
+        } else if (cuttingRes.data.fabric_definition_data) {
+          // If no product name, use fabric name as default
+          setProductName(cuttingRes.data.fabric_definition_data.fabric_name);
+        }
 
         // Extract fabric details
         if (cuttingRes.data.details && cuttingRes.data.details.length > 0) {
@@ -373,6 +386,95 @@ const ApproveFinishedProduct = () => {
     setShowPdfModal(false);
   };
 
+  // Start editing product name
+  const startEditingName = () => {
+    setIsEditingName(true);
+  };
+
+  // Cancel editing product name
+  const cancelEditingName = () => {
+    setIsEditingName(false);
+    setProductNameError('');
+    // Reset to original name from product details
+    if (productDetails && productDetails.product_name) {
+      setProductName(productDetails.product_name);
+    } else if (productDetails && productDetails.fabric_definition_data) {
+      setProductName(productDetails.fabric_definition_data.fabric_name);
+    }
+  };
+
+  // Save updated product name
+  const saveProductName = async () => {
+    // Validate product name
+    if (!productName.trim()) {
+      setProductNameError('Product name cannot be empty');
+      return;
+    }
+
+    setProductNameError('');
+    setLoading(true);
+
+    try {
+      // First, get the current cutting record data
+      const currentRecord = await axios.get(`http://localhost:8000/api/cutting/records/${id}/`);
+
+      // Create a payload with all the required fields, including details
+      const payload = {
+        fabric_definition: currentRecord.data.fabric_definition,
+        cutting_date: currentRecord.data.cutting_date,
+        product_name: productName,
+        details: currentRecord.data.details  // Include existing details without modification
+      };
+
+      // Update the product name in the backend
+      await axios.put(`http://localhost:8000/api/cutting/cutting-records/${id}/`, payload);
+
+      // Update local state
+      setProductDetails({
+        ...productDetails,
+        product_name: productName
+      });
+
+      setIsEditingName(false);
+      setSuccessMsg('Product name updated successfully');
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMsg('');
+      }, 3000);
+    } catch (err) {
+      console.error('Error updating product name:', err);
+
+      // Check if the product name was actually updated despite the error
+      try {
+        const updatedRecord = await axios.get(`http://localhost:8000/api/cutting/records/${id}/`);
+        if (updatedRecord.data.product_name === productName) {
+          // If the name was updated successfully despite the error, show success message
+          setProductDetails({
+            ...productDetails,
+            product_name: productName
+          });
+          setIsEditingName(false);
+          setSuccessMsg('Product name updated successfully');
+
+          // Clear success message after 3 seconds
+          setTimeout(() => {
+            setSuccessMsg('');
+          }, 3000);
+          return;
+        }
+      } catch (checkErr) {
+        // If we can't check, just show the original error
+        console.error('Error checking product name update:', checkErr);
+      }
+
+      // Show error message if the name wasn't updated
+      setError('Failed to update product name. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Generate PDF report for the product
   const generateProductReport = () => {
     setPdfLoading(true);
@@ -397,11 +499,11 @@ const ApproveFinishedProduct = () => {
       doc.text('Product Report', 105, 20, { align: 'center' });
 
       // Add product name
-      const productName = productDetails && productDetails.fabric_definition_data
+      const pdfProductName = productName || (productDetails && productDetails.fabric_definition_data
         ? productDetails.fabric_definition_data.fabric_name
-        : `Batch ID: ${id}`;
+        : `Batch ID: ${id}`);
       doc.setFontSize(headingFontSize);
-      doc.text(productName, 105, 30, { align: 'center' });
+      doc.text(pdfProductName, 105, 30, { align: 'center' });
 
       // Add approval date
       doc.setFontSize(normalFontSize);
@@ -637,9 +739,9 @@ const ApproveFinishedProduct = () => {
           <tbody>
             <tr>
               <td><strong>Product Name:</strong></td>
-              <td>{productDetails && productDetails.fabric_definition_data ?
+              <td>{productName || (productDetails && productDetails.fabric_definition_data ?
                 productDetails.fabric_definition_data.fabric_name :
-                `Batch ID: ${id}`}</td>
+                `Batch ID: ${id}`)}</td>
             </tr>
             <tr>
               <td><strong>Manufacture Price:</strong></td>
@@ -694,11 +796,56 @@ const ApproveFinishedProduct = () => {
             <Card className="shadow product-card slide-in" style={{ backgroundColor: "#D9EDFB", borderRadius: "10px" }}>
               <Card.Body>
                 <h2 className="text-center mb-3">Approve Finished Product</h2>
-                <p className="text-center text-muted mb-4">
-                  {productDetails && productDetails.fabric_definition_data ?
-                    `${productDetails.fabric_definition_data.fabric_name}` :
-                    `Batch ID: ${id}`}
-                </p>
+
+                {/* Product Name with Edit Functionality */}
+                <div className="text-center mb-4">
+                  {isEditingName ? (
+                    <div className="d-flex justify-content-center align-items-center">
+                      <Form.Group className="mb-0 me-2 flex-grow-1" style={{ maxWidth: '300px' }}>
+                        <Form.Control
+                          type="text"
+                          value={productName}
+                          onChange={(e) => setProductName(e.target.value)}
+                          isInvalid={!!productNameError}
+                          placeholder="Enter product name"
+                        />
+                        <Form.Control.Feedback type="invalid">
+                          {productNameError}
+                        </Form.Control.Feedback>
+                      </Form.Group>
+                      <Button
+                        variant="success"
+                        size="sm"
+                        className="me-1"
+                        onClick={saveProductName}
+                      >
+                        <FaCheck />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={cancelEditingName}
+                      >
+                        <FaUndo />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="d-flex justify-content-center align-items-center">
+                      <p className="text-center text-muted mb-0 me-2">
+                        {productName || (productDetails && productDetails.fabric_definition_data ?
+                          productDetails.fabric_definition_data.fabric_name :
+                          `Batch ID: ${id}`)}
+                      </p>
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        onClick={startEditingName}
+                      >
+                        Edit Name
+                      </Button>
+                    </div>
+                  )}
+                </div>
 
                 {error && (
                   <Alert variant="danger" className="mb-4 fade-in">
@@ -733,11 +880,52 @@ const ApproveFinishedProduct = () => {
                     </h4>
 
                     <div className="text-center mb-4">
-                      <h5>
-                        {productDetails && productDetails.fabric_definition_data ?
-                          productDetails.fabric_definition_data.fabric_name :
-                          `Batch ID: ${id}`}
-                      </h5>
+                      {isEditingName ? (
+                        <div className="d-flex justify-content-center align-items-center">
+                          <Form.Group className="mb-0 me-2 flex-grow-1" style={{ maxWidth: '300px' }}>
+                            <Form.Control
+                              type="text"
+                              value={productName}
+                              onChange={(e) => setProductName(e.target.value)}
+                              isInvalid={!!productNameError}
+                              placeholder="Enter product name"
+                            />
+                            <Form.Control.Feedback type="invalid">
+                              {productNameError}
+                            </Form.Control.Feedback>
+                          </Form.Group>
+                          <Button
+                            variant="success"
+                            size="sm"
+                            className="me-1"
+                            onClick={saveProductName}
+                          >
+                            <FaCheck />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={cancelEditingName}
+                          >
+                            <FaUndo />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="d-flex justify-content-center align-items-center">
+                          <h5 className="mb-0 me-2">
+                            {productName || (productDetails && productDetails.fabric_definition_data ?
+                              productDetails.fabric_definition_data.fabric_name :
+                              `Batch ID: ${id}`)}
+                          </h5>
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={startEditingName}
+                          >
+                            Edit Name
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-4 bg-white rounded mb-3">
@@ -852,13 +1040,54 @@ const ApproveFinishedProduct = () => {
                         <Row className="mt-3">
                           <Col md={6}>
                             <h5 className="mb-3"><FaInfoCircle className="me-2" />Product Name</h5>
-                            <div className="p-3 bg-light rounded mb-4">
-                              <strong>
-                                {productDetails && productDetails.fabric_definition_data ?
-                                  productDetails.fabric_definition_data.fabric_name :
-                                  `Batch ID: ${id}`}
-                              </strong>
-                            </div>
+                            {isEditingName ? (
+                              <div className="mb-4">
+                                <Form.Group>
+                                  <Form.Control
+                                    type="text"
+                                    value={productName}
+                                    onChange={(e) => setProductName(e.target.value)}
+                                    isInvalid={!!productNameError}
+                                    placeholder="Enter product name"
+                                  />
+                                  <Form.Control.Feedback type="invalid">
+                                    {productNameError}
+                                  </Form.Control.Feedback>
+                                </Form.Group>
+                                <div className="mt-2">
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    className="me-1"
+                                    onClick={saveProductName}
+                                  >
+                                    <FaCheck className="me-1" /> Save
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={cancelEditingName}
+                                  >
+                                    <FaUndo className="me-1" /> Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-3 bg-light rounded mb-4 d-flex justify-content-between align-items-center">
+                                <strong>
+                                  {productName || (productDetails && productDetails.fabric_definition_data ?
+                                    productDetails.fabric_definition_data.fabric_name :
+                                    `Batch ID: ${id}`)}
+                                </strong>
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  onClick={startEditingName}
+                                >
+                                  Edit Name
+                                </Button>
+                              </div>
+                            )}
 
                             <h5 className="mb-3"><FaTags className="me-2" />Colors</h5>
                             <div className="mb-4">
@@ -1108,9 +1337,9 @@ const ApproveFinishedProduct = () => {
         <Modal.Body>
           <p>Are you sure you want to generate a PDF report for this product?</p>
           <div className="bg-light p-3 rounded">
-            <p className="mb-1"><strong>Product:</strong> {productDetails && productDetails.fabric_definition_data ?
+            <p className="mb-1"><strong>Product:</strong> {productName || (productDetails && productDetails.fabric_definition_data ?
               productDetails.fabric_definition_data.fabric_name :
-              `Batch ID: ${id}`}</p>
+              `Batch ID: ${id}`)}</p>
             <p className="mb-1"><strong>Manufacture Price:</strong> LKR {manufacturePrice}</p>
             <p className="mb-1"><strong>Selling Price:</strong> LKR {sellingPrice}</p>
             <p className="mb-0"><strong>Profit Margin:</strong> {profitMargin}%</p>
