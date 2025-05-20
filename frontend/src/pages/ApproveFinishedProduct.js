@@ -104,6 +104,9 @@ const ApproveFinishedProduct = () => {
 
         // Extract fabric details
         if (cuttingRes.data.details && cuttingRes.data.details.length > 0) {
+          // Debug: Log the fabric details to see what color data we're getting
+          console.log('Fabric details from API:', cuttingRes.data.details);
+
           setFabricDetails(cuttingRes.data.details);
 
           // Calculate size quantities
@@ -476,7 +479,8 @@ const ApproveFinishedProduct = () => {
         doc.setFont('helvetica', 'normal');
 
         fabricDetails.forEach((detail, index) => {
-          doc.text(`Color ${index + 1}: ${detail.color || 'N/A'}`, 25, yPos);
+          const colorName = detail.fabric_variant_data?.color_name || detail.color || 'N/A';
+          doc.text(`Color ${index + 1}: ${colorName}`, 25, yPos);
           yPos += 7;
         });
 
@@ -545,21 +549,42 @@ const ApproveFinishedProduct = () => {
 
   // Render color swatch
   const renderColorSwatch = (color) => {
-    const colorMap = {
-      'red': '#dc3545',
-      'blue': '#0d6efd',
-      'green': '#198754',
-      'yellow': '#ffc107',
-      'black': '#212529',
-      'white': '#f8f9fa',
-      'purple': '#6f42c1',
-      'orange': '#fd7e14',
-      'pink': '#d63384',
-      'brown': '#8B4513',
-      'gray': '#6c757d',
-    };
+    if (!color) return null;
 
-    const bgColor = colorMap[color.toLowerCase()] || color;
+    // For debugging - log the color value we're receiving
+    console.log('Color value received:', color);
+
+    // SIMPLIFIED APPROACH: Directly use the color value if it looks like a hex code
+    let bgColor;
+
+    // If it starts with #, use it directly
+    if (color.startsWith('#')) {
+      bgColor = color;
+    }
+    // If it looks like a hex code without #, add the #
+    else if (/^[0-9A-Fa-f]{6}$/.test(color) || /^[0-9A-Fa-f]{3}$/.test(color)) {
+      bgColor = `#${color}`;
+    }
+    // For named colors like "Black", "Red", etc.
+    else {
+      // Common color names mapping
+      const colorMap = {
+        'red': '#dc3545',
+        'blue': '#0d6efd',
+        'green': '#198754',
+        'yellow': '#ffc107',
+        'black': '#212529',
+        'white': '#f8f9fa',
+        'purple': '#6f42c1',
+        'orange': '#fd7e14',
+        'pink': '#d63384',
+        'brown': '#8B4513',
+        'gray': '#6c757d',
+      };
+
+      // Try to get from color map or use the name directly
+      bgColor = colorMap[color.toLowerCase()] || color;
+    }
 
     return (
       <OverlayTrigger
@@ -569,6 +594,7 @@ const ApproveFinishedProduct = () => {
         <div
           className="color-swatch"
           style={{ backgroundColor: bgColor }}
+          data-color={color}
         />
       </OverlayTrigger>
     );
@@ -749,8 +775,8 @@ const ApproveFinishedProduct = () => {
                               {fabricDetails.length > 0 ? (
                                 fabricDetails.map((detail, index) => (
                                   <div key={index} className="mb-2">
-                                    {renderColorSwatch(detail.color || 'gray')}
-                                    <span className="ms-2">{detail.color}</span>
+                                    {renderColorSwatch(detail.fabric_variant_data?.color || detail.color || 'gray')}
+                                    <span className="ms-2">{detail.fabric_variant_data?.color_name || detail.color}</span>
                                   </div>
                                 ))
                               ) : (
@@ -839,8 +865,8 @@ const ApproveFinishedProduct = () => {
                               {fabricDetails.length > 0 ? (
                                 fabricDetails.map((detail, index) => (
                                   <div key={index} className="mb-2">
-                                    {renderColorSwatch(detail.color || 'gray')}
-                                    <span className="ms-2">{detail.color}</span>
+                                    {renderColorSwatch(detail.fabric_variant_data?.color || detail.color || 'gray')}
+                                    <span className="ms-2">{detail.fabric_variant_data?.color_name || detail.color}</span>
                                   </div>
                                 ))
                               ) : (
