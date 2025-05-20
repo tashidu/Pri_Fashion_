@@ -452,9 +452,9 @@ function OwnerDashboard() {
           </Button>
           <Button
             variant="primary"
-            onClick={() => navigate('/add-packing-session')}
+            onClick={() => navigate('/view-packing-sessions')}
           >
-            Go to Packing Page
+            Go to Packing History
           </Button>
         </Modal.Footer>
       </Modal>
@@ -949,7 +949,7 @@ function OwnerDashboard() {
                     <FaBoxes className="text-primary me-2" />
                     Packing Overview
                   </h5>
-                  
+
                 </Card.Header>
                 <Card.Body>
                   {loading ? (
