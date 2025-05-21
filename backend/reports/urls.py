@@ -7,7 +7,8 @@ from .dashboard_views import (
     LowStockItemsView,
     ProductionTrendsView,
     ColorAnalysisView,
-    FabricStockView
+    FabricStockView,
+    DeliveredUnpaidOrdersView
 )
 from .sales_views import SalesPerformanceView, ProductIncomePercentageView
 
@@ -21,6 +22,7 @@ urlpatterns = [
     path('dashboard/production-trends/', ProductionTrendsView.as_view(), name='production-trends'),
     path('dashboard/color-analysis/', ColorAnalysisView.as_view(), name='color-analysis'),
     path('dashboard/fabric-stock/', FabricStockView.as_view(), name='fabric-stock'),
+    path('dashboard/delivered-unpaid-orders/', DeliveredUnpaidOrdersView.as_view(), name='delivered-unpaid-orders'),
 
     # Sales performance endpoints
     path('sales/performance/', SalesPerformanceView.as_view(), name='sales-performance'),

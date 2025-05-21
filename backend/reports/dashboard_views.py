@@ -7,6 +7,7 @@ from fabric.models import FabricDefinition, FabricVariant, Supplier
 from cutting.models import CuttingRecord, CuttingRecordFabric
 from sewing.models import DailySewingRecord
 from packing_app.models import PackingSession
+from order.models import Order
 from datetime import datetime, timedelta
 
 class DashboardStatsView(APIView):
@@ -287,6 +288,29 @@ class FabricStockView(APIView):
                 })
 
             return Response(result, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DeliveredUnpaidOrdersView(APIView):
+    """
+    API endpoint that returns the count of orders that are delivered but not fully paid.
+    This includes orders with status 'delivered' and 'partially_paid'.
+    """
+    def get(self, request, format=None):
+        try:
+            # Get count of orders that are delivered but not fully paid
+            # This includes orders with status 'delivered' and 'partially_paid'
+            delivered_unpaid_count = Order.objects.filter(
+                status__in=['delivered', 'partially_paid']
+            ).count()
+
+            return Response({
+                'delivered_unpaid_count': delivered_unpaid_count
+            }, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({
