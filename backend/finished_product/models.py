@@ -6,7 +6,8 @@ from django.db.models import Sum, F
 from cutting.models import CuttingRecord
 
 class FinishedProduct(models.Model):
-    # Link to the cutting record (batch) for which sewing is being approved.
+    # Link to the cutting record (batch) for which sewing is being approved HI Hi my name is tashiiii,   I am Batman
+    
     cutting_record = models.OneToOneField(
         CuttingRecord, on_delete=models.CASCADE, related_name='finished_product'
     )
