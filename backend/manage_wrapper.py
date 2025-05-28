@@ -1,32 +1,17 @@
 #!/usr/bin/env python
 """
-A wrapper script for manage.py that uses the correct Python path.
+Django's command-line utility for administrative tasks.
+This is a wrapper for manage.py to be used by Electron.
 """
 import os
 import sys
-import subprocess
 from pathlib import Path
-from dotenv import load_dotenv
 
 # Add the project root to the Python path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-# Load environment variables
-if os.path.exists(os.path.join(project_root, '.env.local')):
-    load_dotenv(os.path.join(project_root, '.env.local'))
-    print("Loaded .env.local")
-elif os.path.exists(os.path.join(project_root, '.env.vm')):
-    load_dotenv(os.path.join(project_root, '.env.vm'))
-    print("Loaded .env.vm")
-else:
-    load_dotenv(os.path.join(project_root, '.env'))
-    print("Loaded .env")
-
-# Get Python path from environment variable or use the current Python
-python_path = os.getenv('PYTHON_PATH', sys.executable)
-
-# Run Django's manage.py directly
+# Set the Django settings module
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
 try:
@@ -38,4 +23,5 @@ except ImportError as exc:
         "forget to activate a virtual environment?"
     ) from exc
 
-execute_from_command_line(sys.argv)
+if __name__ == '__main__':
+    execute_from_command_line(sys.argv)

@@ -1,0 +1,80 @@
+{
+  "name": "pri-fashion-desktop",
+  "version": "1.0.0",
+  "description": "Pri Fashion Management System - Desktop Application",
+  "main": "electron/main.js",
+  "homepage": "./",
+  "private": true,
+  "scripts": {
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm run frontend:dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-pack": "electron-builder",
+    "preelectron-pack": "npm run frontend:build",
+    "frontend:dev": "cd frontend && npm start",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:install": "cd frontend && npm install",
+    "backend:install": "cd backend && npm install",
+    "install-all": "npm install && npm run frontend:install && npm run backend:install",
+    "build": "npm run frontend:build && electron-builder",
+    "dist": "npm run frontend:build && electron-builder --publish=never",
+    "start": "electron .",
+    "dev": "npm run electron-dev"
+  },
+  "build": {
+    "appId": "com.prifashion.desktop",
+    "productName": "Pri Fashion",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "frontend/build/**/*",
+      "backend/**/*",
+      "!backend/node_modules",
+      "!backend/__pycache__",
+      "!backend/**/__pycache__",
+      "!backend/**/*.pyc",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/",
+        "to": "assets/",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "new_env/",
+        "to": "python-env/",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Pri Fashion"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.3.3"
+  },
+  "dependencies": {}
+}
