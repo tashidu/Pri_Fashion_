@@ -148,6 +148,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',  # Allow requests from this frontend
     'http://127.0.0.1:3000',  # Allow requests from Electron app
+    'http://localhost:3005',  # Allow requests from Electron app (new port)
+    'http://127.0.0.1:3005',  # Allow requests from Electron app (new port)
+    'http://localhost:3006',  # Allow requests from Electron app (backup port)
+    'http://127.0.0.1:3006',  # Allow requests from Electron app (backup port)
+    'http://localhost:3007',  # Allow requests from Electron app (backup port)
+    'http://127.0.0.1:3007',  # Allow requests from Electron app (backup port)
 ]
 
 DEBUG = True

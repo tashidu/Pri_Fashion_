@@ -36,7 +36,7 @@ function killProcess(pid, signal = 'SIGTERM') {
 let mainWindow;
 let djangoProcess;
 let expressServer;
-let frontendPort = 3000; // Default port for serving React build
+let frontendPort = 3005; // Default port for serving React build (avoid common conflicts)
 
 // Keep a global reference of the window object
 function createWindow() {
@@ -65,10 +65,8 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
 
-    // Focus on window
-    if (isDev) {
-      mainWindow.webContents.openDevTools();
-    }
+    // Focus on window and open dev tools for debugging
+    mainWindow.webContents.openDevTools();
   });
 
   // Handle window closed
@@ -180,22 +178,41 @@ async function startDjangoServer() {
   return new Promise((resolve, reject) => {
     console.log('Starting Django server...');
 
-    const batchPath = isDev
-      ? path.resolve(__dirname, '../start_django.bat')
-      : path.join(process.resourcesPath, 'app.asar.unpacked/start_django.bat');
+    let pythonPath, managePath, workingDir;
 
-    console.log('Batch path:', batchPath);
+    if (isDev) {
+      // Development mode
+      pythonPath = path.resolve(__dirname, '../new_env/Scripts/python.exe');
+      managePath = path.resolve(__dirname, '../backend/manage.py');
+      workingDir = path.resolve(__dirname, '..');
+    } else {
+      // Production mode
+      pythonPath = path.join(process.resourcesPath, 'python-env/Scripts/python.exe');
+      managePath = path.join(process.resourcesPath, 'backend/manage.py');
+      workingDir = process.resourcesPath;
+    }
+
+    console.log('Python path:', pythonPath);
+    console.log('Manage path:', managePath);
+    console.log('Working directory:', workingDir);
     console.log('isDev:', isDev);
-    console.log('__dirname:', __dirname);
 
-    djangoProcess = spawn('cmd.exe', ['/c', batchPath], {
-      cwd: isDev ? path.resolve(__dirname, '..') : path.join(process.resourcesPath, 'app.asar.unpacked'),
-      stdio: ['pipe', 'pipe', 'pipe']
+    djangoProcess = spawn(pythonPath, [managePath, 'runserver', '127.0.0.1:8000'], {
+      cwd: workingDir,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        PYTHONHOME: '',
+        PYTHONPATH: isDev ? path.resolve(__dirname, '..') : process.resourcesPath
+      }
     });
+
+    let djangoStarted = false;
 
     djangoProcess.stdout.on('data', (data) => {
       console.log(`Django: ${data}`);
-      if (data.toString().includes('Starting development server')) {
+      if (data.toString().includes('Starting development server') && !djangoStarted) {
+        djangoStarted = true;
         console.log('Django server started successfully');
         resolve();
       }
@@ -203,30 +220,73 @@ async function startDjangoServer() {
 
     djangoProcess.stderr.on('data', (data) => {
       console.error(`Django Error: ${data}`);
+      // Don't reject on stderr as Django often outputs warnings there
     });
 
     djangoProcess.on('error', (error) => {
       console.error('Failed to start Django server:', error);
-      reject(error);
+      if (!djangoStarted) {
+        reject(error);
+      }
     });
 
-    // Timeout after 30 seconds
+    djangoProcess.on('exit', (code) => {
+      console.log(`Django process exited with code ${code}`);
+      if (!djangoStarted && code !== 0) {
+        reject(new Error(`Django server failed to start (exit code: ${code})`));
+      }
+    });
+
+    // Timeout after 15 seconds (reduced from 30)
     setTimeout(() => {
-      console.log('Django server started (timeout)');
-      resolve();
-    }, 30000);
+      if (!djangoStarted) {
+        console.log('Django server started (timeout)');
+        djangoStarted = true;
+        resolve();
+      }
+    }, 15000);
   });
 }
 
 // Start HTTP server to serve React build
 async function startFrontendServer() {
   return new Promise((resolve, reject) => {
-    const buildPath = isDev
-      ? path.join(__dirname, '../frontend/build')
-      : path.join(process.resourcesPath, 'app.asar.unpacked/frontend/build');
+    let buildPath;
+
+    if (isDev) {
+      // Development mode
+      buildPath = path.join(__dirname, '../frontend/build');
+    } else {
+      // Production mode - try multiple possible paths
+      const possiblePaths = [
+        path.join(process.resourcesPath, 'frontend/build'),
+        path.join(process.resourcesPath, 'app/frontend/build'),
+        path.join(__dirname, '../frontend/build'),
+        path.join(process.resourcesPath, 'app.asar.unpacked/frontend/build')
+      ];
+
+      buildPath = possiblePaths.find(p => fs.existsSync(p));
+
+      if (!buildPath) {
+        console.error('Frontend build not found in any of these paths:');
+        possiblePaths.forEach(p => console.error('  -', p));
+        reject(new Error('Frontend build directory not found'));
+        return;
+      }
+    }
+
+    console.log('Frontend build path:', buildPath);
+    console.log('Build path exists:', fs.existsSync(buildPath));
+
+    // Check if index.html exists
+    const indexPath = path.join(buildPath, 'index.html');
+    console.log('Index.html path:', indexPath);
+    console.log('Index.html exists:', fs.existsSync(indexPath));
 
     // Create HTTP server
     const server = http.createServer((req, res) => {
+      console.log('Request received:', req.url);
+
       const parsedUrl = url.parse(req.url);
       let pathname = parsedUrl.pathname;
 
@@ -237,16 +297,19 @@ async function startFrontendServer() {
 
       // Handle static files
       const filePath = path.join(buildPath, pathname);
+      console.log('Serving file:', filePath);
 
       // Check if file exists
       fs.access(filePath, fs.constants.F_OK, (err) => {
         if (err) {
+          console.log('File not found, serving index.html:', filePath);
           // File doesn't exist, serve index.html for React Router
           const indexPath = path.join(buildPath, 'index.html');
           fs.readFile(indexPath, (err, data) => {
             if (err) {
+              console.error('Error reading index.html:', err);
               res.writeHead(404);
-              res.end('Not found');
+              res.end('Not found - index.html missing');
               return;
             }
             res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -256,6 +319,7 @@ async function startFrontendServer() {
           // Serve the file
           fs.readFile(filePath, (err, data) => {
             if (err) {
+              console.error('Error reading file:', filePath, err);
               res.writeHead(500);
               res.end('Server error');
               return;
@@ -274,6 +338,7 @@ async function startFrontendServer() {
               case '.svg': contentType = 'image/svg+xml'; break;
             }
 
+            console.log('Serving file successfully:', filePath, 'Content-Type:', contentType);
             res.writeHead(200, { 'Content-Type': contentType });
             res.end(data);
           });
@@ -281,8 +346,8 @@ async function startFrontendServer() {
       });
     });
 
-    // Find free port and start server
-    findFreePort(3000, (err, freePort) => {
+    // Find free port and start server (try ports 3005-3015)
+    findFreePort(3005, (err, freePort) => {
       if (err) {
         reject(err);
         return;
@@ -297,25 +362,116 @@ async function startFrontendServer() {
   });
 }
 
+// Function to update loading screen
+function updateLoadingScreen(message, progress = 0) {
+  const loadingHtml = `
+    <html>
+      <head>
+        <style>
+          body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            padding: 50px;
+            margin: 0;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+          }
+          .logo { font-size: 48px; margin-bottom: 30px; font-weight: bold; }
+          .message { font-size: 18px; margin-bottom: 20px; }
+          .progress-container {
+            width: 300px;
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 20px;
+          }
+          .progress-bar {
+            height: 100%;
+            background: #4CAF50;
+            width: ${progress}%;
+            transition: width 0.5s ease;
+          }
+          .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="logo">Pri Fashion</div>
+        <div class="message">${message}</div>
+        <div class="progress-container">
+          <div class="progress-bar"></div>
+        </div>
+        <div class="spinner"></div>
+        <p style="font-size: 14px; opacity: 0.8;">Please wait, this may take a moment...</p>
+      </body>
+    </html>
+  `;
+  mainWindow.loadURL(`data:text/html,${encodeURIComponent(loadingHtml)}`);
+}
+
 // App event handlers
 app.whenReady().then(async () => {
   try {
-    // Start frontend server first
-    await startFrontendServer();
-
-    // Create main window
+    // Create main window first
     createWindow();
 
-    // Load the frontend
-    mainWindow.loadURL(`http://127.0.0.1:${frontendPort}`);
+    // Show initial loading message
+    updateLoadingScreen('Initializing Pri Fashion...', 10);
 
-    // Note: Django server should be started separately
-    console.log('Frontend started. Make sure Django server is running on http://127.0.0.1:8000');
+    // Start Django server first
+    console.log('Starting Django server...');
+    updateLoadingScreen('Starting Django backend server...', 30);
+    await startDjangoServer();
+    console.log('Django server started');
+
+    // Start frontend server
+    console.log('Starting frontend server...');
+    updateLoadingScreen('Starting React frontend server...', 60);
+    await startFrontendServer();
+    console.log('Frontend server started');
+
+    // Load the frontend
+    console.log(`Loading frontend from http://127.0.0.1:${frontendPort}`);
+    updateLoadingScreen('Loading Pri Fashion interface...', 90);
+
+    // Add a small delay to show the final loading state
+    setTimeout(() => {
+      mainWindow.loadURL(`http://127.0.0.1:${frontendPort}`);
+    }, 1000);
 
   } catch (error) {
-    console.error('Failed to start frontend server:', error);
-    dialog.showErrorBox('Startup Error', 'Failed to start the frontend server. Please try again.');
-    app.quit();
+    console.error('Failed to start servers:', error);
+
+    // Show error in the window
+    const errorHtml = `
+      <html>
+        <body style="background:#f44336;font-family:Arial;text-align:center;padding:50px;color:white;">
+          <h2>⚠️ Startup Error</h2>
+          <p>Failed to start the Pri Fashion application.</p>
+          <p><strong>Error:</strong> ${error.message}</p>
+          <p>Please try restarting the application.</p>
+          <button onclick="window.close()" style="padding:10px 20px;margin-top:20px;background:white;color:#f44336;border:none;border-radius:5px;cursor:pointer;">Close</button>
+        </body>
+      </html>
+    `;
+    mainWindow.loadURL(`data:text/html,${encodeURIComponent(errorHtml)}`);
   }
 });
 

@@ -4,7 +4,7 @@ echo Creating Desktop Shortcut for Pri Fashion...
 set "SCRIPT_DIR=%~dp0"
 set "DESKTOP=%USERPROFILE%\Desktop"
 set "SHORTCUT_NAME=Pri Fashion.lnk"
-set "TARGET=%SCRIPT_DIR%run_desktop.bat"
+set "TARGET=%SCRIPT_DIR%dist\win-unpacked\Pri Fashion.exe"
 set "ICON=%SCRIPT_DIR%assets\icon.png"
 
 REM Create VBS script to create shortcut

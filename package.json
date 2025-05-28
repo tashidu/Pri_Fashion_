@@ -34,7 +34,10 @@
       "!backend/__pycache__",
       "!backend/**/__pycache__",
       "!backend/**/*.pyc",
-      "node_modules/**/*"
+      "!backend/**/*.sqlite3",
+      "!backend/media/**/*",
+      "start_django.bat",
+      ".env.local"
     ],
     "extraResources": [
       {
@@ -53,9 +56,10 @@
       }
     ],
     "win": {
-      "target": "nsis",
+      "target": "dir",
       "icon": "assets/icon.ico",
-      "requestedExecutionLevel": "asInvoker"
+      "requestedExecutionLevel": "asInvoker",
+      "forceCodeSigning": false
     },
     "nsis": {
       "oneClick": false,
@@ -74,7 +78,7 @@
     }
   },
   "devDependencies": {
-    "electron": "^28.3.3"
-  },
-  "dependencies": {}
+    "electron": "^28.3.3",
+    "electron-builder": "^26.0.12"
+  }
 }
