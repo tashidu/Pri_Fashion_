@@ -1,0 +1,64 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Pri Fashion Launcher</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+            padding: 50px;
+        }
+        .launcher {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover { background: #45a049; }
+        .logo { font-size: 48px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="launcher">
+        <div class="logo">ðŸ‘— Pri Fashion</div>
+        <h2>Desktop Application Launcher</h2>
+        <button onclick="launchApp()">ðŸš€ Launch Pri Fashion</button>
+        <button onclick="openFolder()">ðŸ“ Open Project Folder</button>
+    </div>
+    
+    <script>
+        function launchApp() {
+            try {
+                var shell = new ActiveXObject("WScript.Shell");
+                shell.CurrentDirectory = "C:\Users\tashi\OneDrive\Desktop\System Development Project\pri new";
+                shell.Run("run_desktop.bat", 1, false);
+            } catch(e) {
+                alert("Please run this HTML file from Internet Explorer or enable ActiveX controls.");
+            }
+        }
+        
+        function openFolder() {
+            try {
+                var shell = new ActiveXObject("WScript.Shell");
+                shell.Run("explorer.exe \"C:\Users\tashi\OneDrive\Desktop\System Development Project\pri new\"", 1, false);
+            } catch(e) {
+                alert("Could not open folder.");
+            }
+        }
+    </script>
+</body>
+</html>
