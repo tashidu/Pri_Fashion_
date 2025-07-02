@@ -134,7 +134,14 @@ const CuttingRecordDetail = () => {
 
     try {
       const productName = cuttingRecord.product_name || "N/A";
-      const fabricName = cuttingRecord.fabric_definition_data?.fabric_name || "N/A";
+      // Get fabric names from details
+      const fabricNames = new Set();
+      cuttingRecord.details?.forEach(detail => {
+        if (detail.fabric_variant_data?.fabric_definition_data?.fabric_name) {
+          fabricNames.add(detail.fabric_variant_data.fabric_definition_data.fabric_name);
+        }
+      });
+      const fabricName = Array.from(fabricNames).join(', ') || "N/A";
 
       // Create PDF document with orientation and unit specifications
       const doc = new jsPDF({
@@ -579,7 +586,15 @@ const CuttingRecordDetail = () => {
           {cuttingRecord && (
             <div className="bg-light p-3 rounded">
               <p className="mb-1"><strong>Product:</strong> {cuttingRecord.product_name || "N/A"}</p>
-              <p className="mb-1"><strong>Fabric:</strong> {cuttingRecord.fabric_definition_data?.fabric_name || "N/A"}</p>
+              <p className="mb-1"><strong>Fabrics:</strong> {(() => {
+                const fabricNames = new Set();
+                cuttingRecord.details?.forEach(detail => {
+                  if (detail.fabric_variant_data?.fabric_definition_data?.fabric_name) {
+                    fabricNames.add(detail.fabric_variant_data.fabric_definition_data.fabric_name);
+                  }
+                });
+                return Array.from(fabricNames).join(', ') || "N/A";
+              })()}</p>
               <p className="mb-1"><strong>Date:</strong> {cuttingRecord.cutting_date}</p>
               <p className="mb-0"><strong>Total Cost:</strong> Rs. {calculateTotalCuttingValue()}</p>
             </div>

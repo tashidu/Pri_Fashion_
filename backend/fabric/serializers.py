@@ -15,6 +15,8 @@ class SupplierSerializer(serializers.ModelSerializer):
         fields = ['supplier_id', 'name', 'address', 'tel_no']
 
 class FabricVariantSerializer(serializers.ModelSerializer):
+    fabric_definition_data = serializers.SerializerMethodField()
+
     class Meta:
         model = FabricVariant
         fields = [
@@ -24,8 +26,17 @@ class FabricVariantSerializer(serializers.ModelSerializer):
             'total_yard',
             'available_yard',
             'price_per_yard',
-            'fabric_definition'
+            'fabric_definition',
+            'fabric_definition_data'
         ]
+
+    def get_fabric_definition_data(self, obj):
+        return {
+            'id': obj.fabric_definition.id,
+            'fabric_name': obj.fabric_definition.fabric_name,
+            'supplier_name': obj.fabric_definition.supplier.name,
+            'date_added': obj.fabric_definition.date_added
+        }
 
     def create(self, validated_data):
         color_code = validated_data.get('color')

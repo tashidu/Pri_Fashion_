@@ -53,12 +53,16 @@ const AddDailySewingRecord = () => {
             (detail.m || 0) +
             (detail.l || 0) +
             (detail.xl || 0);
+
+          // Get fabric name and color name for better identification
+          const fabricName = detail.fabric_variant_data?.fabric_definition_data?.fabric_name || "Unknown Fabric";
+          const colorName = detail.fabric_variant_data?.color_name || detail.fabric_variant_data?.color || "N/A";
+
           return {
             value: detail.id,
-            label:
-              detail.fabric_variant_data?.color_name ||
-              detail.fabric_variant_data?.color ||
-              "N/A",
+            label: `${fabricName} - ${colorName}`,
+            fabricName: fabricName,
+            colorName: colorName,
             color: detail.fabric_variant_data?.color || "#ffffff",
             totalCut,
             // Store individual size quantities for validation
@@ -299,7 +303,14 @@ const AddDailySewingRecord = () => {
           borderRadius: "4px"
         }}
       />
-      <span>{data.label}</span>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <span style={{ fontWeight: "500", fontSize: "14px" }}>
+          {data.fabricName}
+        </span>
+        <span style={{ fontSize: "12px", color: "#666" }}>
+          {data.colorName}
+        </span>
+      </div>
     </div>
   );
 

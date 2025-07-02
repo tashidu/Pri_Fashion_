@@ -1,22 +1,27 @@
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from fabric.models import FabricDefinition, FabricVariant
+from fabric.models import FabricVariant
 
 
 class CuttingRecord(models.Model):
-    # Reference the FabricDefinition to get the fabric name
-    fabric_definition = models.ForeignKey(FabricDefinition, on_delete=models.CASCADE)
     cutting_date = models.DateField(default=timezone.now)
     description = models.TextField(null=True, blank=True)
     product_name = models.CharField(max_length=100, null=True, blank=True)  # Optional field
 
-
-
     def __str__(self):
         if self.product_name:
             return self.product_name
-        return f"{self.fabric_definition.fabric_name} cut on {self.cutting_date}"
+        # Get fabric names from related fabric variants
+        fabric_names = []
+        for detail in self.details.all():
+            fabric_name = detail.fabric_variant.fabric_definition.fabric_name
+            if fabric_name not in fabric_names:
+                fabric_names.append(fabric_name)
+
+        if fabric_names:
+            return f"{', '.join(fabric_names)} cut on {self.cutting_date}"
+        return f"Cutting record on {self.cutting_date}"
 
 
 

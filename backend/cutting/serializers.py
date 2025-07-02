@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.core.exceptions import ValidationError
 from .models import CuttingRecord, CuttingRecordFabric
 from fabric.models import FabricVariant
-from fabric.serializers import FabricDefinitionSerializer, FabricVariantSerializer
+from fabric.serializers import FabricVariantSerializer
 
 
 class CuttingRecordFabricSerializer(serializers.ModelSerializer):
@@ -12,13 +12,12 @@ class CuttingRecordFabricSerializer(serializers.ModelSerializer):
         model = CuttingRecordFabric
         fields = ['id', 'fabric_variant', 'fabric_variant_data', 'yard_usage', 'xs', 's', 'm', 'l', 'xl']
 class CuttingRecordSerializer(serializers.ModelSerializer):
-    # Nest the fabric definition and detail rows
-    fabric_definition_data = FabricDefinitionSerializer(read_only=True, source='fabric_definition')
+    # Nest the detail rows (fabric variants)
     details = CuttingRecordFabricSerializer(many=True)
 
     class Meta:
         model = CuttingRecord
-        fields = ['id', 'fabric_definition', 'fabric_definition_data', 'cutting_date', 'description', 'product_name','details']
+        fields = ['id', 'cutting_date', 'description', 'product_name', 'details']
 
     def create(self, validated_data):
         details_data = validated_data.pop('details')
@@ -29,7 +28,6 @@ class CuttingRecordSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         # Update the main CuttingRecord fields
-        instance.fabric_definition_id = validated_data.get('fabric_definition', instance.fabric_definition_id)
         instance.cutting_date = validated_data.get('cutting_date', instance.cutting_date)
         instance.description = validated_data.get('description', instance.description)
         instance.product_name = validated_data.get('product_name', instance.product_name)

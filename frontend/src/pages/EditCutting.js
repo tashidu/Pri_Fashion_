@@ -11,14 +11,10 @@ const EditCutting = () => {
   const navigate = useNavigate();
 
   // Overall cutting record fields
-  const [fabricDefinitions, setFabricDefinitions] = useState([]);
-  const [selectedFabricDefinition, setSelectedFabricDefinition] = useState('');
+  const [allFabricVariants, setAllFabricVariants] = useState([]);
   const [cuttingDate, setCuttingDate] = useState('');
   const [description, setDescription] = useState('');
   const [productName, setProductName] = useState('');
-
-  // For storing variants of the currently selected FabricDefinition
-  const [fabricVariants, setFabricVariants] = useState([]);
 
   // Cutting detail rows
   const [details, setDetails] = useState([
@@ -32,8 +28,7 @@ const EditCutting = () => {
   const [detailErrors, setDetailErrors] = useState([]);
 
   // Loading, error, success states
-  const [loadingDefinitions, setLoadingDefinitions] = useState(true);
-  const [loadingVariants, setLoadingVariants] = useState(false);
+  const [loadingVariants, setLoadingVariants] = useState(true);
   const [loadingRecord, setLoadingRecord] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -64,8 +59,6 @@ const EditCutting = () => {
         setOriginalRecord(record);
 
         // Set form fields with record data
-        setSelectedFabricDefinition(record.fabric_definition);
-        console.log(`Setting selected fabric definition to: ${record.fabric_definition}`);
         setCuttingDate(record.cutting_date);
         setDescription(record.description || '');
         setProductName(record.product_name || '');
@@ -107,86 +100,27 @@ const EditCutting = () => {
       });
   }, [id]);
 
-  // 2. Fetch fabric definitions on mount
+  // 2. Fetch all fabric variants on mount
   useEffect(() => {
-    setLoadingDefinitions(true);
-
-    // Test API call to check if the variants endpoint is working
-    axios.get('http://localhost:8000/api/fabric-definitions/1/variants/')
-      .then(res => {
-        console.log('Test API call to variants endpoint successful:', res.data);
-      })
-      .catch(err => {
-        console.error('Test API call to variants endpoint failed:', err);
-      });
-
-    axios.get("http://localhost:8000/api/fabric-definitions/")
+    setLoadingVariants(true);
+    axios.get("http://localhost:8000/api/fabric-variants/")
       .then((res) => {
-        console.log('Fabric definitions fetched successfully:', res.data);
-        setFabricDefinitions(res.data);
-        setLoadingDefinitions(false);
+        console.log('Fabric variants fetched successfully:', res.data);
+        setAllFabricVariants(res.data);
+        setLoadingVariants(false);
       })
       .catch((err) => {
-        console.error('Error fetching fabric definitions:', err);
-        setError('Failed to load fabric definitions. Please try again.');
-        setLoadingDefinitions(false);
+        console.error('Error fetching fabric variants:', err);
+        setError('Failed to load fabric variants. Please try again.');
+        setLoadingVariants(false);
       });
   }, []);
 
-  // 3. Fetch variants when a FabricDefinition is selected
+
+
+  // 3. Validate yard usage when variants or details change
   useEffect(() => {
-    if (selectedFabricDefinition) {
-      setLoadingVariants(true);
-      console.log(`Fetching variants for fabric definition ID: ${selectedFabricDefinition}`);
-
-      // Try a different URL format to ensure we're hitting the correct endpoint
-      const url = `http://localhost:8000/api/fabric-definitions/${selectedFabricDefinition}/variants/`;
-      console.log('Requesting variants from URL:', url);
-
-      // Add a small delay to ensure the backend has time to process the request
-      setTimeout(() => {
-        axios.get(url)
-          .then((res) => {
-            console.log('Variants fetched successfully:', res.data);
-            if (Array.isArray(res.data)) {
-              setFabricVariants(res.data);
-            } else {
-              console.error('Unexpected response format:', res.data);
-              setFabricVariants([]);
-            }
-            setLoadingVariants(false);
-          })
-          .catch((err) => {
-            console.error('Error fetching fabric variants:', err);
-            // Try a fallback approach - fetch all variants and filter
-            console.log('Trying fallback approach...');
-            axios.get('http://localhost:8000/api/fabric-variants/')
-              .then((fallbackRes) => {
-                console.log('All variants fetched:', fallbackRes.data);
-                // Filter variants by fabric_definition
-                const filteredVariants = fallbackRes.data.filter(
-                  variant => variant.fabric_definition == selectedFabricDefinition
-                );
-                console.log('Filtered variants:', filteredVariants);
-                setFabricVariants(filteredVariants);
-                setLoadingVariants(false);
-              })
-              .catch((fallbackErr) => {
-                console.error('Fallback approach failed:', fallbackErr);
-                setError('Failed to load fabric variants. Please try again.');
-                setFabricVariants([]);
-                setLoadingVariants(false);
-              });
-          });
-      }, 500);
-    } else {
-      setFabricVariants([]);
-    }
-  }, [selectedFabricDefinition]);
-
-  // 4. Validate yard usage when variants or details change
-  useEffect(() => {
-    if (fabricVariants.length > 0 && details.length > 0) {
+    if (allFabricVariants.length > 0 && details.length > 0) {
       // Create a new array for detail errors
       const newDetailErrors = [...detailErrors];
 
@@ -195,8 +129,8 @@ const EditCutting = () => {
         if (detail.fabric_variant && detail.yard_usage) {
           const variantId = detail.fabric_variant;
 
-          // Find the variant in the fabricVariants array
-          const variant = fabricVariants.find(v => v.id === parseInt(variantId));
+          // Find the variant in the allFabricVariants array
+          const variant = allFabricVariants.find(v => v.id === parseInt(variantId));
           if (!variant) return;
 
           // Get the original yard usage for this variant (or 0 if it's a new detail)
@@ -219,7 +153,7 @@ const EditCutting = () => {
       // Update detail errors state
       setDetailErrors(newDetailErrors);
     }
-  }, [fabricVariants, details, originalYardUsage]);
+  }, [allFabricVariants, details, originalYardUsage]);
 
   // Add a new empty detail row
   const addDetailRow = () => {
@@ -262,8 +196,8 @@ const EditCutting = () => {
       return;
     }
 
-    // Find the variant in the fabricVariants array
-    const variant = fabricVariants.find(v => v.id === parseInt(variantId));
+    // Find the variant in the allFabricVariants array
+    const variant = allFabricVariants.find(v => v.id === parseInt(variantId));
     if (!variant) {
       newDetailErrors[index] = '';
       setDetailErrors(newDetailErrors);
@@ -329,7 +263,6 @@ const EditCutting = () => {
     setSuccess('');
 
     const payload = {
-      fabric_definition: selectedFabricDefinition,
       cutting_date: cuttingDate,
       description: description,
       product_name: productName,
@@ -467,33 +400,6 @@ const EditCutting = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label><strong>Fabric Definition</strong></Form.Label>
-                    {loadingDefinitions ? (
-                      <div className="d-flex align-items-center">
-                        <Spinner animation="border" size="sm" className="me-2" />
-                        <span>Loading fabrics...</span>
-                      </div>
-                    ) : (
-                      <Form.Select
-                        value={selectedFabricDefinition}
-                        onChange={(e) => setSelectedFabricDefinition(e.target.value)}
-                        required
-                      >
-                        <option value="">Select Fabric Group</option>
-                        {fabricDefinitions.map((fd) => (
-                          <option key={fd.id} value={fd.id}>
-                            {fd.fabric_name}
-                          </option>
-                        ))}
-                      </Form.Select>
-                    )}
-                    <Form.Control.Feedback type="invalid">
-                      Please select a fabric definition.
-                    </Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
                     <Form.Label><strong>Product Name</strong></Form.Label>
                     <Form.Control
                       type="text"
@@ -538,11 +444,21 @@ const EditCutting = () => {
                 </Col>
               </Row>
 
-              <h4 className="mt-4 mb-3 border-bottom pb-2">Fabric Details</h4>
+              <div className="d-flex justify-content-between align-items-center mt-4 mb-3 border-bottom pb-2">
+                <h4 className="mb-0">Fabric Details</h4>
+                <Button
+                  variant="success"
+                  size="sm"
+                  onClick={addDetailRow}
+                  disabled={isSubmitting}
+                >
+                  <BsPlus className="me-1" /> Add Fabric Variant
+                </Button>
+              </div>
 
               {details.map((detail, index) => {
                 // Find the selected variant object to set the value in React-Select
-                const currentVariant = fabricVariants.find(v => v.id === detail.fabric_variant);
+                const currentVariant = allFabricVariants.find(v => v.id === detail.fabric_variant);
 
                 return (
                   <Card key={index} className="mb-3 border-light">
@@ -556,13 +472,13 @@ const EditCutting = () => {
                                 <Spinner animation="border" size="sm" className="me-2" />
                                 <span>Loading variants...</span>
                               </div>
-                            ) : fabricVariants.length === 0 ? (
+                            ) : allFabricVariants.length === 0 ? (
                               <div>
                                 <Form.Select disabled>
                                   <option>No variants available</option>
                                 </Form.Select>
                                 <small className="text-danger">
-                                  No fabric variants found. Please check the fabric definition.
+                                  No fabric variants found.
                                 </small>
                               </div>
                             ) : (
@@ -572,10 +488,10 @@ const EditCutting = () => {
                                 required
                                 disabled={isSubmitting}
                               >
-                                <option value="">Select Color Variant</option>
-                                {fabricVariants.map((variant) => (
+                                <option value="">Select Fabric Variant</option>
+                                {allFabricVariants.map((variant) => (
                                   <option key={variant.id} value={variant.id}>
-                                    {variant.color_name || variant.color} - {variant.available_yard} yards available
+                                    {variant.fabric_definition_data?.fabric_name || 'Unknown'} - {variant.color_name || variant.color} - {variant.available_yard} yards available
                                   </option>
                                 ))}
                               </Form.Select>

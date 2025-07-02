@@ -581,7 +581,14 @@ const ViewCutting = () => {
                       const { totalYard, totalQuantity, totalVariants } = getAggregates(record);
                       // Get product name; fallback to fabric name if product_name is empty
                       const productName = record.product_name || "N/A";
-                      const fabricName = record.fabric_definition_data?.fabric_name || "N/A";
+                      // Get fabric names from details
+                      const fabricNames = new Set();
+                      record.details?.forEach(detail => {
+                        if (detail.fabric_variant_data?.fabric_definition_data?.fabric_name) {
+                          fabricNames.add(detail.fabric_variant_data.fabric_definition_data.fabric_name);
+                        }
+                      });
+                      const fabricName = Array.from(fabricNames).join(', ') || "N/A";
 
                       return (
                         <React.Fragment key={record.id}>
