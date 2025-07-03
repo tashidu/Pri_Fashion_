@@ -178,75 +178,31 @@ function OwnerDashboard() {
           const incomeResponse = await axios.get(`http://localhost:8000/api/reports/sales/product-income-percentage/?months=${timeFrame}`);
           setProductIncomeData(incomeResponse.data);
 
-          // Check if we have data for charts
-          const hasChartData =
-            salesResponse.data.monthly_sales.length > 0 &&
-            incomeResponse.data.products.length > 0 &&
-            packingResponse.data.length > 0;
 
-          // If no chart data, use sample data
-          if (!hasChartData) {
-            console.log('No chart data available, using sample data');
-            const sampleData = generateSampleData();
-
-            if (salesResponse.data.monthly_sales.length === 0) {
-              setSalesPerformance(sampleData.salesPerformance);
-            }
-
-            if (incomeResponse.data.products.length === 0) {
-              setProductIncomeData(sampleData.productIncomeData);
-            }
-
-            if (packingResponse.data.length === 0) {
-              setPackingData(sampleData.packingData);
-            }
-          }
 
         } catch (error) {
-          console.error('Error fetching API data, using sample data instead:', error);
-
-          // Use sample data if API fails
-          const sampleData = generateSampleData();
-
-          // Set sample data for charts
-          setPackingData(sampleData.packingData);
-          setSalesPerformance(sampleData.salesPerformance);
-          setProductIncomeData(sampleData.productIncomeData);
-
-          // Set sample stats
-          setStats({
-            pendingApprovalCount: Math.floor(Math.random() * 10) + 2,
-            pendingInvoiceCount: Math.floor(Math.random() * 8) + 1,
-            paymentsOverdueCount: Math.floor(Math.random() * 5) + 1,
-            deliveredUnpaidCount: Math.floor(Math.random() * 7) + 2,
-            totalSalesValue: sampleData.salesPerformance.monthly_sales.reduce((sum, month) => sum + month.total_sales, 0),
-            fabricStockValue: Math.floor(Math.random() * 500000) + 200000,
-            todaySewingCount: Math.floor(Math.random() * 50) + 10
+          console.error('Error fetching API data:', error);
+          // Set empty data arrays on error
+          setPackingData([]);
+          setSalesPerformance({
+            monthly_sales: [],
+            top_products: [],
+            shop_sales: [],
+            payment_status: {
+              paid_count: 0,
+              partially_paid_count: 0,
+              payment_due_count: 0,
+              total_paid: 0,
+              total_amount: 0,
+              payment_rate: 0
+            }
           });
-
-          // Generate sample recent orders
-          const sampleOrders = Array.from({ length: 5 }, (_, i) => ({
-            id: i + 1,
-            shop_name: sampleData.salesPerformance.shop_sales[i % sampleData.salesPerformance.shop_sales.length].shop_name,
-            created_at: new Date().toISOString(),
-            status: ['submitted', 'approved', 'invoiced', 'delivered', 'paid'][Math.floor(Math.random() * 5)],
-            total_amount: Math.floor(Math.random() * 50000) + 10000
-          }));
-
-          setRecentOrders(sampleOrders);
-
-          // Generate sample fabric data
-          const fabricColors = ['Red', 'Blue', 'Green', 'Black', 'White'];
-          const fabricTypes = ['Cotton', 'Silk', 'Linen', 'Polyester', 'Velvet'];
-          const sampleFabrics = Array.from({ length: 5 }, (_, i) => ({
-            id: i + 1,
-            name: `${fabricTypes[i % fabricTypes.length]} - ${fabricColors[i % fabricColors.length]}`,
-            colorCode: ['#ff0000', '#0000ff', '#00ff00', '#000000', '#ffffff'][i % 5],
-            availableYards: Math.floor(Math.random() * 100) + 20,
-            pricePerYard: Math.floor(Math.random() * 500) + 100
-          }));
-
-          setRemainingFabrics(sampleFabrics);
+          setProductIncomeData({
+            total_sales_amount: 0,
+            products: []
+          });
+          setRecentOrders([]);
+          setRemainingFabrics([]);
         }
       } catch (error) {
         console.error('Error in fetchDashboardData:', error);
@@ -294,164 +250,7 @@ function OwnerDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Function to generate sample data for testing
-  const generateSampleData = () => {
-    // Use actual product names from your system
-    const productNames = ['Velvet Frock', 'Frayed Jeans', 'Roshi Blouse', 'Voile Frock', 'Short'];
 
-    // Use actual shop names from your system
-    const shopNames = ['Dilan Fashion', 'Thilakawardhana', 'New Colombo', 'Hemara Rich Look', 'Kotuwa Kade'];
-
-    // Generate sample monthly sales data - use current year
-    const currentYear = new Date().getFullYear();
-    const months = [
-      `Jan ${currentYear}`,
-      `Feb ${currentYear}`,
-      `Mar ${currentYear}`,
-      `Apr ${currentYear}`,
-      `May ${currentYear}`,
-      `Jun ${currentYear}`
-    ];
-
-    const monthlySales = months.map(month => ({
-      month,
-      total_sales: Math.floor(Math.random() * 500000) + 100000,
-      order_count: Math.floor(Math.random() * 20) + 5
-    }));
-
-    // Generate sample top products data
-    const topProducts = productNames.map(product_name => ({
-      product_name,
-      total_units: Math.floor(Math.random() * 100) + 20,
-      total_sales: Math.floor(Math.random() * 200000) + 50000
-    }));
-
-    // Generate sample shop sales data
-    const shopSales = shopNames.map(shop_name => ({
-      shop_name,
-      order_count: Math.floor(Math.random() * 15) + 2,
-      total_sales: Math.floor(Math.random() * 300000) + 80000
-    }));
-
-    // Generate sample payment status data based on your actual order statuses
-    const paid_count = 5; // Based on your orders data
-    const partially_paid_count = 3; // Based on your orders data
-    const payment_due_count = 2; // Based on your orders data
-    const total_amount = 2000000; // Example value
-    const total_paid = 1500000; // Example value
-
-    // Generate sample product income data
-    const products = productNames.map(product_name => {
-      // Set realistic prices based on product name
-      let manufacture_price, selling_price, total_units, total_sales;
-
-      if (product_name === 'Velvet Frock') {
-        manufacture_price = 2500;
-        selling_price = 3500;
-        total_units = 114;
-        total_sales = 399000;
-      } else if (product_name === 'Frayed Jeans') {
-        manufacture_price = 1800;
-        selling_price = 2500;
-        total_units = 170;
-        total_sales = 425000;
-      } else if (product_name === 'Roshi Blouse') {
-        manufacture_price = 1000;
-        selling_price = 1500;
-        total_units = 66;
-        total_sales = 99000;
-      } else if (product_name === 'Voile Frock') {
-        manufacture_price = 1500;
-        selling_price = 2000;
-        total_units = 4;
-        total_sales = 8000;
-      } else {
-        manufacture_price = 1500;
-        selling_price = 2000;
-        total_units = 32;
-        total_sales = 64000;
-      }
-
-      const profit = selling_price - manufacture_price;
-      const profit_margin = Math.round((profit / selling_price) * 100);
-
-      return {
-        product_id: Math.floor(Math.random() * 100) + 1,
-        product_name,
-        total_units,
-        total_sales,
-        manufacture_price,
-        selling_price,
-        profit_margin,
-        income_percentage: 0 // Will be calculated below
-      };
-    });
-
-    // Calculate total sales for all products
-    const totalSalesAmount = products.reduce((sum, product) => sum + product.total_sales, 0);
-
-    // Calculate income percentage for each product based on its contribution to total sales
-    products.forEach(product => {
-      product.income_percentage = parseFloat(((product.total_sales / totalSalesAmount) * 100).toFixed(2));
-    });
-
-    // Generate sample packing data that matches your product gallery
-    const packingItems = productNames.map(product_name => {
-      // Set realistic packing numbers based on product name
-      let total_sewn, total_packed, available_quantity;
-
-      if (product_name === 'Velvet Frock') {
-        total_sewn = 79;
-        total_packed = 70;
-        available_quantity = 9;
-      } else if (product_name === 'Frayed Jeans') {
-        total_sewn = 44;
-        total_packed = 40;
-        available_quantity = 4;
-      } else if (product_name === 'Roshi Blouse') {
-        total_sewn = 64;
-        total_packed = 61;
-        available_quantity = 3;
-      } else if (product_name === 'Voile Frock') {
-        total_sewn = 15;
-        total_packed = 13;
-        available_quantity = 2;
-      } else {
-        total_sewn = 6;
-        total_packed = 1;
-        available_quantity = 5;
-      }
-
-      return {
-        id: Math.floor(Math.random() * 100) + 1,
-        product_name,
-        total_sewn,
-        total_packed,
-        available_quantity
-      };
-    });
-
-    return {
-      salesPerformance: {
-        monthly_sales: monthlySales,
-        top_products: topProducts,
-        shop_sales: shopSales,
-        payment_status: {
-          paid_count,
-          partially_paid_count,
-          payment_due_count,
-          total_paid,
-          total_amount,
-          payment_rate: Math.round((total_paid / total_amount) * 100)
-        }
-      },
-      productIncomeData: {
-        total_sales_amount: totalSalesAmount,
-        products
-      },
-      packingData: packingItems
-    };
-  };
 
   // Fetch sales performance data
   useEffect(() => {
@@ -468,13 +267,26 @@ function OwnerDashboard() {
           const incomeResponse = await axios.get(`http://localhost:8000/api/reports/sales/product-income-percentage/?months=${timeFrame}`);
           setProductIncomeData(incomeResponse.data);
         } catch (apiError) {
-          console.error('Error fetching data from API, using sample data instead:', apiError);
-
-          // Use sample data if API fails
-          const sampleData = generateSampleData();
-          setSalesPerformance(sampleData.salesPerformance);
-          setProductIncomeData(sampleData.productIncomeData);
-          setPackingData(sampleData.packingData);
+          console.error('Error fetching data from API:', apiError);
+          // Set empty data arrays on error
+          setSalesPerformance({
+            monthly_sales: [],
+            top_products: [],
+            shop_sales: [],
+            payment_status: {
+              paid_count: 0,
+              partially_paid_count: 0,
+              payment_due_count: 0,
+              total_paid: 0,
+              total_amount: 0,
+              payment_rate: 0
+            }
+          });
+          setProductIncomeData({
+            total_sales_amount: 0,
+            products: []
+          });
+          setPackingData([]);
         }
       } catch (error) {
         console.error('Error in fetchSalesPerformance:', error);
@@ -611,40 +423,7 @@ function OwnerDashboard() {
     });
   };
 
-  // Add debugging logs
-  useEffect(() => {
-    if (salesPerformance && salesPerformance.monthly_sales) {
-      console.log('Monthly Sales Data:', salesPerformance.monthly_sales);
-      console.log('Monthly Sales Data Length:', salesPerformance.monthly_sales.length);
-    }
-    if (packingData) {
-      console.log('Packing Data:', packingData);
-      console.log('Packing Data Length:', packingData.length);
-    }
-    if (productIncomeData && productIncomeData.products) {
-      console.log('Product Income Data:', productIncomeData.products);
-      console.log('Product Income Data Length:', productIncomeData.products.length);
-    }
 
-    // Check if data is empty
-    const isDataEmpty =
-      (!salesPerformance.monthly_sales || salesPerformance.monthly_sales.length === 0) &&
-      (!packingData || packingData.length === 0) &&
-      (!productIncomeData.products || productIncomeData.products.length === 0);
-
-    console.log('Is Data Empty:', isDataEmpty);
-
-    // Log chart container dimensions
-    const chartContainers = document.querySelectorAll('[style*="width: 100%; height:"]');
-    console.log('Chart Containers Found:', chartContainers.length);
-    chartContainers.forEach((container, index) => {
-      console.log(`Chart Container ${index} Dimensions:`, {
-        width: container.offsetWidth,
-        height: container.offsetHeight,
-        style: container.getAttribute('style')
-      });
-    });
-  }, [salesPerformance, packingData, productIncomeData]);
 
   return (
     <>
@@ -822,45 +601,7 @@ function OwnerDashboard() {
                     variant="outline-primary"
                     size="sm"
                     onClick={() => {
-                      setLoading(true);
-                      setSalesLoading(true);
-
-                      try {
-                        // Use sample data for testing
-                        const sampleData = generateSampleData();
-                        setPackingData(sampleData.packingData);
-                        setSalesPerformance(sampleData.salesPerformance);
-                        setProductIncomeData(sampleData.productIncomeData);
-
-                        // Set sample stats
-                        setStats({
-                          pendingApprovalCount: Math.floor(Math.random() * 10) + 2,
-                          pendingInvoiceCount: Math.floor(Math.random() * 8) + 1,
-                          paymentsOverdueCount: Math.floor(Math.random() * 5) + 1,
-                          deliveredUnpaidCount: Math.floor(Math.random() * 7) + 2,
-                          totalSalesValue: sampleData.salesPerformance.monthly_sales.reduce((sum, month) => sum + month.total_sales, 0),
-                          fabricStockValue: Math.floor(Math.random() * 500000) + 200000,
-                          todaySewingCount: Math.floor(Math.random() * 50) + 10
-                        });
-
-                        // Generate sample recent orders
-                        const sampleOrders = Array.from({ length: 5 }, (_, i) => ({
-                          id: i + 1,
-                          shop_name: sampleData.salesPerformance.shop_sales[i % sampleData.salesPerformance.shop_sales.length].shop_name,
-                          created_at: new Date().toISOString(),
-                          status: ['submitted', 'approved', 'invoiced', 'delivered', 'paid'][Math.floor(Math.random() * 5)],
-                          total_amount: Math.floor(Math.random() * 50000) + 10000
-                        }));
-
-                        setRecentOrders(sampleOrders);
-
-                        console.log('Using sample data for charts');
-                      } catch (error) {
-                        console.error('Error generating sample data:', error);
-                      } finally {
-                        setLoading(false);
-                        setSalesLoading(false);
-                      }
+                      window.location.reload();
                     }}
                   >
                     <FaHistory className="me-1" /> Refresh Data
@@ -1609,13 +1350,7 @@ function OwnerDashboard() {
                           <h6 className="mb-3 text-center">Income Distribution by Product</h6>
                           {productIncomeData.products && productIncomeData.products.length > 0 ? (
                             <div style={{ width: '100%', height: '350px', border: '1px solid #eee', padding: '10px', position: 'relative' }}>
-                              {/* Debug info to check data */}
-                              {console.log('Product Income Data for Pie Chart:',
-                                productIncomeData.products.slice(0, 5).map(product => ({
-                                  name: product.product_name,
-                                  value: parseFloat(product.income_percentage) || 1
-                                }))
-                              )}
+
 
                               {/* Chart.js Pie Chart */}
                               <div style={{ height: '300px', position: 'relative' }}>

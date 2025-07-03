@@ -55,7 +55,10 @@ function createWindow() {
     },
     show: false, // Don't show until ready
     titleBarStyle: 'default',
-    autoHideMenuBar: false
+    autoHideMenuBar: false,
+    fullscreen: false, // Prevent full screen on startup
+    maximizable: true, // Allow user to maximize if they want
+    resizable: true // Allow window resizing
   });
 
   // Set application menu
@@ -65,8 +68,8 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
 
-    // Focus on window and open dev tools for debugging
-    mainWindow.webContents.openDevTools();
+    // Developer tools will only open when manually requested (F12 or menu)
+    // No automatic opening of dev tools
   });
 
   // Handle window closed
@@ -182,7 +185,7 @@ async function startDjangoServer() {
 
     if (isDev) {
       // Development mode
-      pythonPath = path.resolve(__dirname, '../new_env/Scripts/python.exe');
+      pythonPath = path.resolve(__dirname, '../env/Scripts/python.exe');
       managePath = path.resolve(__dirname, '../backend/manage.py');
       workingDir = path.resolve(__dirname, '..');
     } else {
