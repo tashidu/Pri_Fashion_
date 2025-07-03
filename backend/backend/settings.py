@@ -7,8 +7,8 @@ from datetime import timedelta
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-# Priority: .env.local > .env.azure > .env.vm > .env
-env_files = ['.env.local', '.env.azure', '.env.vm', '.env']
+# Priority: .env.local > .env
+env_files = ['.env.local', '.env']
 loaded_env = None
 
 for env_file in env_files:
@@ -93,44 +93,22 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# Check database mode from environment
-DATABASE_MODE = os.getenv('DATABASE_MODE', 'local')
-
-if DATABASE_MODE == 'azure':
-    # Azure Database for MySQL configuration
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DATABASE_NAME', 'prifashion'),
-            'USER': os.getenv('DATABASE_USER', 'prifashionadmin'),
-            'PASSWORD': os.getenv('DATABASE_PASSWORD', ''),
-            'HOST': os.getenv('DATABASE_HOST', 'prifashion-db-server.mysql.database.azure.com'),
-            'PORT': os.getenv('DATABASE_PORT', '3306'),
-            'OPTIONS': {
-                'ssl': {'ssl-mode': 'REQUIRED'},
-                'charset': 'utf8mb4',
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
-        }
+# Local MySQL configuration
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('DATABASE_NAME', 'prifashion'),
+        'USER': os.getenv('DATABASE_USER', 'root'),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'boossa12'),
+        'HOST': os.getenv('DATABASE_HOST', 'localhost'),
+        'PORT': os.getenv('DATABASE_PORT', '3306'),
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
-    print("Using Azure Database for MySQL")
-else:
-    # Local MySQL configuration
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DATABASE_NAME', 'prifashion'),
-            'USER': os.getenv('DATABASE_USER', 'root'),
-            'PASSWORD': os.getenv('DATABASE_PASSWORD', 'boossa12'),
-            'HOST': os.getenv('DATABASE_HOST', 'localhost'),
-            'PORT': os.getenv('DATABASE_PORT', '3306'),
-            'OPTIONS': {
-                'charset': 'utf8mb4',
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
-        }
-    }
-    print("Using Local MySQL Database")
+}
+print("Using Local MySQL Database")
 
 
 # Password validation
