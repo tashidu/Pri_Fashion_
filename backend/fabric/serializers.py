@@ -39,8 +39,10 @@ class FabricVariantSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        color_code = validated_data.get('color')
-        validated_data['color_name'] = COLOR_MAP.get(color_code, color_code)
+        # Only auto-set color_name if not provided by user
+        if not validated_data.get('color_name'):
+            color_code = validated_data.get('color')
+            validated_data['color_name'] = COLOR_MAP.get(color_code, color_code)
         return super().create(validated_data)
 
 class FabricDefinitionSerializer(serializers.ModelSerializer):

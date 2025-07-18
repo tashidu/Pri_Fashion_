@@ -78,13 +78,48 @@ const AddFabric = () => {
     const updated = [...variants];
     updated[index][field] = value;
 
-    // If color is changed, update the color name
+    // If color is changed, suggest a color name only if current name is empty or matches a preset
     if (field === "color") {
       const colorPreset = COLOR_PRESETS.find(preset => preset.color === value);
-      updated[index].colorName = colorPreset ? colorPreset.name : "";
+      const currentColorName = updated[index].colorName;
+
+      // Only auto-update if the field is empty or contains a basic preset name
+      const isBasicPresetName = COLOR_PRESETS.some(preset => preset.name === currentColorName);
+
+      if (!currentColorName || isBasicPresetName) {
+        updated[index].colorName = colorPreset ? colorPreset.name : "";
+      }
     }
 
     setVariants(updated);
+  };
+
+  // Function to check if two colors are similar
+  const areColorsSimilar = (color1, color2) => {
+    // Convert hex to RGB
+    const hexToRgb = (hex) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    };
+
+    const rgb1 = hexToRgb(color1);
+    const rgb2 = hexToRgb(color2);
+
+    if (!rgb1 || !rgb2) return false;
+
+    // Calculate color difference using Euclidean distance
+    const distance = Math.sqrt(
+      Math.pow(rgb1.r - rgb2.r, 2) +
+      Math.pow(rgb1.g - rgb2.g, 2) +
+      Math.pow(rgb1.b - rgb2.b, 2)
+    );
+
+    // Colors are similar if distance is less than 50 (adjustable threshold)
+    return distance < 50;
   };
 
   // Submit handler
@@ -126,6 +161,39 @@ const AddFabric = () => {
         setMessage(`Variant ${i+1}: Price per yard cannot be negative`);
         setIsSubmitting(false);
         return;
+      }
+    }
+
+    // Check for similar colors without descriptive names
+    for (let i = 0; i < variants.length; i++) {
+      for (let j = i + 1; j < variants.length; j++) {
+        const variant1 = variants[i];
+        const variant2 = variants[j];
+
+        if (areColorsSimilar(variant1.color, variant2.color)) {
+          const name1 = variant1.colorName || "Unnamed";
+          const name2 = variant2.colorName || "Unnamed";
+
+          // Check if names are too generic or similar
+          if (name1 === name2 ||
+              name1 === "Unnamed" || name2 === "Unnamed" ||
+              COLOR_PRESETS.some(preset => preset.name === name1 || preset.name === name2)) {
+
+            const proceed = window.confirm(
+              `⚠️ Warning: Variants ${i+1} and ${j+1} have similar colors but generic names.\n\n` +
+              `This might cause confusion during cutting and production.\n\n` +
+              `Consider using more descriptive names like:\n` +
+              `• "Black Line" vs "Black Circle"\n` +
+              `• "Navy Stripe" vs "Navy Solid"\n\n` +
+              `Do you want to continue anyway?`
+            );
+
+            if (!proceed) {
+              setIsSubmitting(false);
+              return;
+            }
+          }
+        }
       }
     }
 
@@ -286,11 +354,14 @@ const AddFabric = () => {
                             />
                             <Form.Control
                               type="text"
-                              placeholder="Color name"
+                              placeholder="e.g., Black Line, Black Circle, Navy Stripe"
                               value={variant.colorName}
                               onChange={(e) => handleVariantChange(index, "colorName", e.target.value)}
                             />
                           </div>
+                          <small className="text-muted mb-2 d-block">
+                            💡 <strong>Tip:</strong> Use descriptive names for similar colors (e.g., "Black Line", "Black Circle") to avoid confusion during cutting
+                          </small>
                           <div className="color-presets d-flex flex-wrap gap-1 mt-1">
                             {COLOR_PRESETS.map((preset, presetIndex) => (
                               <div
@@ -352,10 +423,25 @@ const AddFabric = () => {
                       </Col>
                     </Row>
 
-                    <div className="mt-2 p-2 bg-light rounded">
-                      <strong>Preview:</strong> {variant.colorName || "Unnamed"} -
-                      {variant.totalYard ? ` ${variant.totalYard} yards` : " No yards specified"} -
-                      {variant.pricePerYard ? ` Rs. ${variant.pricePerYard}/yard` : " No price specified"}
+                    <div className="mt-2 p-2 bg-light rounded d-flex align-items-center">
+                      <div
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          backgroundColor: variant.color,
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          marginRight: '8px'
+                        }}
+                      ></div>
+                      <div>
+                        <strong>Preview:</strong>
+                        <span className={variant.colorName ? "text-success fw-bold" : "text-warning"}>
+                          {variant.colorName || "⚠️ Unnamed Color"}
+                        </span>
+                        {variant.totalYard ? ` - ${variant.totalYard} yards` : " - No yards specified"}
+                        {variant.pricePerYard ? ` - Rs. ${variant.pricePerYard}/yard` : " - No price specified"}
+                      </div>
                     </div>
                   </Card.Body>
                 </Card>

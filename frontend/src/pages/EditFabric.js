@@ -402,7 +402,7 @@ const EditFabric = () => {
                               />
                               <Form.Control
                                 type="text"
-                                placeholder="Color name"
+                                placeholder="e.g., Black Line, Black Circle, Navy Stripe"
                                 value={variant.colorName}
                                 onChange={(e) => handleVariantChange(index, "colorName", e.target.value)}
                               />

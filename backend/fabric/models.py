@@ -185,14 +185,13 @@ class FabricVariant(models.Model):
     price_per_yard = models.FloatField()
     
     def save(self, *args, **kwargs):
-        # Automatically map color code to a color name
-        if self.color in COLOR_MAP:
+        # Only auto-map color name if it's empty (preserve user's custom names)
+        if not self.color_name and self.color in COLOR_MAP:
             self.color_name = COLOR_MAP[self.color]
-        else:
-            self.color_name = self.color  # fallback, or set to something else
-        
-        
-        
+        elif not self.color_name:
+            self.color_name = self.color  # fallback to color code
+
+        # Set available_yard to total_yard for new records
         if not self.pk and self.available_yard is None:
             self.available_yard = self.total_yard
 
