@@ -57,6 +57,13 @@ const ApproveFinishedProduct = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [productNameError, setProductNameError] = useState('');
 
+  // Price editing state for approved products
+  const [isEditingPrices, setIsEditingPrices] = useState(false);
+  const [editManufacturePrice, setEditManufacturePrice] = useState('');
+  const [editSellingPrice, setEditSellingPrice] = useState('');
+  const [priceEditErrors, setPriceEditErrors] = useState({});
+  const [finishedProductId, setFinishedProductId] = useState(null);
+
   // Calculate profit margin whenever prices change
   useEffect(() => {
     if (manufacturePrice && sellingPrice) {
@@ -90,6 +97,7 @@ const ApproveFinishedProduct = () => {
         setIsApproved(true);
         setManufacturePrice(approvalRes.data.manufacture_price);
         setSellingPrice(approvalRes.data.selling_price);
+        setFinishedProductId(approvalRes.data.finished_product_id);
 
         // Set existing image URLs if available
         if (approvalRes.data.product_images && Array.isArray(approvalRes.data.product_images)) {
@@ -470,6 +478,111 @@ const ApproveFinishedProduct = () => {
 
       // Show error message if the name wasn't updated
       setError('Failed to update product name. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Start editing prices
+  const startEditingPrices = () => {
+    setEditManufacturePrice(manufacturePrice);
+    setEditSellingPrice(sellingPrice);
+    setIsEditingPrices(true);
+    setPriceEditErrors({});
+  };
+
+  // Cancel editing prices
+  const cancelEditingPrices = () => {
+    setIsEditingPrices(false);
+    setEditManufacturePrice('');
+    setEditSellingPrice('');
+    setPriceEditErrors({});
+  };
+
+  // Validate price editing form
+  const validatePriceEdit = () => {
+    const errors = {};
+
+    // Validate manufacture price
+    const manufactureStr = String(editManufacturePrice || '').trim();
+    if (!editManufacturePrice || manufactureStr === '') {
+      errors.editManufacturePrice = "Manufacture price is required";
+    } else if (parseFloat(editManufacturePrice) <= 0) {
+      errors.editManufacturePrice = "Manufacture price must be greater than zero";
+    } else if (isNaN(parseFloat(editManufacturePrice))) {
+      errors.editManufacturePrice = "Manufacture price must be a valid number";
+    }
+
+    // Validate selling price
+    const sellingStr = String(editSellingPrice || '').trim();
+    if (!editSellingPrice || sellingStr === '') {
+      errors.editSellingPrice = "Selling price is required";
+    } else if (parseFloat(editSellingPrice) <= 0) {
+      errors.editSellingPrice = "Selling price must be greater than zero";
+    } else if (isNaN(parseFloat(editSellingPrice))) {
+      errors.editSellingPrice = "Selling price must be a valid number";
+    } else if (parseFloat(editSellingPrice) < parseFloat(editManufacturePrice)) {
+      errors.editSellingPrice = "Selling price should be greater than or equal to manufacture price";
+    }
+
+    setPriceEditErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Save updated prices
+  const savePriceChanges = async () => {
+    console.log('=== savePriceChanges called ===');
+    console.log('editManufacturePrice:', editManufacturePrice);
+    console.log('editSellingPrice:', editSellingPrice);
+    console.log('finishedProductId:', finishedProductId);
+    console.log('loading state:', loading);
+
+    const validationResult = validatePriceEdit();
+    console.log('Validation result:', validationResult);
+    if (!validationResult) {
+      console.log('Validation failed - stopping execution');
+      return;
+    }
+
+    if (!finishedProductId) {
+      console.log('No finished product ID - stopping execution');
+      setError('Could not find finished product record');
+      return;
+    }
+
+    console.log('Validation passed, proceeding with API call...');
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Update the prices using the PATCH endpoint
+      const updateData = {
+        manufacture_price: parseFloat(editManufacturePrice),
+        selling_price: parseFloat(editSellingPrice)
+      };
+
+      console.log('Sending update data:', updateData);
+      await axios.patch(`http://localhost:8000/api/finished_product/update/${finishedProductId}/`, updateData);
+
+      // Update local state
+      setManufacturePrice(editManufacturePrice);
+      setSellingPrice(editSellingPrice);
+      setIsEditingPrices(false);
+      setSuccessMsg('Prices updated successfully');
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMsg('');
+      }, 3000);
+    } catch (err) {
+      console.error('Error updating prices:', err);
+      const errMsg = err.response && err.response.data
+        ? typeof err.response.data === 'object'
+          ? JSON.stringify(err.response.data)
+          : err.response.data
+        : "Failed to update prices. Please try again.";
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -931,23 +1044,105 @@ const ApproveFinishedProduct = () => {
                     <div className="p-4 bg-white rounded mb-3">
                         <Row className="mt-3">
                           <Col md={6}>
-                            <h5 className="mb-3"><FaMoneyBillWave className="me-2" />Pricing Information</h5>
-                            <Table bordered hover>
-                              <tbody>
-                                <tr>
-                                  <td><strong>Manufacture Price:</strong></td>
-                                  <td>LKR {manufacturePrice}</td>
-                                </tr>
-                                <tr>
-                                  <td><strong>Selling Price:</strong></td>
-                                  <td>LKR {sellingPrice}</td>
-                                </tr>
-                                <tr>
-                                  <td><strong>Profit Margin:</strong></td>
-                                  <td>{profitMargin}%</td>
-                                </tr>
-                              </tbody>
-                            </Table>
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h5 className="mb-0"><FaMoneyBillWave className="me-2" />Pricing Information</h5>
+                              {!isEditingPrices && (
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  onClick={startEditingPrices}
+                                >
+                                  Edit Prices
+                                </Button>
+                              )}
+                            </div>
+
+                            {isEditingPrices ? (
+                              <div className="p-3 bg-light rounded">
+                                <Form onSubmit={(e) => e.preventDefault()}>
+                                  <Row>
+                                    <Col md={6}>
+                                      <Form.Group className="mb-3">
+                                        <Form.Label><strong>Manufacture Price (LKR):</strong></Form.Label>
+                                        <Form.Control
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          value={editManufacturePrice}
+                                          onChange={(e) => setEditManufacturePrice(e.target.value)}
+                                          isInvalid={!!priceEditErrors.editManufacturePrice}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                          {priceEditErrors.editManufacturePrice}
+                                        </Form.Control.Feedback>
+                                      </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                      <Form.Group className="mb-3">
+                                        <Form.Label><strong>Selling Price (LKR):</strong></Form.Label>
+                                        <Form.Control
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          value={editSellingPrice}
+                                          onChange={(e) => setEditSellingPrice(e.target.value)}
+                                          isInvalid={!!priceEditErrors.editSellingPrice}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                          {priceEditErrors.editSellingPrice}
+                                        </Form.Control.Feedback>
+                                      </Form.Group>
+                                    </Col>
+                                  </Row>
+
+                                  {editManufacturePrice && editSellingPrice && parseFloat(editManufacturePrice) > 0 && parseFloat(editSellingPrice) > 0 && (
+                                    <div className="mb-3 p-2 bg-info bg-opacity-10 rounded">
+                                      <strong>New Profit Margin: </strong>
+                                      {(((parseFloat(editSellingPrice) - parseFloat(editManufacturePrice)) / parseFloat(editSellingPrice)) * 100).toFixed(2)}%
+                                    </div>
+                                  )}
+
+                                  <div className="d-flex gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="success"
+                                      size="sm"
+                                      onClick={savePriceChanges}
+                                      disabled={loading}
+                                    >
+                                      <FaCheck className="me-1" />
+                                      Save Changes
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      size="sm"
+                                      onClick={cancelEditingPrices}
+                                    >
+                                      <FaUndo className="me-1" />
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </Form>
+                              </div>
+                            ) : (
+                              <Table bordered hover>
+                                <tbody>
+                                  <tr>
+                                    <td><strong>Manufacture Price:</strong></td>
+                                    <td>LKR {manufacturePrice}</td>
+                                  </tr>
+                                  <tr>
+                                    <td><strong>Selling Price:</strong></td>
+                                    <td>LKR {sellingPrice}</td>
+                                  </tr>
+                                  <tr>
+                                    <td><strong>Profit Margin:</strong></td>
+                                    <td>{profitMargin}%</td>
+                                  </tr>
+                                </tbody>
+                              </Table>
+                            )}
 
                             {productNotes && (
                               <div className="mt-4">

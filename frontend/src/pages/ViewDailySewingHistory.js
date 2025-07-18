@@ -242,7 +242,7 @@ const ViewDailySewingHistory = () => {
                                   style={{
                                     width: "24px",
                                     height: "24px",
-                                    backgroundColor: record.color,
+                                    backgroundColor: record.color_hex || "#CCCCCC",
                                     border: "1px solid #ccc",
                                     marginRight: "8px",
                                     borderRadius: "4px"

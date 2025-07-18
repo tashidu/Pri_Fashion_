@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
+import ColorVariantSelector from "../components/ColorVariantSelector";
 import { Card, Form, Button, Row, Col, Spinner, Alert, Container, Badge, Modal } from 'react-bootstrap';
 import { BsScissors, BsPlus, BsTrash, BsCheck2Circle, BsExclamationTriangle, BsArrowLeft } from 'react-icons/bs';
 
@@ -482,19 +483,14 @@ const EditCutting = () => {
                                 </small>
                               </div>
                             ) : (
-                              <Form.Select
-                                value={detail.fabric_variant}
-                                onChange={(e) => handleDetailChange(index, 'fabric_variant', e.target.value)}
-                                required
+                              <ColorVariantSelector
+                                variants={allFabricVariants}
+                                selectedValue={detail.fabric_variant}
+                                onSelect={(value) => handleDetailChange(index, 'fabric_variant', value)}
+                                placeholder="Select Fabric Variant"
                                 disabled={isSubmitting}
-                              >
-                                <option value="">Select Fabric Variant</option>
-                                {allFabricVariants.map((variant) => (
-                                  <option key={variant.id} value={variant.id}>
-                                    {variant.fabric_definition_data?.fabric_name || 'Unknown'} - {variant.color_name || variant.color} - {variant.available_yard} yards available
-                                  </option>
-                                ))}
-                              </Form.Select>
+                                showFabricName={true}
+                              />
                             )}
                             <Form.Control.Feedback type="invalid">
                               Please select a fabric variant.

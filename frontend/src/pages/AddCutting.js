@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
+import ColorVariantSelector from "../components/ColorVariantSelector";
 import { Card, Form, Button, Row, Col, Spinner, Alert, Badge, Modal } from 'react-bootstrap';
 import { BsScissors, BsPlus, BsTrash, BsCheck2Circle, BsExclamationTriangle, BsFilePdf } from 'react-icons/bs';
 import jsPDF from 'jspdf';
@@ -645,45 +646,15 @@ const AddCuttingRecord = () => {
                                     <Col md={6}>
                                       <Form.Group className="mb-3">
                                         <Form.Label><strong>Fabric Variant (Color)</strong></Form.Label>
-                                        <div className="position-relative">
-                                          <Form.Select
-                                            value={variant.fabric_variant}
-                                            onChange={(e) => handleVariantChange(groupIndex, variantIndex, 'fabric_variant', e.target.value)}
-                                            required
-                                          >
-                                            <option value="">Select Color Variant</option>
-                                            {groupVariants.map((gv) => {
-                                              const isAlreadySelected = isDuplicateFabricVariant(groupIndex, gv.id, variantIndex);
-                                              return (
-                                                <option
-                                                  key={gv.id}
-                                                  value={gv.id}
-                                                  disabled={isAlreadySelected}
-                                                >
-                                                  {gv.color_name || gv.color} - {gv.available_yard} yards available
-                                                  {isAlreadySelected ? ' (Already Selected)' : ''}
-                                                </option>
-                                              );
-                                            })}
-                                          </Form.Select>
-                                          {currentVariant && (
-                                            <div
-                                              className="position-absolute"
-                                              style={{
-                                                right: '35px',
-                                                top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                width: '20px',
-                                                height: '20px',
-                                                backgroundColor: currentVariant.color,
-                                                border: '1px solid #ccc',
-                                                borderRadius: '3px',
-                                                pointerEvents: 'none'
-                                              }}
-                                              title={`Color: ${currentVariant.color}`}
-                                            />
-                                          )}
-                                        </div>
+                                        <ColorVariantSelector
+                                          variants={groupVariants}
+                                          selectedValue={variant.fabric_variant}
+                                          onSelect={(value) => handleVariantChange(groupIndex, variantIndex, 'fabric_variant', value)}
+                                          placeholder="Select Color Variant"
+                                          isDuplicateFunction={isDuplicateFabricVariant}
+                                          groupIndex={groupIndex}
+                                          variantIndex={variantIndex}
+                                        />
                                       </Form.Group>
                                     </Col>
                                     <Col md={6}>

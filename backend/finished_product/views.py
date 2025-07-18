@@ -76,6 +76,7 @@ class FinishedProductStatusView(APIView):
             product = FinishedProduct.objects.get(cutting_record__id=cutting_record_id)
             response_data = {
                 "is_approved": True,
+                "finished_product_id": product.id,
                 "manufacture_price": product.manufacture_price,
                 "selling_price": product.selling_price
             }
@@ -83,6 +84,21 @@ class FinishedProductStatusView(APIView):
             # Add product image URL if available
             if product.product_image:
                 response_data["product_image"] = request.build_absolute_uri(product.product_image.url)
+
+            # Add multiple product images if available
+            product_images = []
+            for image in product.images.all():
+                if image.image:
+                    product_images.append(request.build_absolute_uri(image.image.url))
+                elif image.external_url:
+                    product_images.append(image.external_url)
+
+            if product_images:
+                response_data["product_images"] = product_images
+
+            # Add notes if available
+            if product.notes:
+                response_data["notes"] = product.notes
 
             return Response(response_data, status=status.HTTP_200_OK)
         except FinishedProduct.DoesNotExist:

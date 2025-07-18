@@ -81,6 +81,7 @@ class DailySewingRecordSerializer(serializers.ModelSerializer):
 class DailySewingRecordHistorySerializer(serializers.ModelSerializer):
     product_name = serializers.SerializerMethodField()
     color = serializers.SerializerMethodField()
+    color_hex = serializers.SerializerMethodField()
 
     class Meta:
         model = DailySewingRecord
@@ -88,6 +89,7 @@ class DailySewingRecordHistorySerializer(serializers.ModelSerializer):
             'date',
             'product_name',
             'color',
+            'color_hex',
             'xs',
             's',
             'm',
@@ -110,4 +112,11 @@ class DailySewingRecordHistorySerializer(serializers.ModelSerializer):
             return getattr(variant, 'color_name', None) or getattr(variant, 'color', "N/A")
         except Exception:
             return "N/A"
+
+    def get_color_hex(self, obj):
+        try:
+            variant = obj.cutting_record_fabric.fabric_variant
+            return getattr(variant, 'color', "#CCCCCC")  # Return hex color for swatch
+        except Exception:
+            return "#CCCCCC"
 
