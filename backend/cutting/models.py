@@ -46,67 +46,74 @@ class CuttingRecordFabric(models.Model):
                 f"XS: {self.xs}, S: {self.s}, M: {self.m}, L: {self.l}, XL: {self.xl}")
 
     def save(self, *args, **kwargs):
-        # Check if this is an update or a new record
-        is_update = self.pk is not None
+        # Check if yard calculations should be skipped (when called from serializer)
+        skip_yard_calculations = kwargs.pop('skip_yard_calculations', False)
 
-        # If this is an update, get the original record to compare yard usage
-        if is_update:
-            try:
-                # Get the original record before changes
-                original = CuttingRecordFabric.objects.get(pk=self.pk)
-                original_yard_usage = float(original.yard_usage)
+        if not skip_yard_calculations:
+            # Check if this is an update or a new record
+            is_update = self.pk is not None
 
-                # If the fabric variant has changed, handle both variants
-                if original.fabric_variant_id != self.fabric_variant_id:
-                    # Add yards back to the old variant
-                    old_variant = original.fabric_variant
-                    old_variant.available_yard = float(old_variant.available_yard) + original_yard_usage
-                    old_variant.save()
+            # If this is an update, get the original record to compare yard usage
+            if is_update:
+                try:
+                    # Get the original record before changes
+                    original = CuttingRecordFabric.objects.get(pk=self.pk)
+                    original_yard_usage = float(original.yard_usage)
 
-                    # Check if enough yards are available in the new variant
-                    new_variant = self.fabric_variant
-                    if float(self.yard_usage) > float(new_variant.available_yard):
-                        raise ValidationError("Not enough fabric available in the new variant.")
+                    # If the fabric variant has changed, handle both variants
+                    if original.fabric_variant_id != self.fabric_variant_id:
+                        # Add yards back to the old variant
+                        old_variant = original.fabric_variant
+                        old_variant.available_yard = float(old_variant.available_yard) + original_yard_usage
+                        old_variant.save()
 
-                    # Subtract yards from the new variant
-                    new_variant.available_yard = float(new_variant.available_yard) - float(self.yard_usage)
-                    new_variant.save()
+                        # Check if enough yards are available in the new variant
+                        new_variant = self.fabric_variant
+                        current_available = float(new_variant.available_yard) if new_variant.available_yard is not None else float(new_variant.total_yard)
+                        if float(self.yard_usage) > current_available:
+                            raise ValidationError("Not enough fabric available in the new variant.")
 
-                # If only the yard usage has changed (same variant)
-                elif original_yard_usage != float(self.yard_usage):
-                    # Calculate the difference
-                    yard_difference = float(self.yard_usage) - original_yard_usage
+                        # Subtract yards from the new variant
+                        new_variant.available_yard = current_available - float(self.yard_usage)
+                        new_variant.save()
 
-                    # If using more yards, check if enough is available
-                    if yard_difference > 0:
-                        variant = self.fabric_variant
-                        if yard_difference > float(variant.available_yard):
-                            raise ValidationError("Not enough fabric available for additional usage.")
+                    # If only the yard usage has changed (same variant)
+                    elif original_yard_usage != float(self.yard_usage):
+                        # Calculate the difference
+                        yard_difference = float(self.yard_usage) - original_yard_usage
 
-                        # Subtract the difference
-                        variant.available_yard = float(variant.available_yard) - yard_difference
-                        variant.save()
+                        # If using more yards, check if enough is available
+                        if yard_difference > 0:
+                            variant = self.fabric_variant
+                            current_available = float(variant.available_yard) if variant.available_yard is not None else float(variant.total_yard)
+                            if yard_difference > current_available:
+                                raise ValidationError("Not enough fabric available for additional usage.")
 
-                    # If using fewer yards, add the difference back
-                    elif yard_difference < 0:
-                        variant = self.fabric_variant
-                        variant.available_yard = float(variant.available_yard) - yard_difference  # Negative difference, so subtract
-                        variant.save()
+                            # Subtract the difference
+                            variant.available_yard = current_available - yard_difference
+                            variant.save()
 
-                # If nothing has changed that affects yard usage, just proceed
+                        # If using fewer yards, add the difference back
+                        elif yard_difference < 0:
+                            variant = self.fabric_variant
+                            current_available = float(variant.available_yard) if variant.available_yard is not None else float(variant.total_yard)
+                            variant.available_yard = current_available - yard_difference  # Negative difference, so subtract (which adds back)
+                            variant.save()
 
-            except CuttingRecordFabric.DoesNotExist:
-                # This shouldn't happen, but if it does, treat it as a new record
-                is_update = False
+                    # If nothing has changed that affects yard usage, just proceed
 
-        # Handle new record creation
-        if not is_update:
-            variant = self.fabric_variant
-            # Use available_yard instead of total_yard
-            current_available = float(variant.available_yard) if variant.available_yard is not None else float(variant.total_yard)
-            if float(self.yard_usage) > current_available:
-                raise ValidationError("Not enough fabric available. Cutting usage cannot exceed the remaining fabric.")
-            variant.available_yard = current_available - float(self.yard_usage)
-            variant.save()
+                except CuttingRecordFabric.DoesNotExist:
+                    # This shouldn't happen, but if it does, treat it as a new record
+                    is_update = False
+
+            # Handle new record creation
+            if not is_update:
+                variant = self.fabric_variant
+                # Use available_yard instead of total_yard
+                current_available = float(variant.available_yard) if variant.available_yard is not None else float(variant.total_yard)
+                if float(self.yard_usage) > current_available:
+                    raise ValidationError("Not enough fabric available. Cutting usage cannot exceed the remaining fabric.")
+                variant.available_yard = current_available - float(self.yard_usage)
+                variant.save()
 
         super().save(*args, **kwargs)

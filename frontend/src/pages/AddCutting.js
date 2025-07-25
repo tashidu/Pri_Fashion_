@@ -132,6 +132,8 @@ const AddCuttingRecord = () => {
     );
   };
 
+
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -192,26 +194,26 @@ const AddCuttingRecord = () => {
     setError('');
     setSuccess('');
 
-    // Flatten fabric groups into details array
-    const details = [];
-    fabricGroups.forEach(group => {
-      if (group.fabric_definition) {
-        group.variants.forEach(variant => {
-          if (variant.fabric_variant) {
-            details.push(variant);
-          }
-        });
-      }
-    });
-
-    const payload = {
-      cutting_date: cuttingDate,
-      description: description,
-      product_name: productName,
-      details: details
-    };
-
     try {
+      // Flatten fabric groups into details array
+      const details = [];
+      fabricGroups.forEach(group => {
+        if (group.fabric_definition) {
+          group.variants.forEach(variant => {
+            if (variant.fabric_variant) {
+              details.push(variant);
+            }
+          });
+        }
+      });
+
+      const payload = {
+        cutting_date: cuttingDate,
+        description: description,
+        product_name: productName,
+        details: details
+      };
+
       const response = await axios.post("http://localhost:8000/api/cutting/cutting-records/", payload);
       setSuccess('Cutting record created successfully!');
 
@@ -528,6 +530,8 @@ const AddCuttingRecord = () => {
                   </Form.Group>
                 </Col>
               </Row>
+
+
 
               <div className="d-flex justify-content-between align-items-center mt-4 mb-3 border-bottom pb-2">
                 <h4 className="mb-0">Fabric Details</h4>

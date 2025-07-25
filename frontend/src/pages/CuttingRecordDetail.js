@@ -472,6 +472,8 @@ const CuttingRecordDetail = () => {
               </Card.Body>
             </Card>
 
+
+
             {/* Cutting Details Table */}
             <Card className="shadow-sm">
               <Card.Header className="bg-info text-white">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../utils/axiosConfig';
 import { useParams, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import RoleBasedNavBar from "../components/RoleBasedNavBar";
@@ -156,6 +156,8 @@ const EditCutting = () => {
     }
   }, [allFabricVariants, details, originalYardUsage]);
 
+
+
   // Add a new empty detail row
   const addDetailRow = () => {
     setDetails([...details, { fabric_variant: '', yard_usage: '', xs: 0, s: 0, m: 0, l: 0, xl: 0 }]);
@@ -263,14 +265,26 @@ const EditCutting = () => {
     setError('');
     setSuccess('');
 
-    const payload = {
-      cutting_date: cuttingDate,
-      description: description,
-      product_name: productName,
-      details: details
-    };
-
     try {
+      // Clean up details to remove read-only fields before sending
+      const cleanedDetails = details.map(detail => ({
+        id: detail.id,
+        fabric_variant: detail.fabric_variant,
+        yard_usage: detail.yard_usage,
+        xs: detail.xs,
+        s: detail.s,
+        m: detail.m,
+        l: detail.l,
+        xl: detail.xl
+      }));
+
+      const payload = {
+        cutting_date: cuttingDate,
+        description: description,
+        product_name: productName,
+        details: cleanedDetails
+      };
+
       const response = await axios.put(`http://localhost:8000/api/cutting/cutting-records/${id}/`, payload);
       setSuccess('Cutting record updated successfully!');
 
@@ -444,6 +458,8 @@ const EditCutting = () => {
                   </Form.Group>
                 </Col>
               </Row>
+
+
 
               <div className="d-flex justify-content-between align-items-center mt-4 mb-3 border-bottom pb-2">
                 <h4 className="mb-0">Fabric Details</h4>

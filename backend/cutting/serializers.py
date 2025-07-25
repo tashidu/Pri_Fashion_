@@ -7,6 +7,7 @@ from fabric.serializers import FabricVariantSerializer
 
 class CuttingRecordFabricSerializer(serializers.ModelSerializer):
     fabric_variant_data = FabricVariantSerializer(read_only=True, source='fabric_variant')
+    id = serializers.IntegerField(required=False)  # Make id field explicit and optional
 
     class Meta:
         model = CuttingRecordFabric
@@ -107,7 +108,7 @@ class CuttingRecordSerializer(serializers.ModelSerializer):
                         fabric_variant_instance = FabricVariant.objects.get(id=new_variant_id)
 
                         # Update the detail record directly
-                        # Our model's save method now handles the yard usage validation properly
+                        # Skip yard calculations since we already handled them above
                         detail.fabric_variant = fabric_variant_instance
                         detail.yard_usage = new_yard_usage
                         detail.xs = detail_data.get('xs', detail.xs)
@@ -115,7 +116,7 @@ class CuttingRecordSerializer(serializers.ModelSerializer):
                         detail.m = detail_data.get('m', detail.m)
                         detail.l = detail_data.get('l', detail.l)
                         detail.xl = detail_data.get('xl', detail.xl)
-                        detail.save()
+                        detail.save(skip_yard_calculations=True)
 
                         existing_ids.add(detail_id)
                     except CuttingRecordFabric.DoesNotExist:
